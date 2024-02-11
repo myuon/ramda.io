@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { css } from "@kuma-ui/core";
-import { fetchItems } from "./notion";
+import { fetchItems, fetchLinks, fetchProfile } from "./notion";
 import { Card } from "./components/Card";
 
 export default async function Page() {
   const items = await fetchItems();
+  const profile = await fetchProfile();
+  const links = await fetchLinks();
 
   return (
     <main>
@@ -15,7 +17,7 @@ export default async function Page() {
           height: 100vh;
           background-color: #1e293b;
           color: white;
-          padding: 48px 16px;
+          padding: 48px;
         `}
       >
         <div
@@ -34,17 +36,6 @@ export default async function Page() {
             <h1>λ</h1>
             <h2>ramda.io</h2>
           </div>
-          <div
-            className={css`
-              display: flex;
-              justify-content: center;
-              gap: 8px;
-              font-size: 14px;
-            `}
-          >
-            <Link href="https://github.com/myuon">GITHUB</Link>
-            <Link href="https://twitter.com/myuon_myon">TWITTER</Link>
-          </div>
         </div>
       </header>
 
@@ -52,18 +43,65 @@ export default async function Page() {
         className={css`
           display: grid;
           place-items: center;
-          gap: 48px;
-          padding: 48px 16px;
+          gap: 64px;
+          padding: 48px 32px;
         `}
       >
-        <h2>@myuon</h2>
+        <div
+          className={css`
+            display: grid;
+            place-items: center;
+            gap: 16px;
+          `}
+        >
+          <img
+            src="/myuon.jpg"
+            width={128}
+            className={css`
+              border-radius: 50%;
+            `}
+          ></img>
+          <h2>myuon</h2>
+          <p>{profile.summary}</p>
+        </div>
+
+        <div
+          className={css`
+            display: grid;
+            place-items: center;
+            gap: 24px;
+          `}
+        >
+          {links.map((link) => (
+            <Link
+              key={link.id}
+              href={link.link}
+              className={css`
+                display: contents;
+              `}
+            >
+              <span
+                className={css`
+                  color: #64748b;
+                  text-decoration: underline;
+
+                  &:hover {
+                    text-decoration: none;
+                  }
+                `}
+              >
+                {link.title}
+              </span>
+            </Link>
+          ))}
+        </div>
 
         <div
           className={css`
             display: grid;
             justify-content: center;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 16px;
+            gap: 24px;
           `}
         >
           {items.map((item) => (
