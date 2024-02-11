@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { css } from "@kuma-ui/core";
+import { fetchItems } from "./notion";
+import { Card } from "./components/Card";
 
-export default function Index() {
+export default async function Page() {
+  const items = await fetchItems();
+
   return (
     <main>
       <header
@@ -11,6 +15,7 @@ export default function Index() {
           height: 100vh;
           background-color: #1e293b;
           color: white;
+          padding: 48px 16px;
         `}
       >
         <div
@@ -47,10 +52,30 @@ export default function Index() {
         className={css`
           display: grid;
           place-items: center;
-          height: 100vh;
+          gap: 48px;
+          padding: 48px 16px;
         `}
       >
-        <h2>Items</h2>
+        <h2>@myuon</h2>
+
+        <div
+          className={css`
+            display: grid;
+            justify-content: center;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+          `}
+        >
+          {items.map((item) => (
+            <Card
+              key={item.id}
+              title={item.title}
+              summary={item.summary}
+              href={item.link}
+              date={item.publishedAt}
+            />
+          ))}
+        </div>
       </section>
     </main>
   );
