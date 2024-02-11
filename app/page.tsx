@@ -43,7 +43,7 @@ export default async function Page() {
         className={css`
           display: grid;
           place-items: center;
-          gap: 64px;
+          gap: 80px;
           padding: 48px 32px;
         `}
       >
@@ -61,7 +61,7 @@ export default async function Page() {
               border-radius: 50%;
             `}
           ></img>
-          <h2>myuon</h2>
+          <h2>@myuon</h2>
           <p>{profile.summary}</p>
         </div>
 
@@ -69,17 +69,11 @@ export default async function Page() {
           className={css`
             display: grid;
             place-items: center;
-            gap: 24px;
+            gap: 32px;
           `}
         >
           {links.map((link) => (
-            <Link
-              key={link.id}
-              href={link.link}
-              className={css`
-                display: contents;
-              `}
-            >
+            <Link key={link.id} href={link.link}>
               <span
                 className={css`
                   color: #64748b;

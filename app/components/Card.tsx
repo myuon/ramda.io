@@ -54,7 +54,7 @@ export const Card = ({ title, summary, href, date }: CardProps) => {
           <p
             className={css`
               font-size: 14px;
-              line-height: 20px;
+              line-height: 24px;
               color: #475569;
             `}
           >
