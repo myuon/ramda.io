@@ -28,19 +28,28 @@ export const Card = ({ title, summary, href, date }: CardProps) => {
     <LinkWrapper href={href}>
       <div
         className={css`
-          box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1),
-            0 4px 6px -4px rgb(0 0 0 / 0.1);
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+            0 2px 4px -2px rgb(0 0 0 / 0.1);
           border-radius: 6px;
           padding: 20px;
           border: 1px solid #f1f5f9;
           display: grid;
-          gap: 16px;
+          grid-template-rows: auto 1fr;
+          gap: 48px;
+          height: 100%;
+          transition: all 0.3s ease;
+
+          &:hover {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+              0 4px 6px -4px rgb(0 0 0 / 0.1);
+            background-color: #f8fafc;
+          }
         `}
       >
         <div
           className={css`
             display: grid;
-            gap: 36px;
+            gap: 16px;
           `}
         >
           <h3
@@ -64,6 +73,8 @@ export const Card = ({ title, summary, href, date }: CardProps) => {
         {date ? (
           <small
             className={css`
+              display: grid;
+              align-items: flex-end;
               font-size: 12px;
               color: #64748b;
             `}

@@ -15,6 +15,7 @@ export default async function Page() {
           display: grid;
           place-items: center;
           height: 100vh;
+          height: 100dvh;
           background-color: #1e293b;
           color: white;
           padding: 48px;
@@ -23,7 +24,7 @@ export default async function Page() {
         <div
           className={css`
             display: grid;
-            justify-content: center;
+            place-items: center;
             gap: 48px;
           `}
         >
