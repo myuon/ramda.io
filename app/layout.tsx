@@ -4,7 +4,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { IBM_Plex_Sans } from "next/font/google";
 
-export const ibmPlexSans = IBM_Plex_Sans({
+const ibmPlexSans = IBM_Plex_Sans({
   weight: "700",
   display: "swap",
   subsets: ["latin", "greek"],
