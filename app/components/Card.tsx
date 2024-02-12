@@ -16,16 +16,26 @@ export interface CardProps {
 const LinkWrapper = ({
   href,
   children,
+  external,
 }: {
   href?: string;
   children: React.ReactNode;
+  external?: boolean;
 }) => {
-  return href ? <Link href={href}>{children}</Link> : <>{children}</>;
+  return href ? (
+    external ? (
+      <a href={href}>{children}</a>
+    ) : (
+      <Link href={href}>{children}</Link>
+    )
+  ) : (
+    <>{children}</>
+  );
 };
 
 export const Card = ({ title, summary, href, date }: CardProps) => {
   return (
-    <LinkWrapper href={href}>
+    <LinkWrapper href={href} external>
       <div
         className={css`
           box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1),

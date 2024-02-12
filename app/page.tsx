@@ -76,7 +76,7 @@ export default async function Page() {
           `}
         >
           {links.map((link) => (
-            <Link key={link.id} href={link.link}>
+            <a key={link.id} href={link.link}>
               <span
                 className={css`
                   color: #64748b;
@@ -89,7 +89,7 @@ export default async function Page() {
               >
                 {link.title}
               </span>
-            </Link>
+            </a>
           ))}
         </div>
 
