@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "format": "bunx @biomejs/biome check --apply app/**/*.(tsx|css)"
+    "format": "bunx @biomejs/biome check --apply app"
   },
   "dependencies": {
     "@kuma-ui/core": "^1.5.6",
