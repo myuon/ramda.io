@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { IBM_Plex_Sans } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 const ibmPlexSans = IBM_Plex_Sans({
   weight: "700",
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body className={`${ibmPlexSans.variable}`}>
         <KumaRegistry>{children}</KumaRegistry>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
