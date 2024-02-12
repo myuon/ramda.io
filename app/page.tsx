@@ -42,9 +42,10 @@ export default async function Page() {
       <section
         className={css`
           display: grid;
-          place-items: center;
           gap: 80px;
           padding: 48px 32px;
+          max-width: 1080px;
+          margin: 0 auto;
         `}
       >
         <div
@@ -94,8 +95,7 @@ export default async function Page() {
         <div
           className={css`
             display: grid;
-            justify-content: center;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 24px;
           `}
         >
