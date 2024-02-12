@@ -1,9 +1,9 @@
 "use server";
 
 import { css } from "@kuma-ui/core";
-import Link from "next/link";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import Link from "next/link";
 dayjs.extend(relativeTime);
 
 export interface CardProps {

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { css } from "@kuma-ui/core";
-import { fetchItems, fetchLinks, fetchProfile } from "./notion";
+import Link from "next/link";
 import { Card } from "./components/Card";
+import { fetchItems, fetchLinks, fetchProfile } from "./notion";
 
 export default async function Page() {
   const items = await fetchItems();
@@ -60,7 +60,8 @@ export default async function Page() {
             className={css`
               border-radius: 50%;
             `}
-          ></img>
+            alt="profile"
+          />
           <h2>@myuon</h2>
           <p>{profile.summary}</p>
         </div>

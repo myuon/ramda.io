@@ -41,14 +41,15 @@ export const fetchItems = cache(async () => {
   });
 
   return response.results.map(
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     (item: any) =>
       ({
         id: item.id,
-        title: item.properties["Name"].title[0].plain_text,
-        link: item.properties["Link"]?.url,
-        summary: item.properties["Summary"]?.rich_text[0].plain_text,
-        publishedAt: item.properties["PublishedAt"].date.start,
-      } satisfies Item)
+        title: item.properties.Name.title[0].plain_text,
+        link: item.properties.Link?.url,
+        summary: item.properties.Summary?.rich_text[0].plain_text,
+        publishedAt: item.properties.PublishedAt.date.start,
+      }) satisfies Item,
   );
 });
 
@@ -69,11 +70,12 @@ export const fetchProfile = cache(async () => {
     ],
   });
 
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   const item = response.results[0] as any;
 
   return {
     id: item.id,
-    summary: item.properties["Summary"]?.rich_text[0].plain_text,
+    summary: item.properties.Summary?.rich_text[0].plain_text,
   };
 });
 
@@ -112,11 +114,12 @@ export const fetchLinks = cache(async () => {
   });
 
   return response.results.map(
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     (item: any) =>
       ({
         id: item.id,
-        title: item.properties["Name"].title[0].plain_text,
-        link: item.properties["Link"]?.url,
-      } satisfies Link)
+        title: item.properties.Name.title[0].plain_text,
+        link: item.properties.Link?.url,
+      }) satisfies Link,
   );
 });

@@ -1,7 +1,7 @@
+import { KumaRegistry } from "@kuma-ui/next-plugin/registry";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { KumaRegistry } from "@kuma-ui/next-plugin/registry";
 
 const inter = Inter({ subsets: ["latin"] });
 
