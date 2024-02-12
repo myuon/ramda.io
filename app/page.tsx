@@ -1,6 +1,7 @@
 import { css } from "@kuma-ui/core";
 import { Card } from "./components/Card";
 import { fetchItems, fetchLinks, fetchProfile } from "./notion";
+import Image from "next/image";
 
 export default async function Page() {
   const items = await fetchItems();
@@ -55,9 +56,10 @@ export default async function Page() {
             gap: 16px;
           `}
         >
-          <img
+          <Image
             src="/myuon.jpg"
             width={128}
+            height={128}
             className={css`
               border-radius: 50%;
             `}
