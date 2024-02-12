@@ -1,5 +1,4 @@
 import { css } from "@kuma-ui/core";
-import Link from "next/link";
 import { Card } from "./components/Card";
 import { fetchItems, fetchLinks, fetchProfile } from "./notion";
 
