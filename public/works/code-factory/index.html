@@ -167,6 +167,26 @@ input[type=range]{accent-color:var(--safety);width:110px}
   .banner{font-size:14px;padding:8px 12px}
 }
 @media (min-width:761px){ summary{display:none} }
+.brand .picbox,.picbox{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.brand .picbox[hidden]{display:none}
+.picbox label{display:flex;flex-direction:row;gap:6px;align-items:center;font-size:12px;color:var(--ink-dim);white-space:nowrap;width:auto}
+.picbox select{font:inherit;font-size:13px;background:#0A1220;color:var(--ink);border:1px solid #24344F;border-radius:8px;padding:4px 6px}
+.picbox small{flex-basis:100%;font-size:11px;color:var(--ink-dim);line-height:1.5}
+.pip{position:absolute;left:12px;top:64px;z-index:3;width:min(30%,240px);padding:5px;border-radius:10px;background:rgba(5,8,16,.88);box-shadow:0 0 0 1px rgba(56,232,255,.35),0 6px 18px rgba(0,0,0,.5);cursor:pointer;pointer-events:auto}
+.pip[hidden]{display:none}
+.pip canvas{display:block;width:100%;height:auto;border-radius:5px;image-rendering:pixelated}
+.pip span{display:block;font:700 11px "M PLUS 1 Code",monospace;color:#9FE9FF;padding:4px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn.pic[aria-pressed=true]{background:#38E8FF;color:#04202A;border-color:#38E8FF}
+.picmodal{position:fixed;inset:0;z-index:50;background:rgba(2,4,10,.82);display:flex;align-items:center;justify-content:center;padding:16px}
+.picmodal[hidden]{display:none}
+.picsheet{background:#0A101C;border-radius:14px;padding:14px;max-width:min(760px,100%);box-shadow:0 0 0 1px rgba(56,232,255,.25),0 12px 40px rgba(0,0,0,.6);color:var(--ink);text-align:center}
+.picsheet img{display:block;max-width:100%;max-height:60vh;margin:0 auto;border-radius:6px;image-rendering:pixelated}
+.picsheet p{margin:10px 0 0;font-size:13px}
+.picact{display:flex;gap:10px;justify-content:center}
+.picact a{text-decoration:none}
+.pichint{color:var(--ink-dim);font-size:12px!important}
+@media (max-width:760px){ .pip{top:auto;bottom:64px;left:8px;width:38%} }
+
 </style>
 </head>
 <body>
@@ -177,8 +197,13 @@ input[type=range]{accent-color:var(--safety);width:110px}
       <select id="sample"></select>
     </label>
     <label class="pick" id="inputsBox">入力（値1つが1件の仕事。in で受け取る）
-      <input id="inputs" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="例: 1..30 または 5, 8, 13">
+      <input id="inputs" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="例: 1..30 または 5, 8, 13 または 絵 48x30">
     </label>
+    <div class="pick picbox" id="picBox" hidden>
+      <label>絵の大きさ <select id="picRes"><option value="32x20">32×20（640画素）</option><option value="48x30">48×30（1440画素）</option><option value="64x40">64×40（2560画素）</option></select></label>
+      <label>配色 <select id="picPal"><option value="neon">ネオン</option><option value="fire">炎</option><option value="ocean">海</option><option value="pink">桃</option><option value="mono">白黒</option></select></label>
+      <small>「絵 横x縦」で 1画素 = 1件の仕事。p = y×1000 + x（x, y は 0〜999）を受け取り、出荷した値が画素の色になります。仕事は粗い格子から細かい順に入ります</small>
+    </div>
     <a href="/works/code-factory/dataflow.html">平面の図面で見る（2D版）へ</a>
   </header>
 
@@ -190,6 +215,7 @@ input[type=range]{accent-color:var(--safety);width:110px}
         <div class="check" id="check" hidden></div>
         <div class="ship" title="出荷された値"><span>出荷</span><output id="outputs">なし</output></div>
       </div>
+      <div id="pip" class="pip" hidden title="描いている絵（押すと絵の正面へ）"><canvas id="pipCv" width="288" height="180"></canvas><span id="pipTxt"></span></div>
       <div id="camChip" class="camchip" hidden><span id="camText"></span><button id="camClose" type="button" aria-label="全体に戻る">×</button></div>
       <div id="banner" class="banner" hidden></div>
       <div id="toast" class="toast" hidden></div>
@@ -207,9 +233,21 @@ input[type=range]{accent-color:var(--safety);width:110px}
       <button id="bLines" class="btn ghost" aria-pressed="false" title="機械に設計図の行番号を表示">行番号</button>
       <button id="bFocus" class="btn ghost" title="被写界深度（ピントの合う範囲の外をぼかす）の強さ">ピント 強</button>
       <button id="bQual" class="btn ghost" title="画質を切り替える（重いときは「軽」）">画質 高</button>
+      <button id="bPic" class="btn ghost pic" aria-pressed="false" hidden title="絵の正面にカメラを向ける">絵を見る</button>
+      <button id="bTurbo" class="btn ghost pic" aria-pressed="false" hidden title="1コマに何百 tick も進める（絵がすぐ描き上がります）">全速</button>
+      <button id="bSave" class="btn ghost pic" hidden title="絵を PNG 画像にする">絵を保存</button>
       <label class="speed">速さ <input id="speed" type="range" min="0" max="100" value="48" aria-label="速さ"><output id="speedOut">10 tick/秒</output></label>
     </div>
   </section>
+
+  <div id="picModal" class="picmodal" hidden role="dialog" aria-label="絵を保存">
+    <div class="picsheet">
+      <img id="picImg" alt="工場が描いた絵">
+      <p id="picNote"></p>
+      <p class="picact"><a id="picDl" class="btn build" download="picture.png">PNG を保存</a><button id="picClose" class="btn" type="button">閉じる</button></p>
+      <p class="pichint">保存できないときは、画像を長押し（パソコンは右クリック）して保存してください</p>
+    </div>
+  </div>
 
   <aside class="side">
     <details id="codebox" open>
@@ -343,6 +381,110 @@ while (b != 0) {
   b = t;
 }
 out a;
+`},
+  {name:"絵: マンデルブロ集合", label:"画素", inputs:"絵 48x30", palette:"neon", gamma:1.5, title:"マンデルブロ集合",
+   expectFn:p=>{ const x=p%1000, y=Math.trunc(p/1000), cr=x*3-2150, ci=Math.trunc(y*19/10)-950; let zr=0, zi=0, r=0, k=0;
+     while(r<4000000){ const t=Math.trunc((zr*zr-zi*zi)/1000)+cr; zi=Math.trunc(2*zr*zi/1000)+ci; zr=t; r=zr*zr+zi*zi; k++; if(k===20){ r=4000000; k=0; } } return [k]; }, src:
+`// マンデルブロ集合を描く。1画素 = 1件の仕事
+// p = y×1000 + x（x, y は絵の上の位置 0〜999）
+// 出荷するのは「外へ逃げるまでの回数」。逃げない点（集合の中）は 0
+in p;
+x = p % 1000;
+y = p / 1000;
+cr = x * 3 - 2150;
+ci = y * 19 / 10 - 950;
+zr = 0;
+zi = 0;
+r = 0;
+k = 0;
+while (r < 4000000) {
+  t = (zr * zr - zi * zi) / 1000 + cr;
+  zi = 2 * zr * zi / 1000 + ci;
+  zr = t;
+  r = zr * zr + zi * zi;
+  k = k + 1;
+  if (k == 20) {
+    r = 4000000;
+    k = 0;
+  }
+}
+out k;
+`},
+  {name:"絵: ジュリア集合", label:"画素", inputs:"絵 48x30", palette:"ocean", gamma:1.3, title:"ジュリア集合",
+   expectFn:p=>{ const x=p%1000, y=Math.trunc(p/1000); let zr=x*3-1500, zi=Math.trunc(y*19/10)-950, r=0, k=0;
+     while(r<4000000){ const t=Math.trunc((zr*zr-zi*zi)/1000)-800; zi=Math.trunc(2*zr*zi/1000)+156; zr=t; r=zr*zr+zi*zi; k++; if(k===24){ r=4000000; k=0; } } return [k]; }, src:
+`// ジュリア集合（c = -0.8 + 0.156i）。1画素 = 1件の仕事
+// p = y×1000 + x（x, y は絵の上の位置 0〜999）
+in p;
+x = p % 1000;
+y = p / 1000;
+zr = x * 3 - 1500;
+zi = y * 19 / 10 - 950;
+r = 0;
+k = 0;
+while (r < 4000000) {
+  t = (zr * zr - zi * zi) / 1000 - 800;
+  zi = 2 * zr * zi / 1000 + 156;
+  zr = t;
+  r = zr * zr + zi * zi;
+  k = k + 1;
+  if (k == 24) {
+    r = 4000000;
+    k = 0;
+  }
+}
+out k;
+`},
+  {name:"絵: シェルピンスキーの三角形", label:"画素", inputs:"絵 64x40", palette:"fire", gamma:.8, title:"シェルピンスキーの三角形",
+   expectFn:p=>{ const x=p%1000, y=Math.trunc(p/1000), row=Math.trunc(y*32/1000), d=Math.trunc(x*64/1000)-(31-row);
+     if(d<0||d>2*row+1) return [0]; const a=Math.trunc(d/2), b=row-a; return [(a&b)?0:1+row]; }, src:
+`// シェルピンスキーの三角形（パスカルの三角形を 2 で割った余り）
+// p = y×1000 + x（x, y は絵の上の位置 0〜999）
+in p;
+x = p % 1000;
+y = p / 1000;
+row = y * 32 / 1000;
+d = x * 64 / 1000 - (31 - row);
+a = 0;
+b = 0;
+v = 0;
+if (d >= 0) {
+  if (d <= 2 * row + 1) {
+    a = d / 2;
+    b = row - a;
+    v = 1 + row;
+  }
+}
+while (a + b > 0) {
+  if ((a % 2) * (b % 2) == 1) {
+    v = 0;
+  }
+  a = a / 2;
+  b = b / 2;
+}
+out v;
+`},
+  {name:"絵: ハートと輪", label:"画素", inputs:"絵 48x30", palette:"pink", title:"ハートと輪",
+   expectFn:p=>{ const x=p%1000, y=Math.trunc(p/1000), hx=Math.trunc((x-500)*4/10), hy=Math.trunc((560-y)/4), q=hx*hx+hy*hy-10000;
+     if(q*q*q<=hx*hx*hy*hy*hy*100) return [8+Math.trunc(hy/40)]; let n=0; while(n*n*900<q+10000) n++; return [n%2]; }, src:
+`// ハートと、そのまわりに広がる輪
+// p = y×1000 + x（x, y は絵の上の位置 0〜999）
+in p;
+x = p % 1000;
+y = p / 1000;
+hx = (x - 500) * 4 / 10;
+hy = (560 - y) / 4;
+d = hx * hx + hy * hy;
+n = 0;
+while (n * n * 900 < d) {
+  n = n + 1;
+}
+v = n % 2;
+q = d - 10000;
+if (q * q * q <= hx * hx * hy * hy * hy * 100) {
+  v = 8 + hy / 40;
+}
+out v;
 `},
 ];
 
@@ -880,7 +1022,8 @@ class Engine{
     this.caps=G.edges.map((e,i)=>Math.max(1,(opts.cap&&opts.cap[i])||CAP,e.init.length));
     this.inputs=G.multi?(opts.inputs||[]):[undefined];
     this.outs=[]; this.done=false; this.err=null; this.fires=0; this.maxFlight=0; this.flight=0; this.uid=0;
-    this.jobNext=0; this.jobsDone=0; this.jobsLive=0; this.jobDoneAt=[];
+    this.jobNext=0; this.jobsDone=0; this.jobsLive=0; this.jobDoneAt=[]; this.open=new Set();
+    this.maxTicks=Math.max(MAX_TICKS,this.inputs.length*400);
     this.q=G.edges.map(e=>e.init.map(t=>({...this.tok(t.v,{its:t.its,job:0}),ready:0})));
     // entry tickets: K = smallest belt capacity inside that loop
     const zp=new Map(G.zones.map(z=>[z.id,z.parent]));
@@ -969,7 +1112,7 @@ class Engine{
           case "src": {
             const j=this.jobNext++, x=this.inputs[j], from={its:[],job:j};
             vals=n.outs.map(o=>this.tok(o.name===CTRL?0:o.name==="in"?x:+o.name,from));
-            p.job=j; break;
+            p.job=j; this.open.add(j); break;
           }
           case "const": vals=[this.tok(n.k,g.trig)]; break;
           case "op": vals=[this.tok(calc(n.op,g.a.v,g.b.v,n.line),g.a.its.length>=g.b.its.length?g.a:g.b)]; p.a=g.a.v; p.b=g.b.v; break;
@@ -1008,16 +1151,17 @@ class Engine{
     let fl=0; const live=new Set();
     for(let i=0;i<this.q.length;i++){ if(this.G.edges[i].credit) continue; const q=this.q[i]; fl+=q.length; for(const t of q) live.add(t.job); }
     this.flight=fl; this.maxFlight=Math.max(this.maxFlight,fl);
-    for(let j=0;j<this.jobNext;j++) if(this.jobDoneAt[j]===undefined&&!live.has(j)){ this.jobDoneAt[j]=this.tick; this.jobsDone++; }
+    // only jobs that have started and not finished can finish now (a picture has thousands of jobs)
+    for(const j of this.open) if(!live.has(j)){ this.jobDoneAt[j]=this.tick; this.jobsDone++; this.open.delete(j); }
     this.jobsLive=this.jobNext-this.jobsDone;
-    if(this.tick>=MAX_TICKS){ this.err={msg:`${MAX_TICKS} tick を超えたので工場を止めました。無限ループになっていませんか？`,line:0}; this.done=true; }
+    if(this.tick>=this.maxTicks){ this.err={msg:`${this.maxTicks} tick を超えたので工場を止めました。無限ループになっていませんか？`,line:0}; this.done=true; }
     this.last=fired;
     return fired;
   }
   finish(){
     this.done=true; this.last=[];
     for(let j=0;j<this.jobNext;j++) if(this.jobDoneAt[j]===undefined){ this.jobDoneAt[j]=this.tick; this.jobsDone++; }
-    this.jobsLive=0;
+    this.open.clear(); this.jobsLive=0;
   }
   run(){ while(!this.done) this.step(); return this; }
   outsByJob(){ const r=this.inputs.map(()=>[]); for(const o of this.outs) r[o.job].push(o.v); return r; }
@@ -1027,7 +1171,30 @@ class Engine{
 const sampleExpect=(smp,jobs)=>(smp.inputs?jobs:[undefined]).map(x=>smp.expectFn(x));
 // build + verify against the sequential interpreter, job by job
 const MAX_JOBS=200;
+// 「絵 64x40」: one job per pixel of a W×H picture. Each job gets p = y×1000 + x,
+// where x, y are the pixel centre on a 0..999 grid (so the same program draws at
+// any resolution). Jobs go in coarse-to-fine order (every 8th pixel, then 4th,
+// 2nd, the rest; shuffled within each pass) so the whole picture emerges at once and sharpens.
+const CANVAS_MAX=4096;
+function canvasInputs(W,H){
+  const out=[], pix=[], seen=new Uint8Array(W*H);
+  let r=12345; const rnd=n=>{ r=(r*1103515245+12345)%2147483648; return r%n; };   // fixed shuffle: the same order every time
+  for(const st of [8,4,2,1]){
+    const pass=[]; for(let y=0;y<H;y+=st) for(let x=0;x<W;x+=st){ const k=y*W+x; if(!seen[k]){ seen[k]=1; pass.push(k); } }
+    for(let i=pass.length-1;i>0;i--){ const j=rnd(i+1); [pass[i],pass[j]]=[pass[j],pass[i]]; }
+    for(const k of pass){ const x=k%W, y=(k-x)/W; pix.push(k); out.push(Math.floor((y+.5)*1000/H)*1000+Math.floor((x+.5)*1000/W)); }
+  }
+  out.canvas={w:W,h:H,pix}; return out;
+}
+function parseCanvas(txt){
+  const m=String(txt||"").trim().match(/^(?:絵|canvas)\s*(\d+)\s*[x×X＊*]\s*(\d+)$/);
+  if(!m) return null;
+  const W=+m[1], H=+m[2];
+  if(W<1||H<1||W>200||H>200||W*H>CANVAS_MAX) throw new CErr(`絵の大きさは 横×縦 で ${CANVAS_MAX} 画素までです（例: 絵 64x40）`,0);
+  return {w:W,h:H};
+}
 function parseInputs(txt){
+  const cv=parseCanvas(txt); if(cv) return canvasInputs(cv.w,cv.h);
   const out=[];
   for(const part of String(txt||"").split(/[\s,、，]+/).filter(Boolean)){
     const m=part.match(/^(-?\d+)\.\.(-?\d+)$/);
@@ -1048,6 +1215,8 @@ function buildAndCheck(src,inputs,opts={}){
   const jobs=G.multi?inputs:[undefined];
   if(G.multi&&!jobs.length) throw new CErr(`入力がありません。「入力」欄に値を書いてください（例: 1..10）`,prog.find(s=>s.k==="in").line);
   const seqs=jobs.map(x=>runSeq(prog,x));
+  // opts.lazy: only the sequential side now; the caller runs the factory itself (in slices)
+  if(opts.lazy) return {prog,G,seq:seqs[0],seqs,df:{ok:true,outs:[],per:[],ticks:0,maxFlight:0,err:null},match:true,deadErr:false,jobs,lazy:true};
   const eng=new Engine(G,{...opts,inputs:jobs}).run();
   const per=eng.outsByJob();
   const anySeqErr=seqs.some(r=>!r.ok);
@@ -1367,7 +1536,7 @@ const $=id=>document.getElementById(id);
 const stage=$("stage"), ta=$("code");
 let F=null;            // {G, L, check, prog}
 let eng=null;          // live engine
-let simT=0, playing=false, stepTo=null, tps=4;
+let simT=0, playing=false, stepTo=null, tps=4, turboRate=0;
 let clock=0, flying=[], dockBoxes=[], shelf=[];
 let vis=new Map();     // token uid → distance along belt
 let fireFx=new Map();  // node id → {tick, p, tint}
@@ -1690,6 +1859,7 @@ function renderFrame(){
     const amt=DOF_AMT[dofKey], dtF=Math.min(.1,clock-(renderFrame.lc||clock)); renderFrame.lc=clock;
     // in the tour, depth of field eases in once a blended shot has arrived (no frames that are all blur)
     let amtK=1; if(camMode==="tour"&&TOUR&&TOUR.shot){ const age=clock-TOUR.shot.t0; amtK=TOUR.shot.cut?Math.min(1,.4+age):smooth((age-.6)/1.2)*.85; }
+    if(camMode==="pic") amtK=0;      // the picture itself is always sharp
     L.uAmt.value=amt*amtK; L.uMaxBlur.value=(Q===2?11:8)*Math.min(1.6,renderer.getPixelRatio());
     if(subj&&post.gtao){
       let want=camera.position.distanceTo(subj);
@@ -1705,6 +1875,8 @@ function renderFrame(){
       let by=.47, bw=.09;
       if(subj){ _sun.copy(subj).project(camera); by=_sun.y*.5+.5; bw=.07; }
       L.uBandY.value=by; L.uBandW.value=bw;
+      // a picture on the mural stays readable in the overview: a sharp zone around it
+      if(PIC&&camMode==="all"){ PIC.panel.getWorldPosition(_sun); const dd=camera.position.distanceTo(_sun); _sun.project(camera); L.uSubj.value.set(_sun.x*.5+.5,_sun.y*.5+.5,Math.min(.45,PIC.MW*.5/Math.max(1,dd)/Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*.5)); }
     }
     L.uStreak.value=(Q===2?.35:.22)*Math.max(nt,P.warm*.5); L.tOcc.value=L.tOcc.value||whiteTex; G.tOcc.value=G.tOcc.value||whiteTex;
     camera.updateMatrixWorld(); _vp.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
@@ -2057,12 +2229,12 @@ function placePractical(HX,HZ,topY){
     p.pool.position.set(s[0],.02,s[1]); p.pool.renderOrder=2;
     p.fix=new THREE.Mesh(new THREE.CylinderGeometry(.5,.9,.5,20,1,true),new THREE.MeshBasicMaterial({color:new THREE.Color(PRACT_COLS[i]).multiplyScalar(4),side:THREE.DoubleSide}));
     p.fix.position.set(s[0],Y-.2,s[1]); p.home=null;
-    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,40,4),new THREE.MeshBasicMaterial({color:"#1A2130"})); cable.position.set(0,20,0); p.fix.add(cable);
+    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,40,4),new THREE.MeshBasicMaterial({color:"#1A2130"})); cable.position.set(0,20,0); p.fix.add(cable); p.cable=cable;
     world.add(p.shaft,p.pool,p.fix);
   });
   // searchlight mast at the back corner of the slab
   if(SEARCH.beam){ world.remove(SEARCH.mast); SEARCH.beacon=null; }
-  const mx=-HX*.92, mz=-HZ*.92, my=topY+7.5;
+  const mx=-HX*.92, mz=(F&&F.canvas?1:-1)*HZ*.92, my=topY+7.5;   // a picture's mural takes the back
   const mk=new THREE.Group(); mk.add(new THREE.Mesh(new THREE.CylinderGeometry(.12,.18,my,8).translate(0,my/2,0),new THREE.MeshStandardMaterial({color:"#2A3036",metalness:.6,roughness:.4})));
   const head=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,.7,16),new THREE.MeshBasicMaterial({color:new THREE.Color("#DFF3FF").multiplyScalar(3)})); head.position.y=my; mk.add(head);
   mk.position.set(mx,0,mz); world.add(mk); SEARCH.mast=mk; SEARCH.head=head; SEARCH.base=new THREE.Vector3(mx,my,mz); SEARCH.HX=HX; SEARCH.HZ=HZ;
@@ -2787,6 +2959,14 @@ function buildNode(n,atlas,level=0){
         k.cyl(.06,.06,1.7,6,-bw*.25,.85,-bd/2+.1,"#3A4644",{metal:true}); k.cyl(.06,.06,1.7,6,bw*.25,.85,-bd/2+.1,"#3A4644",{metal:true});
         k.box(bw*.62,.78,.06,0,1.9,-bd/2+.06,"#1F3C36",{rx:-.4});
         plateList.push({n,x:0,y:1.9+.01,z:-bd/2+.1,w:bw*.58,h:.7,rx:-.4,bg:"#1F3C36",ink:"#F1F4EC",text:()=>`出荷口 ${dockBoxes.length}箱`});
+      } else if(F.canvas){
+        // picture: a launch pad; every finished box is thrown onto the LED mural
+        const rT=atlas.label(bw,bd,(c,W,H)=>{ c.fillStyle="#30363F"; c.fillRect(0,0,W,H); hazard(c,0,0,W,H*.06,H*.08); c.strokeStyle="rgba(56,232,255,.85)"; c.lineWidth=W*.008; c.beginPath(); c.arc(W/2,H*.55,Math.min(W,H)*.3,0,Math.PI*2); c.stroke(); c.beginPath(); c.arc(W/2,H*.55,Math.min(W,H)*.18,0,Math.PI*2); c.stroke(); });
+        k.top(bw,bd,0,.305,0,rT);
+        k.cyl(Math.min(bw,bd)*.2,Math.min(bw,bd)*.24,.3,24,0,.45,bd*.05,"#3A4452",{metal:true});
+        k.cyl(.06,.06,1.7,6,-1.4,.85,-bd/2-.25,"#3A4644",{metal:true}); k.cyl(.06,.06,1.7,6,1.4,.85,-bd/2-.25,"#3A4644",{metal:true});
+        k.box(Math.min(bw*.62,4.4),.78,.06,0,1.9,-bd/2-.25,"#1F3C36",{rx:-.4});
+        plateList.push({n,x:0,y:1.9+.01,z:-bd/2-.21,w:Math.min(bw*.6,4.2),h:.7,rx:-.4,bg:"#1F3C36",ink:"#F1F4EC",text:()=>`画素 ${PIC?PIC.done:0}/${F.jobs.length}`});
       } else {
         // high-bay rack: one cubby per job, filled by an overhead crane
         const J=F.jobs.length;
@@ -2982,7 +3162,7 @@ function build3D(){
     val:new Tok(geoBox(),LABEL_MAT.std,capVal),
     puck:new Tok(puckGeo,LABEL_MAT.std,capPuck,{mode:1}),
     flat:new Tok(geoBox(),LABEL_MAT.std,capFlat,{mode:1}),
-    parked:new Tok(geoBox(),LABEL_MAT.std,F.G.multi?F.jobs.length*4+8:40),
+    parked:new Tok(geoBox(),LABEL_MAT.std,F.canvas?16:F.G.multi?F.jobs.length*4+8:40),
     plate:new Tok(new THREE.PlaneGeometry(1,1),LABEL_MAT.basic,plateList.length+4,{shadow:false}),
   };
   for(const t of Object.values(tok)){ t.mesh.userData.keepMat=true; world.add(t.mesh); }
@@ -3006,7 +3186,7 @@ function build3D(){
   puffs.setColorAt(0,col("#fff")); puffs.count=0; puffs.frustumCulled=false; world.add(puffs);
   // multi-job rack: one label plate per cubby, all from one canvas redrawn when a job ships
   let shelfTex=null, shelfCanvas=null;
-  if(F.G.multi&&L.dock){
+  if(F.G.multi&&L.dock&&!F.canvas){
     const R=nodes[L.dock.id].userData.rack, J=R.J;
     let cw=Math.min(320,Math.floor(2048/R.C)), chh=Math.max(24,Math.round(cw*.3/(R.sw-.12)));
     if(chh*R.Lv>2048){ const f=2048/(chh*R.Lv); cw=Math.floor(cw*f); chh=Math.floor(chh*f); }
@@ -3027,6 +3207,7 @@ function build3D(){
   S3={atlas,floor,zones,nodes,plan,tok,lamps,glows,puffs,trail,belts:null,shelf:{tex:shelfTex,canvas:shelfCanvas,dirty:true,at:0},crane:{queue:[],cur:null},parts:[],bounds:null};
   // bounds for camera framing
   S3.bounds=new THREE.Box3(new THREE.Vector3(-HX-.8,-.5,-HZ-.8),new THREE.Vector3(HX+.8,Math.max(2.6,plan.maxTop+3.2),HZ+.8));
+  PIC=null; if(F.canvas) buildMural(HX,HZ); else pipShow(false);
   // light + shadow camera cover the slab
   const R=Math.hypot(HX,HZ)+3;
   key.position.copy(KEY_DIR).multiplyScalar(R*2.2); key.target.position.set(0,0,0); S3.lightR=R;
@@ -3050,6 +3231,196 @@ function buildBeltsNow(){
 }
 
 /* ============================================================
+   Pictures (絵): one job per pixel. Each shipped box flies to an LED
+   mural behind the factory and lights its pixel, in the order the jobs
+   really finish. The colour is the shipped value through a palette.
+   ============================================================ */
+const PALETTES={
+  neon:{name:"ネオン",stops:["#06050E","#24105A","#6A1FD0","#E02FB0","#FF8A3D","#FFF1BE"]},
+  fire:{name:"炎",stops:["#070302","#3E0905","#A81C0A","#F45B07","#FFBE3B","#FFF7D6"]},
+  ocean:{name:"海",stops:["#02050B","#06264A","#0A6488","#1EB8C2","#8CF0DC","#F0FFFA"]},
+  pink:{name:"桃",stops:["#090309","#33092C","#931660","#F2469A","#FF8CC4","#FFC9E4"]},
+  mono:{name:"白黒",stops:["#040404","#FFFFFF"]},
+};
+const PAL_LUT={};
+function palLut(key){
+  if(PAL_LUT[key]) return PAL_LUT[key];
+  const st=PALETTES[key].stops.map(c=>new THREE.Color(c)), lut=new Float32Array(256*3), c=new THREE.Color();
+  for(let i=0;i<256;i++){ const t=i/255*(st.length-1), a=Math.min(st.length-2,Math.floor(t)); c.copy(st[a]).lerp(st[a+1],t-a); lut[i*3]=c.r; lut[i*3+1]=c.g; lut[i*3+2]=c.b; }
+  return PAL_LUT[key]=lut;
+}
+let PIC=null, picPal="neon", turbo=false;
+// value → 0..255 in the palette; 0 (and below) is the darkest colour
+function picIndex(v){ if(!PIC||!(v>0)) return 0; const t=.08+.92*Math.pow(Math.min(1,v/PIC.vmax),PIC.gamma); return Math.round(t*255); }
+const muralVert=`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`;
+const muralFrag=`
+uniform sampler2D uPix; uniform vec2 uRes; uniform float uTime, uPulse, uBoost;
+varying vec2 vUv;
+void main(){
+  vec2 g=vUv*uRes, cell=floor(g), f=fract(g)-.5;
+  vec4 px=texture2D(uPix,(cell+.5)/uRes);
+  float r=mix(length(f),max(abs(f.x),abs(f.y)),.55);
+  float led=smoothstep(.47,.37,r);
+  float aa=fwidth(g.x);                       // far away: no dot pattern, just the average
+  led=mix(led,.72,smoothstep(.22,.55,aa));
+  vec3 c=vec3(.012,.014,.026)*(.6+.4*led);
+  if(px.a>=0.){
+    float age=max(0.,uTime-px.a), fl=exp(-age*3.5);
+    c=px.rgb*(uBoost+1.6*fl+uPulse)*led+px.rgb*.14*(1.-led)+vec3(1.,.96,.9)*fl*.6*led;
+  }
+  float m=max(c.r,max(c.g,c.b)); c*=m>1.?(1.+(m-1.)*.35)/m:1.;   // soft knee: bright pixels keep their hue under bloom
+  gl_FragColor=vec4(c,1.);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+function buildMural(HX,HZ){
+  const cv=F.canvas, W=cv.w, H=cv.h, N=W*H;
+  let vmax=1; for(const q of F.check.seqs) for(const v of q.outs||[]) if(v>vmax) vmax=v;
+  const MW=Math.max(18,Math.min(48,HX*2*.92)), MH=MW*H/W, lean=.5;
+  const grp=new THREE.Group(), tilt=new THREE.Group();
+  grp.position.set(0,Math.max(.35,Math.min(3.2,S3.plan.maxTop*.55)),-HZ-4.2); grp.add(tilt); tilt.rotation.x=-lean;
+  const data=new Float32Array(N*4); for(let i=0;i<N;i++) data[i*4+3]=-1;
+  const tex=new THREE.DataTexture(data,W,H,THREE.RGBAFormat,THREE.FloatType); tex.magFilter=tex.minFilter=THREE.NearestFilter; tex.needsUpdate=true;
+  const mat=new THREE.ShaderMaterial({uniforms:{uPix:{value:tex},uRes:{value:new THREE.Vector2(W,H)},uTime:{value:0},uPulse:{value:0},uBoost:{value:1.5}},vertexShader:muralVert,fragmentShader:muralFrag,fog:false});
+  const panel=new THREE.Mesh(new THREE.PlaneGeometry(MW,MH),mat); panel.position.set(0,MH/2+.9,0); tilt.add(panel);
+  // housing, neon trim, legs
+  const dark=new THREE.MeshStandardMaterial({color:"#0B0F18",roughness:.55,metalness:.6});
+  const back=new THREE.Mesh(new THREE.BoxGeometry(MW+1,MH+1.3,.5),dark); back.position.set(0,MH/2+.85,-.28); tilt.add(back);
+  const trimC=new THREE.Color("#38E8FF").multiplyScalar(2.2), trim=new THREE.MeshBasicMaterial({color:trimC,toneMapped:false});
+  for(const [w,h,x,y] of [[MW+.9,.09,0,MH+1.42],[MW+.9,.09,0,.28],[.09,MH+1.2,-(MW/2+.45),MH/2+.85],[.09,MH+1.2,MW/2+.45,MH/2+.85]]){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,.12),trim); m.position.set(x,y,.02); tilt.add(m); }
+  const leg=new THREE.MeshStandardMaterial({color:"#2A3340",roughness:.5,metalness:.7});
+  tilt.updateMatrix();
+  for(const sx of [-.36,.36]){
+    const top=new THREE.Vector3(sx*MW,MH+1.2,-.55).applyMatrix4(tilt.matrix), bot=new THREE.Vector3(sx*MW,MH*.45,-.55).applyMatrix4(tilt.matrix);
+    const y0=grp.position.y, post=new THREE.Mesh(new THREE.BoxGeometry(.34,top.y+y0,.34),leg); post.position.set(top.x,(top.y-y0)/2,top.z-.2); grp.add(post);
+    const st=new THREE.Mesh(new THREE.BoxGeometry(.26,.26,Math.abs(top.z-bot.z)+.4),leg); st.position.set(top.x,bot.y,(top.z+bot.z)/2-.1); grp.add(st); }
+  // title strip under the picture
+  const tc=document.createElement("canvas"); tc.width=1024; tc.height=96;
+  const ttex=new THREE.CanvasTexture(tc); ttex.colorSpace=THREE.SRGBColorSpace;
+  const title=new THREE.Mesh(new THREE.PlaneGeometry(Math.min(MW*.7,16),Math.min(MW*.7,16)*96/1024),new THREE.MeshBasicMaterial({map:ttex,transparent:true,toneMapped:false,fog:false}));
+  title.position.set(0,.45,.3); tilt.add(title);
+  world.add(grp);
+  grp.updateMatrixWorld(true);
+  const smp=SAMPLES[+sel.value]&&ta.value===SAMPLES[+sel.value].src?SAMPLES[+sel.value]:null, name=smp&&smp.title||"絵";
+  PIC={W,H,N,vmax,gamma:smp&&smp.gamma||1,MW,MH,grp,tilt,panel,mat,tex,data,vals:new Array(N).fill(null),job:new Int32Array(N).fill(-1),rgba:new Uint8ClampedArray(N*4),done:0,dirty:true,
+       title:{canvas:tc,tex:ttex,shown:-1,at:0},name,hist:[],pulseT:-9,flightsIn:0};
+  for(let i=0;i<N;i++){ PIC.rgba[i*4+3]=255; PIC.rgba[i*4]=8; PIC.rgba[i*4+1]=9; PIC.rgba[i*4+2]=16; }
+  drawMuralTitle(true);
+  // the overview has to include the picture
+  const box=new THREE.Box3().setFromObject(grp); S3.bounds.union(box);
+  pipShow(true); pipDraw(true);
+}
+function picReset(){
+  if(!PIC) return;
+  PIC.data.fill(0); for(let i=0;i<PIC.N;i++){ PIC.data[i*4+3]=-1; PIC.rgba[i*4]=8; PIC.rgba[i*4+1]=9; PIC.rgba[i*4+2]=16; }
+  PIC.vals.fill(null); PIC.job.fill(-1); PIC.done=0; PIC.hist=[]; PIC.pulseT=-9; PIC.tex.needsUpdate=true; PIC.dirty=true; drawMuralTitle(true); pipDraw(true);
+}
+// world position of pixel j on the mural (centre, just in front of the face)
+const _pw=new THREE.Vector3();
+const pixOf=j=>F.canvas.pix?F.canvas.pix[j]:j;
+function picWorld(j,out=_pw){ const k=pixOf(j), x=k%PIC.W, y=Math.floor(k/PIC.W); out.set(((x+.5)/PIC.W-.5)*PIC.MW,PIC.MH*(1-(y+.5)/PIC.H)+.9,.25); return PIC.panel.parent.localToWorld(out); }
+function picSet(j,v){         // j: pixel index
+  const x=j%PIC.W, y=Math.floor(j/PIC.W), lut=palLut(picPal), i=picIndex(v), k=((PIC.H-1-y)*PIC.W+x)*4;
+  PIC.data[k]=lut[i*3]; PIC.data[k+1]=lut[i*3+1]; PIC.data[k+2]=lut[i*3+2];
+  const q=j*4; PIC.rgba[q]=Math.round(255*linToS(lut[i*3])); PIC.rgba[q+1]=Math.round(255*linToS(lut[i*3+1])); PIC.rgba[q+2]=Math.round(255*linToS(lut[i*3+2]));
+}
+const linToS=c=>c<=.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-.055;
+function picInstall(job,v,fx){
+  const j=pixOf(job);
+  if(!PIC||PIC.vals[j]!==null) return;
+  PIC.vals[j]=v; PIC.job[j]=job; PIC.done++; uiDirty=true;
+  picSet(j,v); PIC.data[((PIC.H-1-Math.floor(j/PIC.W))*PIC.W+j%PIC.W)*4+3]=clock;
+  PIC.tex.needsUpdate=true; PIC.dirty=true;
+  if(fx&&!reduceMotion){ const w=picWorld(job); const c=new THREE.Color().setRGB(PIC.data[0],0,0); const lut=palLut(picPal), i=picIndex(v); c.setRGB(lut[i*3]*3+.2,lut[i*3+1]*3+.2,lut[i*3+2]*3+.2);
+    spawnSparks(6,w.x,w.y,w.z+.2,{color:c,speed:1.6,up:1.5,life:.6,floor:0,size:.06}); }
+}
+function picRecolor(){
+  if(!PIC) return;
+  PIC.vals.forEach((v,j)=>{ if(v!==null) picSet(j,v); });
+  PIC.tex.needsUpdate=true; PIC.dirty=true; pipDraw(true);
+}
+function drawMuralTitle(force){
+  const T=PIC.title; if(!force&&(T.shown===PIC.done||clock-T.at<.25)) return;
+  T.shown=PIC.done; T.at=clock;
+  const c=T.canvas.getContext("2d",CPU2D), W=T.canvas.width, H=T.canvas.height;
+  c.clearRect(0,0,W,H); c.fillStyle="rgba(6,9,18,.85)"; rr(c,4,4,W-8,H-8,18); c.fill();
+  c.strokeStyle="rgba(56,232,255,.7)"; c.lineWidth=3; rr(c,4,4,W-8,H-8,18); c.stroke();
+  c.font=`44px "Dela Gothic One", sans-serif`; c.textBaseline="middle"; c.fillStyle="#F1F4EC"; c.textAlign="left";
+  c.fillText(PIC.name,32,H/2+2);
+  c.font=`700 40px "M PLUS 1 Code", monospace`; c.textAlign="right"; c.fillStyle=PIC.done>=PIC.N?"#FFD166":"#38E8FF";
+  c.fillText(`${PIC.done} / ${PIC.N} 画素`,W-32,H/2+2);
+  T.tex.needsUpdate=true;
+}
+// picture-in-picture: the picture as it fills, top left of the stage
+function pipShow(on){ $("pip").hidden=!on; }
+let pipImg=null;
+function pipDraw(force){
+  if(!PIC||$("pip").hidden) return;
+  if(!force&&!PIC.dirty) return;
+  PIC.dirty=false;
+  const cv=$("pipCv"); if(cv.width!==PIC.W*6||cv.height!==PIC.H*6){ cv.width=PIC.W*6; cv.height=PIC.H*6; }
+  const c=cv.getContext("2d",CPU2D);
+  if(!pipImg||pipImg.width!==PIC.W||pipImg.height!==PIC.H) pipImg=new ImageData(PIC.W,PIC.H);
+  pipImg.data.set(PIC.rgba);
+  const tmp=pipDraw.tmp||(pipDraw.tmp=document.createElement("canvas")); tmp.width=PIC.W; tmp.height=PIC.H; tmp.getContext("2d",CPU2D).putImageData(pipImg,0,0);
+  c.imageSmoothingEnabled=false; c.fillStyle="#05070D"; c.fillRect(0,0,cv.width,cv.height); c.drawImage(tmp,0,0,cv.width,cv.height);
+  // LED grid lines
+  c.fillStyle="rgba(0,0,0,.35)"; for(let x=1;x<PIC.W;x++) c.fillRect(x*6-1,0,1,cv.height); for(let y=1;y<PIC.H;y++) c.fillRect(0,y*6-1,cv.width,1);
+}
+function picProgress(){
+  if(!PIC||!eng) return;
+  const now=performance.now(); const h=PIC.hist;
+  if(!h.length||now-h[h.length-1].t>400){ h.push({t:now,d:PIC.done}); while(h.length>2&&now-h[0].t>8000) h.shift(); }
+  let eta="";
+  if(PIC.done>=PIC.N) eta="完成";
+  else if(playing&&h.length>=3){ const a=h[0], b=h[h.length-1], rate=(b.d-a.d)/((b.t-a.t)/1000); if(rate>0){ const s=Math.round((PIC.N-PIC.done)/rate); eta=`残り 約${s>=60?Math.floor(s/60)+"分"+(s%60?String(s%60).padStart(2,"0")+"秒":""):s+"秒"}`; } }
+  else if(!playing) eta="停止中";
+  const txt=`${PIC.done} / ${PIC.N} 画素${eta?" ・ "+eta:""}`;
+  if($("pipTxt").textContent!==txt) $("pipTxt").textContent=txt;
+}
+// camera: face the mural
+function picView(animate=true){
+  if(!PIC||!S3) return;
+  FOL=null; TOUR=null; FOC=null; dofSubject=null; camMode="pic"; setModeUI();
+  measureHud();
+  const W=stage.clientWidth, H=stage.clientHeight, aspect=W/H;
+  const c=PIC.panel.getWorldPosition(new THREE.Vector3());
+  const n=new THREE.Vector3(0,0,1).applyQuaternion(PIC.panel.getWorldQuaternion(new THREE.Quaternion()));
+  const fov=FOV_MODE.pic, th=Math.tan(THREE.MathUtils.degToRad(fov/2));
+  const usable=(H-HUD_TOP-16)/H;               // the HUD covers the top
+  const d=Math.max((PIC.MH+2.2)/2/(th*usable),(PIC.MW+2.4)/2/(th*aspect))*1.04;
+  const tgt=c.clone().add(new THREE.Vector3(0,1,0).applyQuaternion(PIC.panel.getWorldQuaternion(new THREE.Quaternion())).multiplyScalar(-(1-usable)*th*d*.95));
+  const p1=c.clone().addScaledVector(n,d).add(new THREE.Vector3(0,0,0));
+  p1.add(tgt.clone().sub(c));
+  if(animate&&!reduceMotion) camAnim={t0:clock,dur:1.3,p0:camera.position.clone(),t0v:controls.target.clone(),p1,t1:tgt};
+  else { camAnim=null; camera.position.copy(p1); controls.target.copy(tgt); controls.update(); }
+  wake(1);
+}
+// save: a crisp PNG (one LED per pixel); shown in a dialog so it works even when downloads are blocked
+function picPNG(){
+  const s=Math.max(4,Math.floor(1280/PIC.W)), cv=document.createElement("canvas"); cv.width=PIC.W*s; cv.height=PIC.H*s;
+  const c=cv.getContext("2d"); c.fillStyle="#05070D"; c.fillRect(0,0,cv.width,cv.height);
+  for(let j=0;j<PIC.N;j++){ const x=j%PIC.W, y=Math.floor(j/PIC.W); c.fillStyle=`rgb(${PIC.rgba[j*4]},${PIC.rgba[j*4+1]},${PIC.rgba[j*4+2]})`; c.fillRect(x*s,y*s,s-(s>6?1:0),s-(s>6?1:0)); }
+  return cv.toDataURL("image/png");
+}
+function picSave(){
+  if(!PIC) return;
+  let url; try{ url=picPNG(); }catch(e){ toast("画像を作れませんでした"); return; }
+  const m=$("picModal"); $("picImg").src=url; const a=$("picDl"); a.href=url; a.download=`${PIC.name}-${PIC.W}x${PIC.H}.png`;
+  $("picNote").textContent=PIC.done<PIC.N?`描きかけ（${PIC.done} / ${PIC.N} 画素）`:`${PIC.W}×${PIC.H} 画素 ・ 全画素が逐次実行と一致`;
+  m.hidden=false;
+}
+function picUI(){
+  const on=!!(F&&F.canvas);
+  $("picBox").hidden=!on; $("bPic").hidden=!on; $("bTurbo").hidden=!on; $("bSave").hidden=!on;
+  if(!on){ pipShow(false); turbo=false; $("bTurbo").setAttribute("aria-pressed","false"); $("speed").max="100"; updSpeed(); return; }
+  $("picRes").value=`${F.canvas.w}x${F.canvas.h}`;
+  if(![...$("picRes").options].some(o=>o.value===$("picRes").value)){ const o=document.createElement("option"); o.value=o.textContent=$("picRes").value; $("picRes").appendChild(o); $("picRes").value=o.value; }
+  $("picPal").value=picPal;
+  $("speed").max="140"; updSpeed();
+}
+
+/* ============================================================
    Run state
    ============================================================ */
 function resetRun(){
@@ -3059,6 +3430,7 @@ function resetRun(){
   if(S3){ S3.crane.queue=[]; S3.crane.cur=null; }
   shelf=F.jobs.map(()=>({outs:[],at:-1}));
   if(S3) S3.shelf.dirty=true;
+  picReset();
   $("banner").hidden=true;
   uiOutputs(); uiMeter(); wake(1);
 }
@@ -3094,7 +3466,9 @@ async function build(){
     try{
       const prog=parse(src);
       const jobs=hasIn(prog)?parseInputs($("inputs").value):[];
-      r=buildAndCheck(src,jobs);       // compile + quick check on default belts (a few ms)
+      // compile + quick check on default belts (a few ms); a picture (thousands of jobs)
+      // only runs the sequential side here and checks the factory in slices afterwards
+      r=buildAndCheck(src,jobs,{lazy:jobs.length>240});
     }
     catch(e){
       if(!(e instanceof CErr)) throw e;
@@ -3106,8 +3480,9 @@ async function build(){
       return false;
     }
     $("inputsBox").classList.toggle("off",!r.G.multi);
-    const key=src+"\n#jobs="+r.jobs.length;
-    const {L,table}=await pickLayout(r.G,r.jobs.length,key,async(k,n)=>{
+    const layJobs=r.jobs.canvas?12:r.jobs.length;    // a picture ships to the mural, not to a rack
+    const key=src+"\n#jobs="+layJobs;
+    const {L,table}=await pickLayout(r.G,layJobs,key,async(k,n)=>{
       setPhase("配置を考えています",n?`案 ${k} / ${n}`:"ベルトの通り道を決めています"); await paint();
       if(my!==buildSeq) throw "stale";
     });
@@ -3115,8 +3490,9 @@ async function build(){
     setPhase("機械を運び込んでいます","ベルトと橋を組んでいます"); await paint(); if(my!==buildSeq) return false;
     await ensureFonts(BASE_TXT+src+(r.prog.find(s=>s.k==="in")?"":"")+SAMPLES.map(s=>s.label||"").join(""));
     if(my!==buildSeq) return false;
-    F={G:r.G,L,layoutTable:table,check:r,prog:r.prog,jobs:r.G.multi?r.jobs:[undefined],inName:(r.prog.find(s=>s.k==="in")||{}).name,label:currentLabel(),verified:false};
+    F={G:r.G,L,layoutTable:table,check:r,prog:r.prog,jobs:r.G.multi?r.jobs:[undefined],inName:(r.prog.find(s=>s.k==="in")||{}).name,label:currentLabel(),verified:false,canvas:r.G.multi&&r.jobs.canvas||null};
     $("empty").hidden=true;
+    picUI();
     indexLines(r.prog);
     build3D();
     if(!warmed){
@@ -3149,28 +3525,40 @@ async function build(){
     if(my===buildSeq){ building=false; $("bBuild").disabled=false; $("bBuild").textContent="建てる"; setPhase(""); }
   }
 }
-function clearWorld(){ disposeWorld(); S3=null; $("empty").hidden=false; $("empty").textContent=compileError?"設計図を直すと、ここに工場が建ちます":"「建てる」を押すと工場が建ちます"; wake(1); }
+function clearWorld(){ disposeWorld(); S3=null; PIC=null; pipShow(false); $("empty").hidden=false; $("empty").textContent=compileError?"設計図を直すと、ここに工場が建ちます":"「建てる」を押すと工場が建ちます"; wake(1); }
 // Run the exact belts of this floor plan headless, job by job, against the
 // sequential interpreter, then update the chip.
 function verifyLater(my){
-  setTimeout(()=>{
+  // runs the real belts in slices so a picture (hundreds of thousands of ticks) never freezes the page
+  let e=null;
+  const slice=()=>{
     if(my!==buildSeq||!F) return;
     try{
-      const r=F.check, e=new Engine(r.G,{...beltOpts3(S3.plan),inputs:F.jobs}).run(), per=e.outsByJob();
+      const r=F.check;
+      if(!e) e=new Engine(r.G,{...beltOpts3(S3.plan),inputs:F.jobs});
+      const t0=performance.now();
+      while(!e.done&&performance.now()-t0<8) for(let i=0;i<200&&!e.done;i++) e.step();
+      if(!e.done){ verifyPct=e.jobsDone/Math.max(1,F.jobs.length); uiCheck(); setTimeout(slice,4); return; }
+      const per=e.outsByJob();
       F.L.ticks=e.tick;
       const anyErr=r.seqs.some(q=>!q.ok);
       const same=anyErr?!!e.err:(!e.err&&r.seqs.every((q,j)=>per[j].length===q.outs.length&&per[j].every((v,k)=>v===q.outs[k])));
-      if(!same){ r.match=false; r.df.per=per; }
+      if(r.lazy){
+        // the lazy check did not run the factory: settle match / deadErr exactly as buildAndCheck does
+        r.match=same; r.deadErr=anyErr&&!e.err&&r.seqs.every((q,j)=>q.outs.every((v,k)=>per[j][k]===v)); r.df={ok:!e.err,outs:per[0]||[],per,ticks:e.tick,maxFlight:e.maxFlight,err:e.err};
+      } else if(!same){ r.match=false; r.df.per=per; }
       F.verified=true; uiCheck();
     }catch(err){ console.error(err); showBanner(`検算に失敗しました: ${err.message}`,true); }
-  },30);
+  };
+  verifyPct=0; setTimeout(slice,30);
 }
+let verifyPct=0;
 function showBanner(t,bad){ const b=$("banner"); b.hidden=false; b.className=bad?"banner bad":"banner"; b.textContent=t; }
 function uiCheck(){
   const c=$("check"), r=F.check;
   c.hidden=false;
   const J=F.jobs.length;
-  if(!F.verified&&r.match){ c.className="check"; c.innerHTML=`検算しています…`; return; }
+  if(!F.verified&&r.match){ c.className="check"; c.innerHTML=`検算しています…${J>240?` ${Math.round(verifyPct*100)}%`:""}`; return; }
   if(r.match){ c.className="check"; c.innerHTML=r.seqs.every(q=>q.ok)?`<span class="long">逐次実行と</span>一致 ✓<span class="long">${J>1?` ${J}件とも`:""} 全 ${F.L.ticks} tick</span>`:`逐次実行と同じく停止 ✓`; }
   else if(r.deadErr){ c.className="check"; c.textContent="逐次実行はエラーで停止（工場では使われない計算）"; }
   else { c.className="check bad"; c.textContent=`食い違い！ 逐次実行と工場の出荷が違います`; }
@@ -3179,6 +3567,7 @@ function uiCheck(){
 }
 function uiOutputs(){
   const o=eng?eng.outs:[];
+  if(F&&F.canvas){ $("outputs").textContent=`${PIC?PIC.done:0} / ${F.jobs.length} 画素`; return; }
   if(F&&F.G.multi){ const d=eng?eng.jobsDone:0; $("outputs").textContent=`${d} / ${F.jobs.length} 件`; return; }
   $("outputs").textContent=o.length?(o.length>8?"… ":"")+o.slice(-8).map(x=>x.v).join(", "):"なし";
 }
@@ -3197,6 +3586,7 @@ function onDone(){
   if(F.check.deadErr){ showBanner("完成。逐次実行はエラーで止まる計算を含みますが、その値は出荷されないので工場にはありません"); return; }
   const bad=seqs.findIndex((q,j)=>!q.ok||per[j].length!==q.outs.length||per[j].some((v,k)=>v!==q.outs[k]));
   if(bad>=0){ showBanner(`食い違い！ ${F.G.multi?jobName(bad)+" — ":""}逐次実行: ${seqs[bad].outs.join(", ")} ／ 工場: ${per[bad].join(", ")}`,true); return; }
+  if(F.canvas){ showBanner(`完成！ ${F.jobs.length}画素すべて逐次実行と一致（${eng.tick} tick）`); return; }
   if(F.G.multi){ showBanner(`完成！ ${F.jobs.length}件すべて逐次実行と一致（${eng.tick} tick、${(eng.jobsDone*100/eng.tick).toFixed(1)}件/100 tick）`); return; }
   const got=per[0];
   showBanner(got.length?`完成！ 出荷した値: ${got.join(", ")}（逐次実行と一致）`:"完成！（出荷はありません）");
@@ -3222,6 +3612,11 @@ function dockToWorld(x,y,z,out){ const g=S3.nodes[F.L.dock.id]; g.updateMatrixWo
 function launch(o,ship,uid){
   const ch=S3.plan.chutes.find(c=>c.chute===ship.id); if(!ch) return;
   let target;
+  if(F.canvas&&PIC){
+    // too many in the air (full speed): light the pixel at once
+    if(flying.length>70||reduceMotion){ picInstall(o.job,o.v,false); return; }
+    target=picWorld(o.job).clone(); flying.push({ch,d:0,v:o.v,its:o.its,job:o.job,target,tail:0,uid,pix:true}); return;
+  }
   if(F.G.multi){ pathPoint(ch,ch.len3,_dl); target={x:_dl.x,y:_dl.y+BOX_H/2,z:_dl.z,pickup:true}; }
   else target=dockSpot(dockBoxes.length+flying.length);
   flying.push({ch,d:0,v:o.v,its:o.its,job:o.job,target,tail:0,uid});
@@ -3265,6 +3660,7 @@ function craneUpdate(dt){
   const gl=gy-Ytop; P.grip.position.y=gl-.55; P.cable.scale.y=Math.max(.05,-gl-.05);
 }
 /* one tick of the real simulation, plus bookkeeping for drawing */
+let uiDirty=false;
 function tickOnce(){
   if(!eng||eng.done) return;
   const fired=eng.step();
@@ -3294,9 +3690,8 @@ function tickOnce(){
     if(n.kind==="mu"&&p.side===1&&S3) fenceWave(n);
   }
   if(FOL) followHandoff(fired);
-  uiMeter();
-  if(fired.some(f=>f.n.kind==="ship")) uiOutputs();
-  if(eng.done) onDone();
+  uiDirty=true;
+  if(eng.done){ uiMeter(); uiOutputs(); onDone(); }
   wake(.6);
 }
 
@@ -3411,6 +3806,13 @@ function finale(){
   for(const n of F.L.N) if(n.kind==="ship"||n.kind==="op"||n.kind==="opi"){ const g=S3.nodes[n.id]; pillar(g.position.x,g.position.y,g.position.z,"#FFD166",1.1,16); }
   kick(1,.12);
   const J=F.jobs.length;
+  if(F.canvas&&PIC){
+    PIC.pulseT=clock; picView(true); pipDraw(true);
+    const w=PIC.panel.getWorldPosition(new THREE.Vector3());
+    spawnSparks(400,w.x,w.y+PIC.MH*.6,w.z+2,{multi:true,spread:PIC.MW*.9,speed:1.2,up:2,life:2.6,delay:.8,size:.14,floor:0});
+    bigToast(`${PIC.name} 完成！`,`${J}画素 ・ ${eng.tick} tick ・ 全画素が逐次実行と一致`,"#F9C80E");
+    return;
+  }
   bigToast(F.G.multi?`全${J}件 完成！`:`完成！ ${eng.outs.map(o=>o.v).slice(-4).join(", ")}`,F.G.multi?`${eng.tick} tick ・ 逐次実行と一致`:"逐次実行と一致","#F9C80E");
 }           // the hall lights up section by section when the run starts
 function lightUp(b){ if(!LU) return 1; const t=clock-LU.t0-Math.max(0,(b.con?b.con[0]:0)-LU.min)*.55; return Math.max(.08,Math.min(1,t/.35)); }
@@ -3428,7 +3830,7 @@ function conFinish(){
    Camera framing: fit the slab into the part of the screen below the HUD
    ============================================================ */
 const ELEV=.84, AZIM=.36, FOV_ALL=24;
-const FOV_MODE={all:FOV_ALL,follow:46,tour:36,focus:32};          // ~53° above the floor, turned a little
+const FOV_MODE={all:FOV_ALL,follow:46,tour:36,focus:32,pic:30};          // ~53° above the floor, turned a little
 let HUD_TOP=54;
 function measureHud(){ const h=document.querySelector(".hud"); HUD_TOP=Math.max(50,h.offsetTop+h.offsetHeight+6); }
 // how large a floor plan of e.W × e.H px would appear (used to pick the layout direction)
@@ -3475,6 +3877,8 @@ function fit(animate=true){
 function setModeUI(){
   $("bFit").setAttribute("aria-pressed",String(camMode==="all"));
   $("bTour").setAttribute("aria-pressed",String(camMode==="tour"));
+  $("bPic").setAttribute("aria-pressed",String(camMode==="pic"));
+  if(PIC) pipShow(camMode!=="pic");
   controls.autoRotate=camMode==="focus"&&!reduceMotion;
   if(camMode!=="follow"&&camMode!=="tour"&&camMode!=="focus") chip(null);
 }
@@ -3779,6 +4183,15 @@ function updateTokens(dt){
     const ch=f.ch;
     f.d+=Math.max(220,ch.len3*tps/0.9)*dt;
     if(f.d<ch.len3){ pathPoint(ch,f.d,V1); pushBox(T.val,V1.x,V1.y+BOX_H/2+.01,V1.z,f.v,f.its,f.job); seen.push({uid:f.uid,kind:"val",x:V1.x,y:V1.y,z:V1.z,fly:f,job:f.job,v:f.v}); continue; }
+    if(f.pix){
+      // thrown from the launch pad in an arc onto its pixel
+      pathPoint(ch,ch.len3,V2);
+      if(!f.from){ f.from=V2.clone(); f.dist=f.from.distanceTo(f.target); f.dur=Math.max(.35,Math.min(1.5,.5+f.dist/40))/(1+Math.max(0,flying.length-12)/20); }
+      f.tail+=dt/f.dur; const k=Math.min(1,f.tail), e=k*k*(3-2*k);
+      const x=f.from.x+(f.target.x-f.from.x)*e, z=f.from.z+(f.target.z-f.from.z)*e, y=f.from.y+BOX_H/2+(f.target.y-f.from.y-BOX_H/2)*e+Math.sin(k*Math.PI)*Math.min(9,f.dist*.25);
+      if(k>=1){ f.done=true; picInstall(f.job,f.v,tps<200); continue; }
+      pushBox(T.val,x,y,z,f.v,f.its,f.job); continue;
+    }
     // hop from the end of the chute into its slot
     f.tail+=dt*Math.max(2.2,tps/3);
     const k=Math.min(1,f.tail);
@@ -3794,7 +4207,8 @@ function updateTokens(dt){
 let craneBox=null;
 function updateParked(){
   const T=S3.tok.parked; T.begin();
-  if(F.G.multi&&F.L.dock){
+  if(F.canvas){ /* the picture is the mural */ }
+  else if(F.G.multi&&F.L.dock){
     const R=S3.nodes[F.L.dock.id].userData.rack;
     shelf.forEach((sl,j)=>{ const n=sl.outs.length; if(!n) return; const p=rackSlot(R,j); dockToWorld(p.x,p.y,p.z,_dl); pushBox(T,_dl.x,_dl.y,_dl.z,sl.outs[n-1],[],j,clock-sl.at<.6); });
     const C=S3.crane;
@@ -4025,11 +4439,21 @@ function frame(now){
     simT+=dt*tps;
     if(stepTo!==null&&simT>=stepTo){ simT=stepTo; stepTo=null; playing=false; setPlaying(false); }
     let guard=0;
-    while(eng.tick<Math.floor(simT)&&!eng.done&&guard++<400) tickOnce();
-    if(eng.tick<Math.floor(simT)-400) simT=eng.tick;
+    if(turbo&&F.canvas&&stepTo===null){
+      // 全速: as many ticks as fit in a slice of the frame; the drawing samples the run
+      const t0=performance.now(), budget=Q===0?9:7, k0=eng.tick;
+      while(!eng.done&&performance.now()-t0<budget&&guard++<6000) tickOnce();
+      simT=eng.tick+.999; turboRate+=((eng.tick-k0)/Math.max(dt,1/240)-turboRate)*.1; tps=Math.max(60,turboRate);
+    } else {
+      while(eng.tick<Math.floor(simT)&&!eng.done&&guard++<400) tickOnce();
+      if(eng.tick<Math.floor(simT)-400) simT=eng.tick;
+    }
     if(!reduceMotion) beltPhase+=dt*Math.min(BELT_PX*tps,420)*S;
   }
-  const active=playing||CON||camAnim||flying.length||particles.length||clock<wakeUntil||camMode==="follow"||camMode==="tour"||camMode==="focus";
+  if(uiDirty){ uiDirty=false; uiMeter(); uiOutputs(); }
+  if(PIC){ for(const p of PRACT) if(p.cable) p.cable.visible=camMode!=="pic";   // no lamp wires across the picture
+    PIC.mat.uniforms.uTime.value=clock; const pk=clock-PIC.pulseT; PIC.mat.uniforms.uPulse.value=pk<4?Math.sin(Math.min(1,pk/3.5)*Math.PI)*.6:0; PIC.mat.uniforms.uBoost.value=Q===0?1.9:1.05; drawMuralTitle(false); pipDraw(false); picProgress(); }
+  const active=(PIC&&clock-PIC.pulseT<4.2)||playing||CON||camAnim||flying.length||particles.length||clock<wakeUntil||camMode==="follow"||camMode==="tour"||camMode==="focus";
   controls.update();
   if(!active&&!controlsMoving()) return;
   if(F&&S3&&eng&&!CON){
@@ -4048,7 +4472,7 @@ function frame(now){
     PH=Math.min(1,Math.max(0,simT-eng.tick));   // 0..1 through the current tick
     beltTex.offset.y=-beltPhase/1.8;
     if(!CON) updateTokens(dt); else { S3.tok.val.begin(); S3.tok.val.end(); S3.tok.puck.begin(); S3.tok.puck.end(); S3.tok.flat.begin(); S3.tok.flat.end(); }
-    if(F.G.multi&&F.L.dock&&!CON) craneUpdate(dt);
+    if(F.G.multi&&F.L.dock&&!CON&&!F.canvas) craneUpdate(dt);
     if(LU&&!CON){ for(const n of F.L.N){ if(n.lit||n.kind==="dock") continue; if(nodePower(n)>.5){ n.lit=true; const g=S3.nodes[n.id]; ring(g.position.x,g.position.y+.05,g.position.z,Math.max(n.box.w,n.box.h)*S*1.1,"#4FD6FF",.5); spawnSparks(8,g.position.x,g.position.y+1.5,g.position.z,{color:"#9FE8FF",speed:2,up:2,floor:g.position.y,life:.7,size:.08}); } } }
     if(eng.done&&!eng.err&&!FIN&&F.check.match&&!flying.length&&!(S3.crane.cur||S3.crane.queue.length)) finale();
     updateParked();
@@ -4113,7 +4537,9 @@ function updateGutter(){
    ============================================================ */
 const sel=$("sample");
 SAMPLES.forEach((s,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=s.name; sel.appendChild(o); });
-function loadSample(i){ const smp=SAMPLES[i]; ta.value=smp.src; $("inputs").value=smp.inputs||""; updateGutter(); }
+const SPEED_PIC=132;
+function loadSample(i){ const smp=SAMPLES[i]; ta.value=smp.src; $("inputs").value=smp.inputs||""; if(turbo){ turbo=false; $("bTurbo").setAttribute("aria-pressed","false"); }
+  if(smp.palette){ picPal=smp.palette; $("speed").max="140"; if(+$("speed").value<SPEED_PIC) $("speed").value=String(SPEED_PIC); updSpeed(); } updateGutter(); }
 sel.addEventListener("change",()=>{ loadSample(+sel.value); build(); });
 $("inputs").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); build(); } });
 $("inputs").addEventListener("change",()=>build());
@@ -4128,6 +4554,14 @@ $("bStep").addEventListener("click",()=>{
 });
 $("bReset").addEventListener("click",()=>{ if(!F) return; conStop(); resetRun(); setPlaying(false); });
 $("bFit").addEventListener("click",()=>fit(true));
+$("bPic").addEventListener("click",()=>{ if(!PIC||CON) return; if(camMode==="pic") fit(true); else picView(true); });
+$("pip").addEventListener("click",()=>{ if(PIC&&!CON) picView(true); });
+$("bTurbo").addEventListener("click",()=>{ turbo=!turbo; turboRate=0; $("bTurbo").setAttribute("aria-pressed",String(turbo)); if(turbo&&!playing&&eng&&!eng.done) setPlaying(true); updSpeed(); });
+$("bSave").addEventListener("click",picSave);
+$("picClose").addEventListener("click",()=>{ $("picModal").hidden=true; });
+$("picModal").addEventListener("click",e=>{ if(e.target===$("picModal")) $("picModal").hidden=true; });
+$("picRes").addEventListener("change",()=>{ $("inputs").value="絵 "+$("picRes").value; build(); });
+$("picPal").addEventListener("change",()=>{ picPal=$("picPal").value; picRecolor(); });
 $("bTour").addEventListener("click",()=>{ if(!S3||CON) return; if(camMode==="tour") fit(true); else tourStart(); });
 $("bNext").addEventListener("click",()=>{ if(!S3||CON) return; if(!followNext()) toast("いま流れている箱がありません。▶ で動かしてください"); });
 $("camClose").addEventListener("click",()=>fit(true));
@@ -4135,7 +4569,7 @@ $("bLines").addEventListener("click",()=>{ showLines=!showLines; $("bLines").set
 $("bFocus").addEventListener("click",()=>{ dofKey=dofKey==="strong"?"weak":dofKey==="weak"?"off":"strong"; $("bFocus").textContent="ピント "+{strong:"強",weak:"弱",off:"なし"}[dofKey]; wake(.3); });
 $("bQual").addEventListener("click",()=>{ autoQ=false; Q=(Q+2)%3; applyQuality(); });
 const speedOf=v=>.5*Math.pow(2,v/11);
-function updSpeed(){ tps=speedOf(+$("speed").value); $("speedOut").textContent=(tps<10?(Math.round(tps*10)/10):Math.round(tps))+" tick/秒"; }
+function updSpeed(){ if(turbo&&F&&F.canvas){ $("speedOut").textContent="全速"; return; } tps=speedOf(+$("speed").value); $("speedOut").textContent=(tps<10?(Math.round(tps*10)/10):Math.round(tps))+" tick/秒"; }
 $("speed").addEventListener("input",updSpeed);
 ta.addEventListener("input",updateGutter);
 ta.addEventListener("scroll",()=>{ $("gutter").scrollTop=ta.scrollTop; updateBands(); });
@@ -4148,6 +4582,15 @@ if(innerWidth<=760) $("codebox").open=false;
 
 // test hooks (same as dataflow.html, plus camera / quality / fps)
 window.__df={
+  picCorners:()=>{ const out=[]; for(const [x,y] of [[-.5,0],[.5,0],[-.5,1],[.5,1]]){ const v=new THREE.Vector3(x*PIC.MW,y*PIC.MH+.9,0); PIC.tilt.localToWorld(v); v.project(camera); out.push([+v.x.toFixed(2),+v.y.toFixed(2)]); } return {out,aspect:camera.aspect,fov:camera.fov}; },
+  picCam:()=>({mode:camMode,cam:camera.position.toArray().map(v=>+v.toFixed(2)),tgt:controls.target.toArray().map(v=>+v.toFixed(2)),fov:camera.fov,panel:PIC&&PIC.panel.getWorldPosition(new THREE.Vector3()).toArray().map(v=>+v.toFixed(2)),MW:PIC&&PIC.MW,MH:PIC&&PIC.MH,anim:!!camAnim}),
+  pic:()=>PIC&&{done:PIC.done,N:PIC.N,W:PIC.W,H:PIC.H,name:PIC.name,vmax:PIC.vmax,verified:F.verified,match:F.check.match,ticks:eng&&eng.tick,engDone:eng&&eng.done,flying:flying.length},
+  // every lit pixel against the sequential interpreter (the mural only shows shipped values)
+  picCheck:()=>{ if(!PIC) return null; let lit=0, bad=0; PIC.vals.forEach((v,k)=>{ if(v===null) return; lit++; const j=PIC.job[k], q=F.check.seqs[j]; if(pixOf(j)!==k) bad++; if(!q.ok||q.outs[q.outs.length-1]!==v) bad++; }); return {lit,bad,N:PIC.N}; },
+  picView:()=>picView(false),
+  turbo:on=>{ if(!!on!==turbo) $("bTurbo").click(); return turbo; },
+  picPNG:()=>PIC?picPNG().length:0,
+  picPal:k=>{ $("picPal").value=k; $("picPal").dispatchEvent(new Event("change")); },
   samples:SAMPLES.map(s=>s.name),
   async load(i){ sel.value=i; loadSample(i); await build(); return true; },
   finish(){ if(!eng) return null; while(!eng.done) tickOnce(); return eng.outsByJob(); },
