@@ -1,0 +1,2154 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>流れ工場 — 2D版</title>
+<meta name="description" content="プログラムを書くと工場が建つ。値が箱になってベルトを流れ、本当に計算する">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ramda.io">
+<meta property="og:title" content="流れ工場 — 2D版">
+<meta property="og:description" content="プログラムを書くと工場が建つ。値が箱になってベルトを流れ、本当に計算する">
+<meta property="og:url" content="https://ramda.io/works/code-factory/dataflow.html">
+<meta property="og:image" content="https://ramda.io/works/code-factory/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="流れ工場 — 2D版">
+<meta name="twitter:description" content="プログラムを書くと工場が建つ。値が箱になってベルトを流れ、本当に計算する">
+<meta name="twitter:image" content="https://ramda.io/works/code-factory/ogp.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1+Code:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
+<style>
+:root{
+  --floor:#3F6B5E;
+  --housing:#1F3C36;
+  --housing-2:#2A4C45;
+  --panel:#15302A;
+  --seam:#11261F;
+  --safety:#F9C80E;
+  --kraft:#D4A464;
+  --ink:#F1F4EC;
+  --ink-dim:#9FBDB2;
+  --red:#E84855;
+  --green:#4CC38A;
+  --lh:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--housing);color:var(--ink);font-family:"M PLUS 1 Code",ui-monospace,monospace;font-size:14px;-webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:minmax(300px,360px) 1fr;grid-template-rows:auto 1fr;grid-template-areas:"brand factory" "side factory";height:100vh;height:100dvh}
+.brand{grid-area:brand;padding:18px 16px 12px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;border-right:6px solid var(--seam)}
+.brand h1{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:30px;line-height:1;margin:0;letter-spacing:.01em}
+.brand h1 small{display:block;font-family:"M PLUS 1 Code",monospace;font-size:12px;color:var(--ink-dim);letter-spacing:.04em;margin-top:7px;font-weight:500}
+.brand .pick{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-dim);width:100%}
+.brand a{color:var(--ink-dim);font-size:12px}
+input[type=text]{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:2px solid #3E625A;border-radius:8px;padding:7px 10px;width:100%}
+input[type=text]:focus{border-color:var(--safety);outline:0}
+#inputsBox.off input{opacity:.45}
+#inputsBox.off::after{content:"この設計図には in がないので、1回だけ動きます";font-size:11px;color:var(--ink-dim)}
+select{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:2px solid #3E625A;border-radius:8px;padding:7px 30px 7px 10px;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--safety) 50%),linear-gradient(135deg,var(--safety) 50%,transparent 50%);background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px;background-repeat:no-repeat;cursor:pointer;width:100%}
+.side{grid-area:side;display:flex;flex-direction:column;min-height:0;border-right:6px solid var(--seam);padding:0 14px 14px}
+details{display:flex;flex-direction:column;min-height:0;flex:1}
+summary{cursor:pointer;font-family:"Dela Gothic One",sans-serif;font-size:15px;padding:12px 2px;list-style:none;display:flex;align-items:center;gap:8px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"";width:0;height:0;border-left:7px solid var(--safety);border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .15s}
+details[open] summary::before{transform:rotate(90deg)}
+.editor{position:relative;flex:1;min-height:220px;height:100%;display:flex;background:var(--panel);border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 2px #0E221C}
+.gutter{flex:0 0 38px;padding:12px 8px 12px 0;text-align:right;color:#5C8378;font-size:12px;line-height:var(--lh);overflow:hidden;user-select:none;white-space:pre;background:#122A24}
+.codewrap{position:relative;flex:1;min-width:0}
+.band{position:absolute;left:0;right:0;height:var(--lh);pointer-events:none;display:none}
+.band.bad{background:rgba(232,72,85,.22);box-shadow:inset 3px 0 0 var(--red)}
+.band.hot{background:rgba(249,200,14,.10);box-shadow:inset 3px 0 0 rgba(249,200,14,.7)}
+textarea{position:absolute;inset:0;width:100%;height:100%;resize:none;border:0;outline:0;background:transparent;color:var(--ink);font-family:inherit;font-size:14px;line-height:var(--lh);padding:12px 12px;white-space:pre;overflow:auto;tab-size:2;caret-color:var(--safety)}
+.hint{color:var(--ink-dim);font-size:12px;line-height:1.65;margin:10px 2px 0}
+.hint kbd{font-family:inherit;border:1px solid #3E625A;border-radius:4px;padding:0 4px}
+.legend{margin:10px 2px 0;display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:12px;color:var(--ink-dim);line-height:1.45;align-items:center}
+.legend i{display:inline-block;width:22px;height:14px;border-radius:3px}
+.err{margin-top:10px;background:#3A1F24;border-left:4px solid var(--red);padding:10px 12px;border-radius:6px;line-height:1.6;font-size:13px}
+.err[hidden]{display:none}
+.factory{grid-area:factory;position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--floor)}
+.stage{position:relative;flex:1;min-height:0;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;display:block}
+canvas.drag{cursor:grabbing}
+.hud{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:8px;align-items:flex-start;pointer-events:none;flex-wrap:wrap}
+.meter{display:flex;gap:14px;align-items:baseline;background:rgba(21,48,42,.92);border-radius:8px;padding:6px 12px;box-shadow:0 3px 0 rgba(0,0,0,.25);font-size:12px;color:var(--ink-dim);white-space:nowrap}
+.meter b{font-family:"Dela Gothic One",sans-serif;font-weight:400;color:var(--ink);font-size:17px;margin-right:4px;font-variant-numeric:tabular-nums}
+.meter b.hot{color:#7FE0B0}
+.check{background:rgba(21,48,42,.92);border-radius:8px;padding:6px 10px;font-size:12px;color:#7FE0B0;box-shadow:0 3px 0 rgba(0,0,0,.25);white-space:nowrap}
+.check.bad{background:#F3D0D3;color:#5A1018;font-weight:700}
+.check[hidden]{display:none}
+.ship{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--kraft);color:#3A2810;border-radius:8px;padding:6px 12px;box-shadow:0 3px 0 #9C7440;max-width:46%;min-width:0}
+.ship span{font-family:"Dela Gothic One",sans-serif;font-size:13px;white-space:nowrap}
+.ship output{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.banner{position:absolute;left:12px;bottom:14px;background:var(--safety);color:#2A2200;font-family:"Dela Gothic One",sans-serif;font-size:16px;padding:10px 18px;border-radius:10px;box-shadow:0 4px 0 #A88600;max-width:calc(100% - 24px);line-height:1.4;pointer-events:none}
+.banner.bad{background:#F3D0D3;color:#5A1018;box-shadow:0 4px 0 #B85460;font-family:"M PLUS 1 Code",monospace;font-weight:700;font-size:14px}
+.banner[hidden]{display:none}
+.banner.hint{font-size:13px;padding:6px 12px;box-shadow:0 3px 0 #A88600;opacity:.95}
+.loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:14px;background:#15302A;border:3px solid var(--safety);border-radius:12px;padding:14px 20px;box-shadow:0 6px 0 rgba(0,0,0,.3);pointer-events:none;max-width:calc(100% - 32px)}
+.loading[hidden]{display:none}
+.loading .ltxt{display:flex;flex-direction:column;gap:3px}
+.loading b{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:17px;white-space:nowrap}
+.loading small{font-size:12px;color:var(--ink-dim);min-height:1em}
+.gear{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle,#15302A 0 5px,var(--safety) 6px 10px,transparent 11px),conic-gradient(var(--safety) 0 10%,transparent 0 20%,var(--safety) 0 30%,transparent 0 40%,var(--safety) 0 50%,transparent 0 60%,var(--safety) 0 70%,transparent 0 80%,var(--safety) 0 90%,transparent 0);animation:spin 1.1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){ .gear{animation:none} }
+.btn:disabled{opacity:.6;cursor:progress}
+.console{display:flex;gap:8px;align-items:center;padding:10px 12px;background:var(--housing-2);border-top:4px solid var(--seam);flex-wrap:wrap}
+.btn{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:14px;border:0;border-radius:8px;padding:9px 12px;background:#E6EDE3;color:#1F3C36;box-shadow:0 4px 0 #93A99F;cursor:pointer;white-space:nowrap;line-height:1.2}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #93A99F}
+.btn.build{background:var(--safety);box-shadow:0 4px 0 #A88600}
+.btn.play{background:var(--green);box-shadow:0 4px 0 #2C8A5C;min-width:6.4em}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px #4B7068}
+.btn.ghost:active{transform:none}
+.btn.ghost[aria-pressed=true]{background:rgba(249,200,14,.16);box-shadow:inset 0 0 0 2px var(--safety);color:var(--safety)}
+:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.speed{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--ink-dim)}
+.speed output{font-weight:700;color:var(--ink);min-width:4.2em;font-variant-numeric:tabular-nums}
+input[type=range]{accent-color:var(--safety);width:110px}
+@media (max-width:760px){
+  :root{--lh:24px}
+  .app{display:flex;flex-direction:column;height:auto;min-height:100dvh}
+  .brand{order:0;border-right:0;padding:12px 12px 10px;align-items:center}
+  .brand h1{font-size:22px}
+  .brand h1 small{font-size:11px;margin-top:4px}
+  .brand .pick{flex-direction:row;align-items:center;gap:8px}
+  .brand .pick select{flex:1}
+  .factory{order:1;height:66vh;height:66dvh;min-height:400px;flex:none}
+  .side{order:2;border-right:0;padding:0 12px 24px}
+  .editor{min-height:300px;flex:none;height:auto}
+  .editor .codewrap{height:340px}
+  textarea{font-size:16px}
+  .hud{left:8px;right:8px;top:8px;gap:6px}
+  .meter{gap:10px;padding:5px 9px}
+  .meter b{font-size:15px}
+  .ship{padding:5px 10px;max-width:100%}
+  .long{display:none}
+  .check{padding:5px 8px}
+  .console{gap:6px;padding:8px}
+  .btn{font-size:13px;padding:8px 9px}
+  .btn.play{min-width:5.6em}
+  .speed{margin-left:0;flex:1 1 100%;order:9}
+  .speed input{flex:1}
+}
+@media (min-width:761px){ summary{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="brand">
+    <h1>流れ工場<small>変数のない工場。値はベルトで機械から機械へ</small></h1>
+    <label class="pick">見本の設計図
+      <select id="sample"></select>
+    </label>
+    <label class="pick" id="inputsBox">入力（値1つが1件の仕事。in で受け取る）
+      <input id="inputs" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="例: 1..30 または 5, 8, 13">
+    </label>
+    <a href="/works/code-factory/warehouse.html">倉庫のある工場（前の版）へ</a>
+    <a href="/works/code-factory/">立体の工場（3D版）へ</a>
+  </header>
+
+  <section class="factory" aria-label="工場">
+    <div class="stage">
+      <canvas id="cv" aria-label="工場のようす。ドラッグで移動、ホイールやピンチで拡大縮小"></canvas>
+      <div class="hud">
+        <div class="meter" title="経過した tick と、いまベルトに載っている箱の数"><span><b id="mTick">0</b>tick</span><span id="mJobsBox" hidden><span class="long">仕掛かり</span>件 <b id="mJobs" class="hot">0</b></span><span id="mRateBox" hidden><b id="mRate">0</b>件/100tick</span><span><span class="long">流れている</span>箱 <b id="mFlight" class="hot">0</b></span><span>最大 <b id="mMax">0</b></span></div>
+        <div class="check" id="check" hidden></div>
+        <div class="ship" title="出荷された値"><span>出荷</span><output id="outputs">なし</output></div>
+      </div>
+      <div id="banner" class="banner" hidden></div>
+      <div id="loading" class="loading" role="status" aria-live="polite" hidden><span class="gear" aria-hidden="true"></span><span class="ltxt"><b id="loadPhase"></b><small id="loadSub"></small></span></div>
+    </div>
+    <div class="console">
+      <button id="bBuild" class="btn build" title="設計図から工場を建てる (Ctrl+Enter)">建てる</button>
+      <button id="bPlay" class="btn play">▶ 動かす</button>
+      <button id="bStep" class="btn" title="1 tick だけ進める">1 tick</button>
+      <button id="bReset" class="btn">最初から</button>
+      <button id="bFit" class="btn ghost" title="工場全体を表示">全体</button>
+      <button id="bLines" class="btn ghost" aria-pressed="false" title="機械に設計図の行番号を表示">行番号</button>
+      <label class="speed">速さ <input id="speed" type="range" min="0" max="100" value="48" aria-label="速さ"><output id="speedOut">10 tick/秒</output></label>
+    </div>
+  </section>
+
+  <aside class="side">
+    <details id="codebox" open>
+      <summary>設計図（コード）</summary>
+      <div class="editor">
+        <div class="gutter" id="gutter">1</div>
+        <div class="codewrap">
+          <div class="band bad" id="bandBad"></div>
+          <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="プログラム"></textarea>
+        </div>
+      </div>
+      <div id="err" class="err" role="alert" hidden></div>
+      <div class="legend">
+        <i style="background:#D9AA6A"></i><span>値の箱。帯の色はループの何周目か</span>
+        <i style="background:linear-gradient(90deg,#4CC38A 50%,#E84855 50%)"></i><span>条件の札（はい／いいえ）。分岐器と合流器へ</span>
+        <i style="background:#F9C80E;clip-path:polygon(0 0,80% 0,100% 30%,100% 100%,0 100%)"></i><span>出荷伝票。out の順番を守るために回る</span>
+        <i style="background:linear-gradient(90deg,#F9C80E 0 25%,#4CC38A 25% 50%,#FF7AA8 50% 75%,#5BC0EB 75%)"></i><span>量産のときは箱の帯の色が仕事（入力）ごとの色</span>
+        <i style="background:#FF7AA8;border-radius:2px"></i><span>入場券。ループの受付が新しい仕事を入れるときに使い、仕事が出ると戻る</span>
+        <i style="background:radial-gradient(circle,#FF9F1C 45%,transparent 50%),radial-gradient(circle,#F1F4EC 45%,transparent 50%);background-size:50% 100%;background-repeat:no-repeat;background-position:0 0,100% 0"></i><span>受付の判定（新 / 戻）。同じループの他の入口へ配られる</span>
+      </div>
+      <p class="hint">使えるもの: <code>x = 式;</code> <code>if (条件) { } else { }</code> <code>while (条件) { }</code> <code>out 式;</code> ／ 整数と <code>+ - * / %</code> <code>&lt; &lt;= &gt; &gt;= == !=</code>。<kbd>Ctrl</kbd>+<kbd>Enter</kbd> で建てる。</p>
+    </details>
+  </aside>
+</div>
+
+<script>
+"use strict";
+/*@@CORE-BEGIN*/
+/* ============================================================
+   Samples
+   ============================================================ */
+const SAMPLES = [
+  {name:"フィボナッチ fib 20件 量産", label:"fib", inputs:"20, 3, 15, 1, 12, 7, 18, 5, 10, 2, 16, 8, 13, 4, 19, 6, 11, 9, 14, 17",
+   expectFn:n=>{ let a=0,b=1; for(let i=0;i<n;i++){ [a,b]=[b,a+b]; } return [a]; }, src:
+`// 入力の n ごとに fib(n) を作る。小さい n は大きい n を追い越す
+in n;
+a = 0;
+b = 1;
+i = 0;
+while (i < n) {
+  t = a + b;
+  a = b;
+  b = t;
+  i = i + 1;
+}
+out a;
+`},
+  {name:"コラッツ歩数 1〜30 量産", label:"歩数", inputs:"1..30",
+   expectFn:n=>{ let k=0; while(n!==1){ n=n%2?3*n+1:n/2; k++; } return [k]; }, src:
+`// n から 1 になるまで何歩？ 短い仕事が長い仕事を追い越す
+in n;
+steps = 0;
+while (n != 1) {
+  if (n % 2 == 0) {
+    n = n / 2;
+  } else {
+    n = 3 * n + 1;
+  }
+  steps = steps + 1;
+}
+out steps;
+`},
+  {name:"合計と二乗和 1〜n 量産", label:"Σ", inputs:"15..1",
+   expectFn:n=>[n*(n+1)/2,n*(n+1)*(2*n+1)/6], src:
+`// 1..n の合計と二乗の合計を同時に
+// s と q は互いに待たない。i は先へ走る
+in n;
+s = 0;
+q = 0;
+i = 1;
+while (i <= n) {
+  s = s + i;
+  q = q + i * i;
+  i = i + 1;
+}
+out s;
+out q;
+`},
+  {name:"階乗 n! 量産", label:"!", inputs:"15..1",
+   expectFn:n=>{ let f=1; for(let x=2;x<=n;x++) f*=x; return [f]; }, src:
+`// n × (n-1) × … × 2
+in n;
+f = 1;
+while (n > 1) {
+  f = f * n;
+  n = n - 1;
+}
+out f;
+`},
+  {name:"平方数を出荷 (n, n-1, …) 量産", label:"平方", inputs:"8..3",
+   expectFn:n=>Array.from({length:n},(_,k)=>(n-k)*(n-k)), src:
+`// 1つの仕事の中では out の順番が守られる
+in i;
+while (i > 0) {
+  out i * i;
+  i = i - 1;
+}
+`},
+  {name:"フィボナッチ fib(10)（1回だけ）", expectFn:()=>[55], src:
+`// フィボナッチ数 fib(10) → 55
+n = 10;
+a = 0;
+b = 1;
+i = 0;
+while (i < n) {
+  t = a + b;
+  a = b;
+  b = t;
+  i = i + 1;
+}
+out a;
+`},
+  {name:"1 から 10 までの合計（1回だけ）", expectFn:()=>[55], src:
+`// 1 + 2 + ... + 10 → 55
+s = 0;
+i = 1;
+while (i <= 10) {
+  s = s + i;
+  i = i + 1;
+}
+out s;
+`},
+  {name:"最大公約数 gcd(48, 18)（1回だけ）", expectFn:()=>[6], src:
+`// ユークリッドの互除法 → 6
+a = 48;
+b = 18;
+while (b != 0) {
+  t = a % b;
+  a = b;
+  b = t;
+}
+out a;
+`},
+];
+
+/* ============================================================
+   Lexer / Parser (same language as index.html)
+   ============================================================ */
+class CErr extends Error{ constructor(msg,line){ super(msg); this.line=line; } }
+class RErr extends Error{ constructor(msg,line){ super(msg); this.line=line; } }
+const KW = new Set(["if","else","while","out","in"]);
+const ZEN = {"；":";","（":"(","）":")","｛":"{","｝":"}","＝":"=","＋":"+","－":"-","＊":"*","／":"/","％":"%","＜":"<","＞":">","　":" "};
+
+function lex(src){
+  const toks=[]; let i=0, line=1;
+  while(i<src.length){
+    const c=src[i];
+    if(c==="\n"){ line++; i++; continue; }
+    if(c===" "||c==="\t"||c==="\r"){ i++; continue; }
+    if((c==="/"&&src[i+1]==="/")||c==="#"){ while(i<src.length&&src[i]!=="\n") i++; continue; }
+    if(/[0-9]/.test(c)){
+      let j=i; while(j<src.length&&/[0-9]/.test(src[j])) j++;
+      if(/[A-Za-z_]/.test(src[j]||"")) throw new CErr(`数字のすぐ後ろに文字が続いています「${src.slice(i,j+1)}」。変数名は文字から始めてください`,line);
+      const s=src.slice(i,j);
+      if(s.length>15) throw new CErr(`数「${s}」は大きすぎます（15けたまで）`,line);
+      toks.push({t:"num",v:parseInt(s,10),line}); i=j; continue;
+    }
+    if(/[A-Za-z_]/.test(c)){
+      let j=i; while(j<src.length&&/[A-Za-z0-9_]/.test(src[j])) j++;
+      const w=src.slice(i,j);
+      toks.push({t:KW.has(w)?"kw":"id",v:w,line}); i=j; continue;
+    }
+    const two=src.slice(i,i+2);
+    if(["==","!=","<=",">="].includes(two)){ toks.push({t:"op",v:two,line}); i+=2; continue; }
+    if("+-*/%<>=(){};".includes(c)){ toks.push({t:"op",v:c,line}); i++; continue; }
+    if(ZEN[c]) throw new CErr(`全角の「${c}」が入っています。半角の「${ZEN[c]}」にしてください`,line);
+    if(c==="!") throw new CErr(`「!」は「!=」の形でだけ使えます`,line);
+    throw new CErr(`使えない文字「${c}」があります`,line);
+  }
+  toks.push({t:"eof",v:null,line});
+  return toks;
+}
+
+function parse(src){
+  const T=lex(src); let p=0, nid=0;
+  const peek=()=>T[p];
+  const is=v=>T[p].t!=="num"&&T[p].v===v;
+  const prevLine=()=>p>0?T[p-1].line:1;
+  const desc=t=>t.t==="eof"?"ファイルの終わり":t.t==="num"?`数 ${t.v}`:`「${t.v}」`;
+  function expect(v,label){
+    if(!is(v)){
+      const t=peek();
+      let extra="";
+      if(v===")"&&is("=")) extra="。くらべるときは「==」を使います";
+      throw new CErr(`${label||`「${v}」`}が必要ですが、${desc(t)}がありました${extra}`, t.t==="eof"?prevLine():t.line);
+    }
+    return T[p++];
+  }
+  function semi(){
+    if(!is(";")){
+      const t=peek();
+      throw new CErr(`行の終わりに「;」がありません`, (t.t==="eof"||t.line!==prevLine())?prevLine():t.line);
+    }
+    p++;
+  }
+  function block(){
+    const open=expect("{");
+    const out=[];
+    while(!is("}")){
+      if(peek().t==="eof") throw new CErr(`${open.line}行目の「{」を閉じる「}」がありません`,open.line);
+      out.push(stmt());
+    }
+    p++;
+    return out;
+  }
+  function cond(){
+    expect("(","条件のはじまり「(」");
+    const e=expr();
+    expect(")","条件のおわり「)」");
+    return e;
+  }
+  function stmt(){
+    const t=peek();
+    if(t.t==="kw"&&t.v==="while"){ p++; const c=cond(); const body=block(); return {k:"while",c,body,line:t.line,id:nid++}; }
+    if(t.t==="kw"&&t.v==="if"){
+      p++; const c=cond(); const then=block(); let els=null;
+      if(is("else")){ p++; els = is("if") ? [stmt()] : block(); }
+      return {k:"if",c,then,els,line:t.line,id:nid++};
+    }
+    if(t.t==="kw"&&t.v==="out"){ p++; const e=expr(); semi(); return {k:"out",e,line:t.line,id:nid++}; }
+    if(t.t==="kw"&&t.v==="in"){
+      p++; const v=peek();
+      if(v.t!=="id") throw new CErr(`「in」の後には変数名が必要です。例:「in n;」`,t.line);
+      p++; semi(); return {k:"in",name:v.v,line:t.line,id:nid++};
+    }
+    if(t.t==="kw"&&t.v==="else") throw new CErr(`「else」の前に、対応する「if { … }」がありません`,t.line);
+    if(t.t==="id"){
+      p++;
+      if(!is("=")) throw new CErr(`「${t.v}」の後に「=」がありません。代入は「${t.v} = 式;」と書きます`, peek().t==="eof"?t.line:peek().line);
+      p++;
+      const e=expr(); semi();
+      return {k:"assign",name:t.v,e,line:t.line,id:nid++};
+    }
+    if(is("}")) throw new CErr(`「}」が多すぎます`,t.line);
+    throw new CErr(`${desc(t)}から文を始めることはできません`,t.line);
+  }
+  const CMP=["<","<=",">",">=","==","!="];
+  function expr(){
+    let l=add();
+    while(peek().t==="op"&&CMP.includes(peek().v)){ const op=T[p++].v; const r=add(); l={k:"bin",op,l,r,id:nid++}; }
+    return l;
+  }
+  function add(){
+    let l=mul();
+    while(is("+")||is("-")){ const op=T[p++].v; const r=mul(); l={k:"bin",op,l,r,id:nid++}; }
+    return l;
+  }
+  function mul(){
+    let l=unary();
+    while(is("*")||is("/")||is("%")){ const op=T[p++].v; const r=unary(); l={k:"bin",op,l,r,id:nid++}; }
+    return l;
+  }
+  function unary(){
+    if(is("-")){
+      p++;
+      if(peek().t==="num"){ const t=T[p++]; return {k:"num",v:-t.v,id:nid++}; }
+      const e=unary();
+      return {k:"bin",op:"-",l:{k:"num",v:0,id:nid++},r:e,id:nid++};
+    }
+    return primary();
+  }
+  function primary(){
+    const t=peek();
+    if(t.t==="num"){ p++; return {k:"num",v:t.v,id:nid++}; }
+    if(t.t==="id"){ p++; return {k:"var",name:t.v,line:t.line,id:nid++}; }
+    if(is("(")){
+      p++; const e=expr();
+      if(!is(")")) throw new CErr(`「(」を閉じる「)」がありません`, peek().t==="eof"?prevLine():peek().line);
+      p++; return e;
+    }
+    throw new CErr(`ここには数か変数が必要ですが、${desc(t)}がありました`, t.t==="eof"?prevLine():t.line);
+  }
+  const prog=[];
+  while(peek().t!=="eof") prog.push(stmt());
+  if(!prog.length) throw new CErr(`まだ何も書かれていません。例:「out 1 + 2;」`,1);
+  return prog;
+}
+
+/* ============================================================
+   Arithmetic (C-like ints, shared by both executors)
+   ============================================================ */
+function calc(op,x,y,line){
+  let v;
+  switch(op){
+    case "+": v=x+y; break; case "-": v=x-y; break; case "*": v=x*y; break;
+    case "/": if(y===0) throw new RErr("0 で割ろうとしました",line); v=Math.trunc(x/y); break;
+    case "%": if(y===0) throw new RErr("0 で割った余りは出せません",line); v=x%y; break;
+    case "<": v=+(x<y); break; case "<=": v=+(x<=y); break; case ">": v=+(x>y); break;
+    case ">=": v=+(x>=y); break; case "==": v=+(x===y); break; case "!=": v=+(x!==y); break;
+  }
+  if(Object.is(v,-0)) v=0;
+  if(!Number.isSafeInteger(v)) throw new RErr("数が大きくなりすぎました（±9007199254740991 まで）",line);
+  return v;
+}
+
+/* ============================================================
+   Reference: the sequential interpreter (same semantics as index.html,
+   without the animation bookkeeping). Used to check the dataflow run.
+   ============================================================ */
+const MAX_STEPS=5000;
+function runSeq(prog,input){
+  const env=new Map(), outs=[]; let steps=0;
+  const guard=s=>{ if(++steps>MAX_STEPS) throw new RErr(`${MAX_STEPS} 手を超えたので止めました。無限ループになっていませんか？`,s.line); };
+  function ev(n,line){
+    if(n.k==="num") return n.v;
+    if(n.k==="var"){ if(!env.has(n.name)) throw new RErr(`変数「${n.name}」にはまだ値が入っていません`,line); return env.get(n.name); }
+    return calc(n.op,ev(n.l,line),ev(n.r,line),line);
+  }
+  function exec(s){
+    guard(s);
+    if(s.k==="assign"){ env.set(s.name,ev(s.e,s.line)); return; }
+    if(s.k==="out"){ outs.push(ev(s.e,s.line)); return; }
+    if(s.k==="in"){ if(input===undefined) throw new RErr("入力がありません",s.line); env.set(s.name,input); return; }
+    if(s.k==="while"){ let first=true; for(;;){ if(!first) guard(s); first=false; if(!ev(s.c,s.line)) break; for(const b of s.body) exec(b); } return; }
+    if(ev(s.c,s.line)){ for(const b of s.then) exec(b); } else if(s.els){ for(const b of s.els) exec(b); }
+  }
+  try{ for(const s of prog) exec(s); return {ok:true,outs,steps}; }
+  catch(e){ if(!(e instanceof RErr)) throw e; return {ok:false,outs,steps,msg:e.message,line:e.line}; }
+}
+
+/* ============================================================
+   Compiler: AST → dataflow graph
+   ------------------------------------------------------------
+   There are no variables at run time. While compiling we keep an
+   environment  name → "which machine output currently carries this
+   value"; an assignment just repoints the name. `a = b;` costs nothing.
+
+   Node kinds
+     src    supply crate: emits each top-level constant once, plus the
+            first 伝票 (order slip, the control token ⚑) that threads `out`.
+     const  constant generator inside a loop/if, triggered by a ⚑ copy
+     op     binary machine; opi = machine with an immediate operand
+            stamped on it ("+1", "3×").
+     steer  (if / loop exit) consumes a condition token and a value and
+            sends the value to the はい or いいえ side. Unused sides drop.
+     merge  (if) consumes the condition token, then takes from the side
+            it names. Deterministic select, not "first come".
+     mu     loop entry: consumes a control token; 0 → take from outside
+            (init), 1 → take the value coming back around the loop.
+            Its control belt is pre-loaded with one 0 token.
+     ship   `out`: consumes ⚑ and a value, ships the value, emits a new ⚑.
+
+   Why tokens of different iterations can never be mismatched
+     Every node is a deterministic sequential process that reads its
+     input belts in FIFO order (merge/mu read the control token first and
+     then wait on exactly the input it names). Each belt has exactly one
+     producer and one consumer. That is a Kahn process network, so the
+     sequence of tokens on every belt is the same for every schedule,
+     including the plain sequential one: the k-th token on a steer's
+     condition belt is the condition of the k-th activation, and so is the
+     k-th token on its value belt. Overlap only changes WHEN things fire,
+     never WHICH tokens meet. Bounded belts can only add waiting (or, in
+     principle, an artificial deadlock, which the build-time check and the
+     fuzz harness would report as a mismatch). `out` order is fixed
+     because each ship waits for the ⚑ emitted by the previous ship.
+
+   量産 (many jobs): one factory, many inputs, jobs overtaking each other
+     With `in x;` the crate emits one set of tokens per input value (a
+     "job"). Straight-line machines and if (steer + deterministic merge)
+     keep jobs in the order they arrive. A loop must not: a short job
+     should be able to leave while a long one keeps circling. So in this
+     mode a loop entry works differently:
+       - one entry funnel of the loop is the admission controller ("受付",
+         lead). Whenever a value is back from the loop body it takes it,
+         otherwise it admits the next job from outside. Each choice
+         (0 = new, 1 = back) is broadcast on a 判定 belt to every other entry
+         funnel of the same loop, which take from the side named, in order.
+       - the controller only admits a new job with an entry ticket (入場券).
+         Tickets start on its ticket belt (K of them) and come back from the
+         lead's exit steer when a job leaves. K is the smallest belt capacity
+         inside the loop; each job has at most one box per loop belt (its
+         next iteration needs its previous one to come back), so no belt in
+         the loop can fill up and wedge the ring. Without this, a ring full
+         of waiting jobs deadlocks (the fuzz harness found that).
+       - every value that is live at the loop goes through the loop (no
+         bypass), so all belts that leave the loop carry jobs in the same
+         order.
+       - an if whose lane contains a loop can also reorder jobs, so its
+         merges work the same way: a lead merge takes whichever lane has a
+         box ready and broadcasts the lane (0 = はい, 1 = いいえ) to the
+         other merges of that if; no value may bypass such an if.
+     Why jobs can't be mixed up: say all belts entering a region carry
+     tokens in one common order of (job, iteration). Straight-line machines
+     and if-merges (lanes without loops) preserve that common order; lead
+     merges re-establish one common order exactly like loop entries. At a loop, all entry
+     funnels emit in the controller's order (followers obey the broadcast;
+     their init belts and back belts are in the common order, so the k-th
+     "new" is the same job on every belt and the k-th "back" is the same
+     job-iteration on every belt). The condition is computed from those
+     outputs, every steer of the loop sees the same condition sequence, so
+     the body's belts, the back belts and the exit belts are again in one
+     common order. By induction the k-th tokens that meet at any machine
+     belong to the same job and iteration. The controller's choice may
+     depend on timing (that is what lets jobs overtake), but each job's
+     own values cannot. A single job (no `in`) uses the deterministic,
+     condition-driven entry described above and keeps bypasses.
+
+   Placement of constants
+     Top-level straight-line constants (n = 10;) come from the crate.
+     Inside a loop/if a constant must exist once per activation, so it is
+     made by a generator triggered by the ⚑ of that activation. ⚑ is
+     therefore treated as a pseudo-variable for liveness.
+
+   Dead values are not built: assignments whose target is not live are
+   skipped, steers are created lazily on first use, loops only circulate
+   values they touch (others bypass the loop), and a final sweep removes
+   anything that does not lead to a ship.
+   ============================================================ */
+const CTRL="⚑";
+function fold(e){
+  if(e.k==="num") return {k:true,v:e.v};
+  if(e.k==="var") return {k:false};
+  const l=fold(e.l), r=fold(e.r);
+  if(l.k&&r.k){ try{ return {k:true,v:calc(e.op,l.v,r.v,0)}; }catch(_){ return {k:false,fail:true}; } }
+  return {k:false,fail:!!(l.fail||r.fail)};
+}
+// does compiling this expression as a token stream need a constant generator?
+const needsGen=e=>{ const f=fold(e); return f.k||!!f.fail; };
+function usesE(e,S){ if(e.k==="var") S.add(e.name); else if(e.k==="bin"){ usesE(e.l,S); usesE(e.r,S); } return S; }
+
+// backward liveness; annotates s.liveOut / s.liveHead / s.dead
+// (with many jobs even top-level constants may need a generator, see mat())
+let LIVE_MULTI=false;
+function liveBlock(ss,out,depth){ for(let i=ss.length-1;i>=0;i--) out=liveStmt(ss[i],out,depth); return out; }
+function liveStmt(s,out,depth){
+  s.liveOut=new Set(out);
+  if(s.k==="assign"){
+    if(!out.has(s.name)){ s.dead=true; return new Set(out); }
+    s.dead=false;
+    const L=new Set(out); L.delete(s.name); usesE(s.e,L);
+    if((depth>0||LIVE_MULTI)&&needsGen(s.e)) L.add(CTRL);
+    return L;
+  }
+  if(s.k==="out"){ const L=new Set(out); usesE(s.e,L); L.add(CTRL); return L; }
+  if(s.k==="in"){ s.dead=!out.has(s.name); const L=new Set(out); L.delete(s.name); return L; }
+  if(s.k==="if"){
+    const t=liveBlock(s.then,out,depth+1), e=s.els?liveBlock(s.els,out,depth+1):out;
+    const L=new Set([...t,...e]); usesE(s.c,L);
+    if((depth>0||LIVE_MULTI)&&needsGen(s.c)) L.add(CTRL);
+    return L;
+  }
+  // while: fixpoint at the loop head
+  let H=new Set(out); usesE(s.c,H); if(needsGen(s.c)) H.add(CTRL);
+  for(;;){
+    const B=liveBlock(s.body,H,depth+1);
+    const H2=new Set([...H,...B]);
+    if(H2.size===H.size){ s.liveHead=H; break; }
+    H=H2;
+  }
+  return new Set(s.liveHead);
+}
+// everything a statement list reads or writes (⚑ included), for bypass decisions
+function touched(ss,S=new Set()){
+  for(const s of ss){
+    if(s.k==="assign"){ S.add(s.name); usesE(s.e,S); if(needsGen(s.e)) S.add(CTRL); }
+    else if(s.k==="out"){ usesE(s.e,S); S.add(CTRL); }
+    else if(s.k==="in") S.add(s.name);
+    else { usesE(s.c,S); if(needsGen(s.c)) S.add(CTRL); touched(s.k==="while"?s.body:s.then,S); if(s.els) touched(s.els,S); }
+  }
+  return S;
+}
+function defs(ss,S=new Set()){
+  for(const s of ss){
+    if(s.k==="assign"&&!s.dead) S.add(s.name);
+    else if(s.k==="out") S.add(CTRL);
+    else if(s.k==="in"&&!s.dead) S.add(s.name);
+    else if(s.k==="if"){ defs(s.then,S); if(s.els) defs(s.els,S); }
+    else if(s.k==="while") defs(s.body,S);
+  }
+  return S;
+}
+
+const hasIn=prog=>prog.some(s=>s.k==="in");
+const hasLoop=ss=>ss.some(s=>s.k==="while"||(s.k==="if"&&(hasLoop(s.then)||(s.els&&hasLoop(s.els)))));
+function compile(prog){
+  // `in` only at the top level, at most once: each input value is one job
+  (function chk(ss,d){ for(const s of ss){
+    if(s.k==="in"&&d>0) throw new CErr(`「in」は一番外側（ループや if の外）でだけ使えます`,s.line);
+    if(s.k==="while") chk(s.body,d+1); if(s.k==="if"){ chk(s.then,d+1); if(s.els) chk(s.els,d+1); }
+  }})(prog,0);
+  const ins=prog.filter(s=>s.k==="in");
+  if(ins.length>1) throw new CErr(`「in」は1つだけ書けます（入力の値1つが1つの仕事になります）`,ins[1].line);
+  const multi=ins.length>0;
+  LIVE_MULTI=multi; liveBlock(prog,new Set(),0); LIVE_MULTI=false;
+  // crate constants are emitted in job order; after a construct that lets
+  // jobs overtake, a constant must come from a generator triggered by that
+  // job's own ⚑, or it would pair with another job's boxes
+  let reordered=false;
+  const nodes=[], edges=[], zones=[{id:0,kind:"root",parent:null,depth:0}];
+  const node=(kind,o)=>{ const n=Object.assign({id:nodes.length,kind,ins:[],outs:[]},o); nodes.push(n); return n; };
+  const addOut=(n,name)=>{ n.outs.push({name,edges:[]}); return {n:n.id,p:n.outs.length-1}; };
+  const connect=(from,n,inName,kind,init)=>{
+    const e={id:edges.length,from,to:{n:n.id,p:n.ins.length},kind:kind||"val",init:init||[]};
+    edges.push(e); n.ins.push({name:inName,edge:e.id}); nodes[from.n].outs[from.p].edges.push(e.id);
+    return e;
+  };
+  const src=node("src",{label:"材料",line:0,zone:0});
+  const env0=new Map([[CTRL,addOut(src,CTRL)]]);
+  const kindOf=v=>v===CTRL?"ord":"val";
+
+  function get(env,v,line){
+    let r=env.get(v);
+    if(r===undefined) throw new CErr(`変数「${v}」に値が入っていないことがあります。どの道を通っても、使う前に代入されるようにしてください`,line);
+    if(r.lazy){ r=r.lazy(); env.set(v,r); }
+    return r;
+  }
+  function mat(val,ctx,env,line){
+    if(ctx.depth===0&&!reordered) return addOut(src,String(val));
+    const g=node("const",{k:val,line,zone:ctx.zone,label:String(val)});
+    connect(get(env,CTRL,line),g,"trig","ord");
+    return addOut(g,"out");
+  }
+  // returns {c:value} for constants, or a port
+  function cexpr(e,env,ctx,line){
+    if(e.k==="num") return {c:e.v};
+    if(e.k==="var") return get(env,e.name,line);
+    const l=cexpr(e.l,env,ctx,line), r=cexpr(e.r,env,ctx,line);
+    const lc="c" in l, rc="c" in r;
+    if(lc&&rc){ try{ return {c:calc(e.op,l.c,r.c,line)}; }catch(_){} }
+    if(lc&&rc){ const lp=mat(l.c,ctx,env,line); return opi(e.op,lp,r.c,"r",ctx,line); }
+    if(rc) return opi(e.op,l,r.c,"r",ctx,line);
+    if(lc) return opi(e.op,r,l.c,"l",ctx,line);
+    const n=node("op",{op:e.op,line,zone:ctx.zone});
+    connect(l,n,"a"); connect(r,n,"b");
+    return addOut(n,"out");
+  }
+  function opi(op,port,k,side,ctx,line){
+    const n=node("opi",{op,imm:k,side,line,zone:ctx.zone});
+    connect(port,n,"a");
+    return addOut(n,"out");
+  }
+  const port=(r,ctx,env,line)=>("c" in r)?mat(r.c,ctx,env,line):r;
+
+  function block(ss,env,ctx){ for(const s of ss) stmt(s,env,ctx); }
+  function stmt(s,env,ctx){
+    if(s.k==="assign"){
+      if(s.dead) return;
+      env.set(s.name,port(cexpr(s.e,env,ctx,s.line),ctx,env,s.line));
+      return;
+    }
+    if(s.k==="in"){ if(!s.dead) env.set(s.name,addOut(src,"in")); return; }
+    if(s.k==="out"){
+      const v=port(cexpr(s.e,env,ctx,s.line),ctx,env,s.line);
+      const sh=node("ship",{line:s.line,zone:ctx.zone});
+      connect(get(env,CTRL,s.line),sh,"ord","ord");
+      connect(v,sh,"v");
+      env.set(CTRL,addOut(sh,CTRL));
+      return;
+    }
+    if(s.k==="if"){
+      const c=port(cexpr(s.c,env,ctx,s.line),ctx,env,s.line);
+      const z={id:zones.length,kind:"if",parent:ctx.zone,line:s.line,depth:ctx.depth+1}; zones.push(z);
+      const zt={id:zones.length,kind:"then",parent:z.id,line:s.line}; zones.push(zt);
+      const ze={id:zones.length,kind:"else",parent:z.id,line:s.line}; zones.push(ze);
+      const tEnv=new Map(), eEnv=new Map();
+      for(const v of env.keys()){
+        let st=null;
+        const mk=()=>{ if(!st){ const val=get(env,v,s.line); st=node("steer",{line:s.line,zone:z.id,var:v,cond:"if"}); connect(c,st,"c","sig"); connect(val,st,"v",kindOf(v)); addOut(st,"T"); addOut(st,"F"); } return st; };
+        tEnv.set(v,{lazy:()=>({n:mk().id,p:0})});
+        eEnv.set(v,{lazy:()=>({n:mk().id,p:1})});
+      }
+      block(s.then,tEnv,{depth:ctx.depth+1,zone:zt.id});
+      if(s.els) block(s.els,eEnv,{depth:ctx.depth+1,zone:ze.id});
+      const D=defs(s.then); if(s.els) defs(s.els,D);
+      // many jobs + a loop inside a lane: that lane can reorder jobs, so the
+      // merges follow a lead merge that takes whichever lane is ready and
+      // broadcasts the choice, and nothing may bypass this if.
+      const reorder=multi&&(hasLoop(s.then)||(s.els&&hasLoop(s.els)));
+      let leadM=null;
+      for(const v of s.liveOut){
+        if(!D.has(v)&&!reorder) continue;           // untouched: the value simply bypasses the if
+        const a=get(tEnv,v,s.line), b=get(eEnv,v,s.line);
+        if(a.n===b.n&&a.p===b.p){ env.set(v,a); continue; }
+        const m=node("merge",{line:s.line,zone:z.id,var:v});
+        if(!reorder) connect(c,m,"c","sig");
+        else if(!leadM){ leadM=m; m.lead=true; }
+        else connect({n:leadM.id,p:1},m,"ctrl","dec");
+        connect(a,m,"T",kindOf(v)); connect(b,m,"F",kindOf(v));
+        env.set(v,addOut(m,"out"));
+        if(m===leadM) addOut(m,"dec");
+      }
+      for(const v of D) if(!s.liveOut.has(v)) env.delete(v);
+      return;
+    }
+    // while
+    const z={id:zones.length,kind:"loop",parent:ctx.zone,line:s.line,depth:ctx.depth+1}; zones.push(z);
+    const T=touched(s.body); usesE(s.c,T); if(needsGen(s.c)) T.add(CTRL);
+    // single job: untouched values bypass the loop. Many jobs: a loop lets
+    // jobs overtake each other, so EVERY live value must ride through it to
+    // stay in the same order as its siblings (see the 量産 comment below).
+    const carried=multi?[...s.liveHead]:[...s.liveHead].filter(v=>T.has(v));
+    const inner={depth:ctx.depth+1,zone:z.id};
+    const head=new Map(), mus={};
+    let lead=null;
+    for(const v of carried){
+      const init=get(env,v,s.line);
+      const m=node("mu",{line:s.line,zone:z.id,var:v});
+      mus[v]=m; m.pendingInit=init;
+      head.set(v,{n:m.id,p:0}); addOut(m,"out");
+      if(multi){
+        if(!lead){ lead=m; m.lead=true; addOut(m,"dec"); }
+        else connect({n:lead.id,p:1},m,"ctrl","dec");
+        connect(init,m,"init",kindOf(v)); delete m.pendingInit;
+      }
+    }
+    // ins of mu are wired in a fixed order: ctrl, init, back
+    const c=port(cexpr(s.c,head,inner,s.line),inner,head,s.line);
+    const body=new Map(), steers={};
+    for(const v of carried){
+      const st=node("steer",{line:s.line,zone:z.id,var:v,cond:"loop"});
+      connect(c,st,"c","sig"); connect(head.get(v),st,"v",kindOf(v));
+      body.set(v,addOut(st,"T")); env.set(v,addOut(st,"F"));
+      steers[v]=st;
+      if(multi){
+        // the lead's exit steer hands an entry ticket back when a job leaves
+        if(mus[v]===lead){ const cr=addOut(st,"credit"); const e=connect(cr,lead,"credit","credit"); e.credit=true; lead.loopZone=z.id; }
+        continue;
+      }
+      const fwd=addOut(st,"fwd"), m=mus[v];
+      connect(fwd,m,"ctrl","sig",[{v:0,its:[]}]);
+      connect(m.pendingInit,m,"init",kindOf(v)); delete m.pendingInit;
+    }
+    block(s.body,body,inner);
+    for(const v of carried){
+      const e=connect(get(body,v,s.line),mus[v],"back",kindOf(v));
+      e.back=true;
+    }
+    z.carried=carried;
+    return;
+  }
+  for(const s of prog){ stmt(s,env0,{depth:0,zone:0}); if(multi&&hasLoop([s])) reordered=true; }
+
+  // dead sweep: keep only what leads to a ship
+  const live=new Set();
+  const stack=nodes.filter(n=>n.kind==="ship").map(n=>n.id);
+  while(stack.length){ const id=stack.pop(); if(live.has(id)) continue; live.add(id); for(const i of nodes[id].ins) stack.push(edges[i.edge].from.n); }
+  // (steers feed their own mu; keep that edge if both ends live)
+  const keepE=e=>live.has(e.from.n)&&live.has(e.to.n);
+  const nmap=new Map(); const N=[]; for(const n of nodes) if(live.has(n.id)){ nmap.set(n.id,N.length); N.push(n); }
+  const emap=new Map(); const E=[];
+  for(const e of edges) if(keepE(e)){ emap.set(e.id,E.length); E.push(e); }
+  for(const e of E){ e.id=emap.get(e.id); e.from={n:nmap.get(e.from.n),p:e.from.p}; e.to={n:nmap.get(e.to.n),p:e.to.p}; }
+  for(const n of N){
+    n.id=nmap.get(n.id);
+    n.ins=n.ins.filter(i=>emap.has(i.edge)).map(i=>({name:i.name,edge:emap.get(i.edge)}));
+    for(const o of n.outs) o.edges=o.edges.filter(x=>emap.has(x)).map(x=>emap.get(x));
+  }
+  // a node whose required input got swept cannot exist (only ships are roots, so inputs of live nodes are live)
+  return {nodes:N,edges:E,zones,multi};
+}
+
+/* ============================================================
+   Tick simulator: tokens on bounded FIFO belts
+   A node fires when every input it needs has a box at the front and
+   every belt it is about to push onto has room (checked against the
+   state at the start of the tick). All firings of a tick happen at once.
+   ============================================================ */
+const CAP=3;
+const MAX_TICKS=300000;
+// opts.lat[e] / opts.cap[e]: per-belt transit time (ticks) and capacity.
+// The UI derives them from belt length; results must not depend on them.
+// opts.inputs: one value per job (programs without `in` run one job).
+class Engine{
+  constructor(G,opts={}){
+    this.G=G; this.tick=0;
+    this.lat=G.edges.map((e,i)=>Math.max(1,(opts.lat&&opts.lat[i])||1));
+    this.caps=G.edges.map((e,i)=>Math.max(1,(opts.cap&&opts.cap[i])||CAP,e.init.length));
+    this.inputs=G.multi?(opts.inputs||[]):[undefined];
+    this.outs=[]; this.done=false; this.err=null; this.fires=0; this.maxFlight=0; this.flight=0; this.uid=0;
+    this.jobNext=0; this.jobsDone=0; this.jobsLive=0; this.jobDoneAt=[];
+    this.q=G.edges.map(e=>e.init.map(t=>({...this.tok(t.v,{its:t.its,job:0}),ready:0})));
+    // entry tickets: K = smallest belt capacity inside that loop
+    const zp=new Map(G.zones.map(z=>[z.id,z.parent]));
+    const inside=(zid,loop)=>{ for(let z=zid;z!==null&&z!==undefined;z=zp.get(z)) if(z===loop) return true; return false; };
+    G.edges.forEach((e,i)=>{
+      if(!e.credit) return;
+      const loop=G.nodes[e.to.n].loopZone;
+      let K=Infinity;
+      G.edges.forEach((f,k)=>{ if(f.kind!=="credit"&&f.kind!=="dec"&&inside(G.nodes[f.from.n].zone,loop)&&inside(G.nodes[f.to.n].zone,loop)) K=Math.min(K,this.caps[k]); });
+      if(!isFinite(K)) K=CAP;
+      this.caps[i]=K;
+      this.q[i]=Array.from({length:K},()=>({...this.tok(1,{its:[],job:-1}),ready:0}));
+    });
+    this.last=[];
+  }
+  // a new token inherits job tag and loop-iteration stack from `from`
+  tok(v,from,its){ return {v,its:its||from.its,job:from.job,uid:this.uid++}; }
+  inQ(n,name){ const i=n.ins.find(x=>x.name===name); return i?this.q[i.edge]:null; }
+  // the box at the front, if it has reached the end of its belt
+  front(q){ return q&&q.length&&q[0].ready<=this.tick+1?q[0]:null; }
+  room(n,p){ for(const e of n.outs[p].edges) if(this.q[e].length>=this.caps[e]) return false; return true; }
+  plan(n){
+    const F=q=>this.front(q);
+    switch(n.kind){
+      case "src": if(this.jobNext>=this.inputs.length) return null; for(let p=0;p<n.outs.length;p++) if(!this.room(n,p)) return null; return {take:[],put:n.outs.map((o,p)=>p)};
+      case "const": { const t=F(this.inQ(n,"trig")); if(!t||!this.room(n,0)) return null; return {take:["trig"],put:[0]}; }
+      case "op": { const a=F(this.inQ(n,"a")), b=F(this.inQ(n,"b")); if(!a||!b||!this.room(n,0)) return null; return {take:["a","b"],put:[0]}; }
+      case "opi": { const a=F(this.inQ(n,"a")); if(!a||!this.room(n,0)) return null; return {take:["a"],put:[0]}; }
+      case "ship": { const o=F(this.inQ(n,"ord")), v=F(this.inQ(n,"v")); if(!o||!v||!this.room(n,0)) return null; return {take:["ord","v"],put:[0]}; }
+      case "steer": {
+        const c=F(this.inQ(n,"c")), v=F(this.inQ(n,"v")); if(!c||!v) return null;
+        const side=c.v?0:1; if(!this.room(n,side)) return null;
+        const put=[side];
+        const x=n.outs[2]; if(x&&(x.name==="fwd"||(x.name==="credit"&&side===1))){ if(!this.room(n,2)) return null; put.push(2); }
+        return {take:["c","v"],put,side};
+      }
+      case "merge": {
+        if(n.lead){
+          // lanes may deliver jobs out of order: take whichever is ready (older first), tell the others
+          if(!this.room(n,0)||(n.outs[1]&&!this.room(n,1))) return null;
+          const t=F(this.inQ(n,"T")), f=F(this.inQ(n,"F"));
+          if(!t&&!f) return null;
+          const side=t&&(!f||t.at<=f.at)?0:1;
+          return {take:[side?"F":"T"],put:n.outs[1]?[0,1]:[0],side};
+        }
+        if(n.ins.some(i=>i.name==="ctrl")){
+          const c=F(this.inQ(n,"ctrl")); if(!c) return null;
+          const nm=c.v?"F":"T"; const x=F(this.inQ(n,nm)); if(!x||!this.room(n,0)) return null;
+          return {take:["ctrl",nm],put:[0],side:c.v?1:0};
+        }
+        const c=F(this.inQ(n,"c")); if(!c) return null;
+        const nm=c.v?"T":"F"; const x=F(this.inQ(n,nm)); if(!x||!this.room(n,0)) return null;
+        return {take:["c",nm],put:[0],side:c.v?0:1};
+      }
+      case "mu": {
+        if(n.lead){
+          // admission controller: a value back from the body first, else a new job
+          if(!this.room(n,0)||(n.outs[1]&&!this.room(n,1))) return null;
+          if(F(this.inQ(n,"back"))) return {take:["back"],put:n.outs[1]?[0,1]:[0],side:1};
+          if(F(this.inQ(n,"init"))&&F(this.inQ(n,"credit"))) return {take:["init","credit"],put:n.outs[1]?[0,1]:[0],side:0};
+          return null;
+        }
+        const c=F(this.inQ(n,"ctrl")); if(!c) return null;
+        const nm=c.v?"back":"init"; const x=F(this.inQ(n,nm)); if(!x||!this.room(n,0)) return null;
+        return {take:["ctrl",nm],put:[0],side:c.v?1:0};
+      }
+    }
+    return null;
+  }
+  step(){
+    if(this.done) return [];
+    const plans=[];
+    for(const n of this.G.nodes){ const p=this.plan(n); if(p) plans.push([n,p]); }
+    const fired=[];
+    if(!plans.length){
+      // nothing can fire: either boxes are still riding belts, or we are finished
+      const moving=this.q.some(q=>q.length&&q[0].ready>this.tick+1);
+      if(!moving){ this.finish(); return fired; }
+    }
+    this.tick++;
+    for(const [n,p] of plans){ p.got={}; for(const nm of p.take) p.got[nm]=this.inQ(n,nm).shift(); }
+    for(const [n,p] of plans){
+      const g=p.got; let vals;     // vals[port] = token
+      try{
+        switch(n.kind){
+          case "src": {
+            const j=this.jobNext++, x=this.inputs[j], from={its:[],job:j};
+            vals=n.outs.map(o=>this.tok(o.name===CTRL?0:o.name==="in"?x:+o.name,from));
+            p.job=j; break;
+          }
+          case "const": vals=[this.tok(n.k,g.trig)]; break;
+          case "op": vals=[this.tok(calc(n.op,g.a.v,g.b.v,n.line),g.a.its.length>=g.b.its.length?g.a:g.b)]; p.a=g.a.v; p.b=g.b.v; break;
+          case "opi": { const x=n.side==="r"?[g.a.v,n.imm]:[n.imm,g.a.v]; vals=[this.tok(calc(n.op,x[0],x[1],n.line),g.a)]; p.a=x[0]; p.b=x[1]; break; }
+          case "ship": this.outs.push({v:g.v.v,its:g.v.its,job:g.v.job,tick:this.tick,node:n.id}); vals=[this.tok(0,g.ord)]; break;
+          case "steer": {
+            const its=(n.cond==="loop"&&p.side===1)?g.v.its.slice(0,-1):g.v.its;
+            vals=[]; vals[p.side]=this.tok(g.v.v,g.v,its);
+            if(n.outs[2]) vals[2]=n.outs[2].name==="credit"?this.tok(1,{its:[],job:-1}):this.tok(g.c.v,g.c);
+            break;
+          }
+          case "merge": { const x=g[p.side?"F":"T"]; vals=[this.tok(x.v,x)]; if(n.lead&&n.outs[1]) vals[1]=this.tok(p.side,x); break; }
+          case "mu": {
+            const x=p.side?g.back:g.init;
+            const its=p.side?[...x.its.slice(0,-1),(x.its[x.its.length-1]||0)+1]:[...x.its,0];
+            vals=[this.tok(x.v,x,its)];
+            if(n.lead&&n.outs[1]) vals[1]=this.tok(p.side,x,its);
+            break;
+          }
+        }
+      }catch(e){
+        if(!(e instanceof RErr)) throw e;
+        this.err={msg:e.message,line:e.line,node:n.id,job:(p.got.a||p.got.trig||{}).job}; this.done=true;
+        fired.push({n,p,vals:[]}); this.last=fired; return fired;
+      }
+      for(const port of p.put){
+        const t=vals[port]; if(!t) continue;
+        n.outs[port].edges.forEach((e,k)=>{ const c=k?{...t,uid:this.uid++}:{...t}; c.ready=this.tick+this.lat[e]; c.at=this.tick; this.q[e].push(c); });
+        p.outTok=p.outTok||{}; p.outTok[port]=t;
+      }
+      p.v=vals[0]?vals[0].v:(vals[1]?vals[1].v:undefined);
+      fired.push({n,p,vals});
+      this.fires++;
+    }
+    // jobs in flight = jobs that still have a box somewhere on a belt
+    let fl=0; const live=new Set();
+    for(let i=0;i<this.q.length;i++){ if(this.G.edges[i].credit) continue; const q=this.q[i]; fl+=q.length; for(const t of q) live.add(t.job); }
+    this.flight=fl; this.maxFlight=Math.max(this.maxFlight,fl);
+    for(let j=0;j<this.jobNext;j++) if(this.jobDoneAt[j]===undefined&&!live.has(j)){ this.jobDoneAt[j]=this.tick; this.jobsDone++; }
+    this.jobsLive=this.jobNext-this.jobsDone;
+    if(this.tick>=MAX_TICKS){ this.err={msg:`${MAX_TICKS} tick を超えたので工場を止めました。無限ループになっていませんか？`,line:0}; this.done=true; }
+    this.last=fired;
+    return fired;
+  }
+  finish(){
+    this.done=true; this.last=[];
+    for(let j=0;j<this.jobNext;j++) if(this.jobDoneAt[j]===undefined){ this.jobDoneAt[j]=this.tick; this.jobsDone++; }
+    this.jobsLive=0;
+  }
+  run(){ while(!this.done) this.step(); return this; }
+  outsByJob(){ const r=this.inputs.map(()=>[]); for(const o of this.outs) r[o.job].push(o.v); return r; }
+}
+
+// independent expected values for the samples (plain JS, not the interpreter)
+const sampleExpect=(smp,jobs)=>(smp.inputs?jobs:[undefined]).map(x=>smp.expectFn(x));
+// build + verify against the sequential interpreter, job by job
+const MAX_JOBS=200;
+function parseInputs(txt){
+  const out=[];
+  for(const part of String(txt||"").split(/[\s,、，]+/).filter(Boolean)){
+    const m=part.match(/^(-?\d+)\.\.(-?\d+)$/);
+    if(m){ let a=+m[1], b=+m[2]; const st=a<=b?1:-1; for(let x=a;;x+=st){ out.push(x); if(x===b||out.length>MAX_JOBS) break; } }
+    else if(/^-?\d+$/.test(part)) out.push(+part);
+    else throw new CErr(`入力「${part}」が読めません。例:「1..30」「5, 8, 13」`,0);
+    if(out.length>MAX_JOBS) throw new CErr(`入力は ${MAX_JOBS} 個までです`,0);
+  }
+  return out;
+}
+function sameOuts(seq,got){
+  if(!seq.ok) return null;
+  return got.length===seq.outs.length&&got.every((v,i)=>v===seq.outs[i]);
+}
+function buildAndCheck(src,inputs,opts={}){
+  const prog=parse(src);
+  const G=compile(prog);
+  const jobs=G.multi?inputs:[undefined];
+  if(G.multi&&!jobs.length) throw new CErr(`入力がありません。「入力」欄に値を書いてください（例: 1..10）`,prog.find(s=>s.k==="in").line);
+  const seqs=jobs.map(x=>runSeq(prog,x));
+  const eng=new Engine(G,{...opts,inputs:jobs}).run();
+  const per=eng.outsByJob();
+  const anySeqErr=seqs.some(r=>!r.ok);
+  const match=anySeqErr?!!eng.err:(!eng.err&&seqs.every((r,j)=>sameOuts(r,per[j])));
+  // the sequential run stopped on an error inside code whose result is never
+  // shipped (so the factory never built it): everything it shipped before
+  // stopping must still be what the factory ships first
+  const deadErr=anySeqErr&&!eng.err&&seqs.every((r,j)=>r.outs.every((v,k)=>per[j][k]===v));
+  const seq=seqs[0];
+  const df={ok:!eng.err,outs:per[0]||[],per,ticks:eng.tick,maxFlight:eng.maxFlight,err:eng.err};
+  return {prog,G,seq,seqs,df,match,deadErr,jobs};
+}
+/*@@CORE-END*/
+
+/* ============================================================
+   Factory layout: the dataflow graph IS the factory.
+   elkjs "layered" + orthogonal routing; loops and ifs are compound zones.
+   ============================================================ */
+const SPEC={
+  src:  {w:150,h:58},
+  const:{w:58,h:52},
+  op:   {w:68,h:64},
+  opi:  {w:68,h:64},
+  ship: {w:80,h:60},
+  steer:{w:72,h:58},
+  mu:   {w:72,h:54},
+  merge:{w:72,h:54},
+  dock: {w:232,h:170},
+};
+const SIDE_T={NORTH:"WEST",SOUTH:"EAST",WEST:"NORTH",EAST:"SOUTH"};
+function portGeom(n,name,dir,idx,count){
+  const g=portGeom0(n,name,dir,idx,count);
+  if(n.dir!=="RIGHT") return g;
+  const fx=g.x/n.box0.w, fy=g.y/n.box0.h;
+  return {x:fy*n.box.w,y:fx*n.box.h,side:SIDE_T[g.side]};
+}
+function portGeom0(n,name,dir,idx,count){
+  const {w,h}=n.box0;
+  const S=(x,y,side)=>({x,y,side});
+  if(n.kind==="dock") return S(w*(idx+1)/(count+1),0,"NORTH");
+  if(n.kind==="src") return S(w*(idx+1)/(count+1),h,"SOUTH");
+  if(dir==="out"){
+    if(name==="chute") return S(w,h*.55,"EAST");
+    if(name==="dec") return S(0,h*.82,"WEST");
+    if(n.kind==="steer"){
+      if(n.cond==="loop"){ if(name==="T") return S(w*.5,h,"SOUTH"); if(name==="F") return S(w,h*.62,"EAST"); return S(0,h*.78,"WEST"); }
+      return name==="T"?S(w*.28,h,"SOUTH"):S(w*.72,h,"SOUTH");
+    }
+    return S(w*.5,h,"SOUTH");
+  }
+  switch(name){
+    case "a": return n.kind==="op"?S(w*.28,0,"NORTH"):S(w*.5,0,"NORTH");
+    case "b": return S(w*.72,0,"NORTH");
+    case "trig": return S(w*.5,0,"NORTH");
+    case "ord": return S(w*.25,0,"NORTH");
+    case "v": return n.kind==="ship"?S(w*.68,0,"NORTH"):S(w*.5,0,"NORTH");
+    case "c": return S(0,h*.4,"WEST");
+    case "ctrl": return S(0,h*.4,"WEST");
+    case "credit": return S(0,h*.4,"WEST");
+    case "init": return S(w*.3,0,"NORTH");
+    case "back": return S(w,h*.4,"EAST");
+    case "T": return S(w*.28,0,"NORTH");
+    case "F": return S(w*.72,0,"NORTH");
+  }
+  return S(w/2,0,"NORTH");
+}
+
+// Nodes whose drawing has a direction (crate, diverter, funnels) are drawn in a
+// "down" frame that is mirrored across the diagonal when the factory runs
+// left→right; machines are drawn upright either way, only their ports move.
+const FLIP=new Set(["src","steer","mu","merge"]);
+// Layout candidates. ELK is run with each of these (both directions) and the
+// floor plan with the fewest belt crossings wins (see pickLayouts()).
+// Cheapest first. Measured per layout (Chromium / WebKit about the same):
+// basic ≈ 25-45 ms, thoroughness 20 ≈ 60-110 ms, thoroughness 60 ≈ 160-280 ms.
+const VARIANTS=[
+  {name:"基本",o:{}},
+  {name:"順序自由",o:{"elk.layered.considerModelOrder.strategy":"NONE","elk.layered.thoroughness":"20","elk.layered.crossingMinimization.greedySwitch.type":"TWO_SIDED"}},
+  {name:"口の並び自由",ports:"FIXED_SIDE",o:{"elk.layered.thoroughness":"20","elk.layered.crossingMinimization.greedySwitch.type":"TWO_SIDED"}},
+  {name:"口の並び自由・念入り",ports:"FIXED_SIDE",o:{"elk.layered.thoroughness":"60","elk.layered.crossingMinimization.greedySwitch.type":"TWO_SIDED"}},
+  {name:"交差を念入りに",o:{"elk.layered.thoroughness":"60","elk.layered.crossingMinimization.greedySwitch.type":"TWO_SIDED"}},
+];
+const SEARCH_BUDGET_MS=450;
+async function layoutFactory(G,dir,variant=VARIANTS[0],jobs=1,shelfCols=0){
+  const R=dir==="RIGHT";
+  const N=G.nodes.map(n=>({...n,box:{...SPEC[n.kind]}}));
+  N.forEach(n=>{ n.dir=dir; if(n.kind==="src") n.box.w=Math.max(150,62*n.outs.length+30); n.box0={w:n.box.w,h:n.box.h}; if(R&&FLIP.has(n.kind)) n.box={w:n.box0.h,h:n.box0.w}; });
+  const ships=N.filter(n=>n.kind==="ship");
+  const dockSize=G.multi&&shelfCols?shelfSize(jobs,shelfCols):{...SPEC.dock};
+  const dock={id:N.length,kind:"dock",dir,ins:ships.map((s,i)=>({name:"in"+i})),outs:[],box:{...dockSize},box0:{...dockSize},zone:0,line:0};
+  const chutes=[];
+  if(ships.length){ N.push(dock); ships.forEach((s,i)=>{ s.chuteIdx=s.outs.length; chutes.push({id:"c"+i,ship:s.id}); }); }
+  // which zones have members
+  const Z=G.zones.map(z=>({...z,kids:[],nodes:[]}));
+  for(const n of N) Z[n.zone].nodes.push(n);
+  const has=z=>z.nodes.length||Z.some(c=>c.parent===z.id&&has(c));
+  const used=Z.filter(z=>z.id===0||has(z));
+  for(const z of used) if(z.parent!==null) Z[z.parent].kids.push(z);
+  const zoneOf=n=>{ let z=Z[n.zone]; while(!used.includes(z)) z=Z[z.parent]; return z; };
+  const chain=z=>{ const c=[]; while(z){ c.push(z.id); z=z.parent===null?null:Z[z.parent]; } return c; };
+
+  const pid=(n,dir,i)=>`n${n.id}_${dir}${i}`;
+  function elkNode(n){
+    const ports=[];
+    n.ports={in:[],out:[]};
+    n.ins.forEach((p,i)=>{ const g=portGeom(n,p.name,"in",i,n.ins.length); n.ports.in[i]=g; ports.push({id:pid(n,"i",i),width:4,height:4,x:g.x-2,y:g.y-2,layoutOptions:{"elk.port.side":g.side}}); });
+    const outs=[...n.outs.map(o=>o.name)]; if(n.kind==="ship") outs.push("chute");
+    outs.forEach((nm,i)=>{ const g=portGeom(n,nm,"out",i,outs.length); n.ports.out[i]=g; ports.push({id:pid(n,"o",i),width:4,height:4,x:g.x-2,y:g.y-2,layoutOptions:{"elk.port.side":g.side}}); });
+    return {id:"n"+n.id,width:n.box.w,height:n.box.h,ports,layoutOptions:{"elk.portConstraints":variant.ports||"FIXED_POS"}};
+  }
+  const PAD={loop:"[top=52,left=22,bottom=22,right=30]",if:"[top=40,left=14,bottom=14,right=14]",then:"[top=30,left=10,bottom=10,right=10]",else:"[top=30,left=10,bottom=10,right=10]"};
+  function elkZone(z){
+    const first=zz=>Math.min(...zz.nodes.map(n=>n.id),...zz.kids.map(first));
+    const items=[...z.nodes.map(n=>({k:n.id,f:()=>elkNode(n)})),...z.kids.map(c=>({k:first(c),f:()=>elkZone(c)}))].sort((a,b)=>a.k-b.k);
+    const kids=items.map(i=>i.f());
+    if(z.id===0) return kids;
+    return {id:"z"+z.id,children:kids,edges:[],layoutOptions:{"elk.padding":PAD[z.kind],"elk.layered.spacing.nodeNodeBetweenLayers":"40"}};
+  }
+  const root={id:"root",layoutOptions:{
+    "elk.algorithm":"layered","elk.direction":dir,"elk.edgeRouting":"ORTHOGONAL",
+    "elk.hierarchyHandling":"INCLUDE_CHILDREN",
+    "elk.layered.feedbackEdges":"true",
+        "elk.layered.considerModelOrder.strategy":"NODES_AND_EDGES",
+    "elk.layered.nodePlacement.strategy":"NETWORK_SIMPLEX",
+    "elk.layered.spacing.nodeNodeBetweenLayers":"38",
+    "elk.layered.spacing.edgeNodeBetweenLayers":"24",
+    "elk.layered.spacing.edgeEdgeBetweenLayers":"20",
+    "elk.spacing.nodeNode":"32","elk.spacing.edgeEdge":"22","elk.spacing.edgeNode":"22",
+    "elk.padding":"[top=26,left=20,bottom=20,right=20]",
+    ...variant.o,
+  },children:elkZone(Z[0]),edges:[]};
+  // index containers to place each edge in the lowest common ancestor
+  const byId={root};
+  (function idx(c){ for(const k of c.children||[]){ byId[k.id]=k; idx(k); } })(root);
+  function place(a,b,edge){
+    const ca=chain(zoneOf(a)), cb=chain(zoneOf(b));
+    const lca=ca.find(x=>cb.includes(x));
+    (lca===0?root:byId["z"+lca]).edges.push(edge);
+  }
+  // Loop-closing belts (value coming back to a mu, and the steer→mu control
+  // wire) are handed to ELK reversed so the layering is acyclic and each loop
+  // reads top-to-bottom; the routed polyline is flipped back afterwards.
+  const isBack=e=>N[e.to.n].kind==="mu"&&(e.back||e.credit||(N[e.to.n].ins[e.to.p].name==="ctrl"&&N[e.from.n].kind==="steer"));
+  for(const e of G.edges){
+    const s=pid(N[e.from.n],"o",e.from.p), t=pid(N[e.to.n],"i",e.to.p);
+    place(N[e.from.n],N[e.to.n],isBack(e)?{id:"e"+e.id,sources:[t],targets:[s]}:{id:"e"+e.id,sources:[s],targets:[t]});
+  }
+  chutes.forEach((c,i)=>{ const s=N[c.ship]; place(s,dock,{id:c.id,sources:[pid(s,"o",s.chuteIdx)],targets:[pid(dock,"i",i)]}); });
+
+  let res;
+  if(window.ELK){ res=await new ELK().layout(root); }
+  else res=fallbackLayout(root);
+  // absolute coordinates
+  const abs={root:{x:0,y:0}}; const zbox={};
+  (function walk(c,ox,oy){
+    for(const k of c.children||[]){
+      const x=ox+k.x, y=oy+k.y; abs[k.id]={x,y};
+      if(k.id[0]==="z") zbox[+k.id.slice(1)]={x,y,w:k.width,h:k.height};
+      else {
+        const n=N[+k.id.slice(1)]; n.box.x=x; n.box.y=y;
+        for(const pt of k.ports||[]){ const m=pt.id.match(/_(i|o)(\d+)$/); const arr=n.ports[m[1]==="i"?"in":"out"]; const g=arr[+m[2]]; if(g&&pt.x!==undefined){ g.x=pt.x+2; g.y=pt.y+2; } }
+      }
+      walk(k,x,y);
+    }
+  })(res,0,0);
+  const paths={};
+  (function walkE(c){
+    for(const e of c.edges||[]){
+      const off=abs[e.container||c.id]||abs[c.id]||{x:0,y:0};
+      const P=[];
+      for(const s of e.sections||[]){ P.push(s.startPoint,...(s.bendPoints||[]),s.endPoint); }
+      paths[e.id]=clean(P.map(p=>({x:p.x+off.x,y:p.y+off.y})));
+    }
+    for(const k of c.children||[]) walkE(k);
+  })(res);
+  const L={N,dir,variant:variant.name,W:res.width,H:res.height,zones:used.filter(z=>z.id!==0&&zbox[z.id]).map(z=>({...z,...zbox[z.id]})),belts:[],chutes:{},dock:ships.length?dock:null};
+  for(const e of G.edges){
+    let P=paths["e"+e.id];
+    if(!P||P.length<2){ const a=N[e.from.n], b=N[e.to.n]; P=[portAbs(a,"out",e.from.p),portAbs(b,"in",e.to.p)]; }
+    else if(isBack(e)) P=[...P].reverse();
+    L.belts[e.id]={P,len:plen(P),kind:e.kind,back:!!e.back,from:N[e.from.n].kind};
+  }
+  chutes.forEach(c=>{ const P=paths[c.id]||[portAbs(N[c.ship],"out",N[c.ship].chuteIdx),{x:dock.box.x+dock.box.w/2,y:dock.box.y}]; L.chutes[c.ship]={P,len:plen(P)}; });
+  return L;
+}
+// Shelf of job slots in the dock (many-job mode)
+const SHELF={w:112,h:32,gap:6,top:30};
+function shelfSize(J,cols){ cols=Math.max(1,Math.min(J,cols)); const rows=Math.ceil(J/cols); return {w:cols*(SHELF.w+SHELF.gap)+SHELF.gap+12,h:SHELF.top+rows*(SHELF.h+SHELF.gap)+10,cols}; }
+function slotRect(b,j,J){ const cols=b.cols||1; const c=j%cols, r=Math.floor(j/cols); return {x:b.x+6+SHELF.gap+c*(SHELF.w+SHELF.gap),y:b.y+SHELF.top+r*(SHELF.h+SHELF.gap),w:SHELF.w,h:SHELF.h}; }
+
+// Count proper crossings between belts (fan-out copies of one output share
+// their start, so belts from the same output port are never counted) and the
+// total belt length. Used to pick a layout and reported via __df.layoutStats().
+function beltStats(L,G){
+  const segs=[];
+  const add=(P,key)=>{ for(let i=1;i<P.length;i++){ const a=P[i-1], b=P[i]; segs.push({key,h:Math.abs(a.y-b.y)<.5,x1:Math.min(a.x,b.x),x2:Math.max(a.x,b.x),y1:Math.min(a.y,b.y),y2:Math.max(a.y,b.y)}); } };
+  let len=0;
+  L.belts.forEach((b,i)=>{ if(!b) return; const e=G.edges[i]; add(b.P,e.from.n+":"+e.from.p); len+=b.len; });
+  for(const k in L.chutes){ add(L.chutes[k].P,"chute"+k); len+=L.chutes[k].len; }
+  let x=0; const E=1;
+  for(let i=0;i<segs.length;i++) for(let j=i+1;j<segs.length;j++){
+    const a=segs[i], b=segs[j]; if(a.key===b.key||a.h===b.h) continue;
+    const H=a.h?a:b, V=a.h?b:a;
+    if(V.x1>H.x1+E&&V.x1<H.x2-E&&H.y1>V.y1+E&&H.y1<V.y2-E) x++;
+  }
+  return {crossings:x,length:Math.round(len),area:Math.round(L.W*L.H)};
+}
+// Pick a floor plan. Old version: 10 variants × 2 directions (+ shelf passes)
+// = 1.4-6 s. Now: search top→bottom only, cheapest variants first, stop when
+// the time budget is used up or a plan has no crossings. ELK gives the same
+// crossings both ways round, so the direction is chosen from the (transposed)
+// size and only the winner is laid out again, in that direction, with the
+// job shelf sized to it. Results are cached per program text and job count.
+const layoutCache=new Map();
+function estimateDims(L,dir,G,jobs){
+  let W=dir==="DOWN"?L.W:L.H, H=dir==="DOWN"?L.H:L.W;
+  if(G.multi){ const sh=shelfSize(jobs,shelfCols(L,dir,jobs)); if(dir==="DOWN"){ W=Math.max(W,sh.w+40); H+=sh.h-SPEC.dock.h; } else { W+=sh.w-SPEC.dock.w; H=Math.max(H,sh.h+40); } }
+  return {W,H};
+}
+function shelfCols(L,dir,jobs){
+  // probe L is top→bottom; the shelf is as wide as the factory (top→bottom) or as tall (left→right)
+  return dir==="DOWN"?Math.max(2,Math.floor((L.W-40)/(SHELF.w+SHELF.gap)),Math.ceil(jobs/6))
+                     :Math.ceil(jobs/Math.max(2,Math.floor((L.W-40)/(SHELF.h+SHELF.gap))));
+}
+async function pickLayout(G,jobs,key,onStep){
+  let search=layoutCache.get(key);
+  if(!search){
+    const t0=performance.now(), cands=[];
+    for(let i=0;i<VARIANTS.length;i++){
+      await onStep(i+1,VARIANTS.length);
+      const L=await layoutFactory(G,"DOWN",VARIANTS[i],jobs); L.stats=beltStats(L,G); cands.push(L);
+      if(!L.stats.crossings||performance.now()-t0>SEARCH_BUDGET_MS) break;
+    }
+    const base=cands[0];
+    const ok=cands.filter(L=>L.stats.area<=base.stats.area*1.35).sort((a,b)=>a.stats.crossings-b.stats.crossings||a.stats.length-b.stats.length);
+    search={best:ok[0],base,tried:cands.map(L=>({v:L.variant,...L.stats})),ms:Math.round(performance.now()-t0),finals:{}};
+    layoutCache.set(key,search);
+  }
+  // direction: whichever shows the machines larger on this screen
+  measureHud();
+  const sc=d=>{ const e=estimateDims(search.best,d,G,jobs); return Math.min((cv.clientWidth-20)/e.W,(cv.clientHeight-HUD_TOP-10)/e.H); };
+  const dir=sc("RIGHT")>sc("DOWN")*1.08?"RIGHT":"DOWN";
+  let L=search.finals[dir];
+  if(!L){
+    if(dir==="DOWN"&&!G.multi) L=search.best;
+    else { await onStep(0,0); L=await layoutFactory(G,dir,VARIANTS.find(v=>v.name===search.best.variant),jobs,G.multi?shelfCols(search.best,dir,jobs):0); L.stats=beltStats(L,G); }
+    search.finals[dir]=L;
+  }
+  return {L,table:{before:search.base.stats,after:search.best.stats,variant:search.best.variant,tried:search.tried,searchMs:search.ms,dir}};
+}
+function portAbs(n,dir,i){ const g=n.ports[dir][i]; return {x:n.box.x+g.x,y:n.box.y+g.y}; }
+
+// used only if the elkjs CDN can't be reached: longest-path layers, simple elbows
+function fallbackLayout(root){
+  const all=[]; (function f(c){ for(const k of c.children||[]){ if(k.id[0]==="n") all.push(k); f(k); } })(root);
+  const edges=[]; (function f(c){ edges.push(...(c.edges||[])); for(const k of c.children||[]) f(k); })(root);
+  const nodeOfPort=p=>p.split("_")[0];
+  const lay={}; all.forEach(n=>lay[n.id]=0);
+  for(let it=0;it<all.length;it++) for(const e of edges){ const a=nodeOfPort(e.sources[0]), b=nodeOfPort(e.targets[0]); const ia=+a.slice(1), ib=+b.slice(1); if(ib>ia) lay[b]=Math.max(lay[b],lay[a]+1); }
+  const rows={}; for(const n of all){ (rows[lay[n.id]]=rows[lay[n.id]]||[]).push(n); }
+  let y=30, W=0;
+  for(const k of Object.keys(rows).sort((a,b)=>a-b)){ let x=30, h=0; for(const n of rows[k]){ n.x=x; n.y=y; x+=n.width+50; h=Math.max(h,n.height); } W=Math.max(W,x); y+=h+70; }
+  const flat={id:"root",children:all.map(n=>({...n})),edges:[],width:W,height:y};
+  const pos={}; for(const n of flat.children) for(const p of n.ports) pos[p.id]={x:n.x+p.x+2,y:n.y+p.y+2};
+  flat.edges=edges.map(e=>{ const a=pos[e.sources[0]], b=pos[e.targets[0]]; const my=b.y-18; return {id:e.id,container:"root",sections:[{startPoint:a,bendPoints:[{x:a.x,y:Math.max(a.y+12,my)},{x:b.x,y:Math.max(a.y+12,my)}],endPoint:b}]}; });
+  return flat;
+}
+
+function clean(pts){
+  const o=[];
+  for(const p of pts){
+    const l=o[o.length-1];
+    if(l&&Math.abs(l.x-p.x)<.5&&Math.abs(l.y-p.y)<.5) continue;
+    o.push({x:p.x,y:p.y});
+  }
+  return o;
+}
+const plen=P=>{ let s=0; for(let i=1;i<P.length;i++) s+=Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y); return s; };
+function posAt(P,d){
+  for(let i=1;i<P.length;i++){
+    const a=P[i-1], b=P[i], sl=Math.hypot(b.x-a.x,b.y-a.y);
+    if(d<=sl||i===P.length-1){ const k=sl?Math.min(1,Math.max(0,d/sl)):1; return {x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k}; }
+    d-=sl;
+  }
+  return {x:P[0].x,y:P[0].y};
+}
+
+/* ============================================================
+   App state
+   ============================================================ */
+const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+const $=id=>document.getElementById(id);
+const ta=$("code");
+let F=null;            // {G, L, check, prog}
+let eng=null;          // live engine
+let simT=0, playing=false, stepTo=null, tps=4;
+let clock=0, beltPhase=0, particles=[], flying=[], dockBoxes=[];
+let vis=new Map();     // token uid → distance along belt
+let fireFx=new Map();  // node id → {tick, p, tint}
+let nodeState=new Map();
+let cam={s:1,x:0,y:0}, camMode="all", showLines=false;
+let compileError=null, buildSeq=0, shelf=[];
+const reduceMotion=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const TINTS=["#F9C80E","#4CC38A","#FF7AA8","#5BC0EB","#FF9F1C","#B79CED"];
+const JOBC=["#F9C80E","#4CC38A","#FF7AA8","#5BC0EB","#FF9F1C","#B79CED","#9BE564","#FF6B6B","#2EC4B6","#E9C46A","#C77DFF","#F4A261"];
+const jobColor=j=>JOBC[((j%JOBC.length)+JOBC.length)%JOBC.length];
+// many jobs: colour = job; one job: colour = loop iteration
+const tintOf=(its,job)=>F&&F.G.multi?(job>=0?jobColor(job):null):(its&&its.length?TINTS[its[its.length-1]%TINTS.length]:null);
+
+// Belts are physical: a box needs time to ride a long belt, and a long belt
+// holds more boxes. (Results can't depend on this; see the Engine comment.)
+// Every belt holds at least CAP_MIN boxes (they bunch up on short belts);
+// a loop admits as many jobs as its smallest belt can hold.
+const BELT_PX=52, CAP_MIN=5;
+function beltOpts(L){
+  return {
+    lat:L.belts.map(b=>Math.max(1,Math.round(b.len/BELT_PX))),
+    cap:L.belts.map(b=>Math.max(CAP_MIN,Math.floor((b.len-14)/SLOT[b.kind])+1)),
+  };
+}
+function resetRun(){
+  if(!F) return;
+  eng=new Engine(F.G,{...beltOpts(F.L),inputs:F.jobs});
+  simT=0; stepTo=null; vis=new Map(); fireFx=new Map(); nodeState=new Map(); particles=[]; flying=[]; dockBoxes=[];
+  shelf=F.jobs.map(()=>({outs:[],at:-1}));
+  $("banner").hidden=true;
+  uiOutputs(); uiMeter();
+}
+function setPlaying(p){
+  if(p&&CON){ conFinish(); return; }
+  if(p&&eng&&eng.done){ resetRun(); }
+  playing=p&&!!F;
+  $("bPlay").textContent=playing?"⏸ 止める":"▶ 動かす";
+}
+
+// Let the browser paint (progress text) before the next chunk of work.
+// rAF alone never fires in a hidden tab, so a timeout backs it up.
+function paint(){ return new Promise(res=>{ let done=false; const f=()=>{ if(!done){ done=true; res(); } }; requestAnimationFrame(()=>setTimeout(f,0)); setTimeout(f,60); }); }
+function setPhase(t,sub){ const el=$("loading"); el.hidden=!t; $("loadPhase").textContent=t||""; $("loadSub").textContent=sub||""; }
+let building=false;
+async function build(){
+  const src=ta.value, my=++buildSeq;
+  building=true; $("bBuild").disabled=true; $("bBuild").textContent="建設中…";
+  setPlaying(false); conStop();
+  $("check").hidden=true; if(!$("banner").classList.contains("bad")) $("banner").hidden=true;
+  try{
+    setPhase("設計図を読んでいます"); await paint(); if(my!==buildSeq) return false;
+    compileError=null; $("err").hidden=true;
+    let r;
+    try{
+      const prog=parse(src);
+      const jobs=hasIn(prog)?parseInputs($("inputs").value):[];
+      r=buildAndCheck(src,jobs);       // compile + quick check on default belts (a few ms)
+    }
+    catch(e){
+      if(!(e instanceof CErr)) throw e;
+      compileError=e; F=null; eng=null;
+      $("err").hidden=false; $("err").textContent=e.line?`${e.line}行目: ${e.message}`:e.message;
+      uiOutputs(); uiMeter(); $("check").hidden=true;
+      showBanner(e.line?`設計図にまちがいがあります — ${e.line}行目: ${e.message}`:e.message,true);
+      updateBands();
+      return false;
+    }
+    $("inputsBox").classList.toggle("off",!r.G.multi);
+    const key=src+"\n#jobs="+r.jobs.length;
+    const {L,table}=await pickLayout(r.G,r.jobs.length,key,async(k,n)=>{
+      setPhase("配置を考えています",n?`案 ${k} / ${n}`:"ベルトの通り道を決めています"); await paint();
+      if(my!==buildSeq) throw "stale";
+    });
+    if(my!==buildSeq) return false;
+    F={G:r.G,L,layoutTable:table,check:r,prog:r.prog,jobs:r.G.multi?r.jobs:[undefined],inName:(r.prog.find(s=>s.k==="in")||{}).name,label:currentLabel(),verified:false};
+    setPhase("");
+    resetRun();
+    $("banner").hidden=true;
+    fit();
+    updateBands();
+    uiCheck();
+    if(!r.G.nodes.length){ showBanner("出荷（out）がないので、動かす機械がありません"); return true; }
+    conStart();                         // construction animation; the run starts when it ends
+    verifyLater(my);                    // full check on the real belts, while it is being built
+    return true;
+  }catch(e){
+    if(e==="stale") return false;
+    console.error(e);
+    F=null; eng=null; setPhase("");
+    showBanner(`工場を建てられませんでした: ${e&&e.message||e}`,true);
+    return false;
+  }finally{
+    if(my===buildSeq){ building=false; $("bBuild").disabled=false; $("bBuild").textContent="建てる"; setPhase(""); }
+  }
+}
+// Run the exact belts of this floor plan headless, job by job, against the
+// sequential interpreter, then update the chip.
+function verifyLater(my){
+  setTimeout(()=>{
+    if(my!==buildSeq||!F) return;
+    try{
+      const r=F.check, e=new Engine(r.G,{...beltOpts(F.L),inputs:F.jobs}).run(), per=e.outsByJob();
+      F.L.ticks=e.tick;
+      const anyErr=r.seqs.some(q=>!q.ok);
+      const same=anyErr?!!e.err:(!e.err&&r.seqs.every((q,j)=>per[j].length===q.outs.length&&per[j].every((v,k)=>v===q.outs[k])));
+      if(!same){ r.match=false; r.df.per=per; }
+      F.verified=true; uiCheck();
+    }catch(err){ console.error(err); showBanner(`検算に失敗しました: ${err.message}`,true); }
+  },30);
+}
+function showBanner(t,bad){ const b=$("banner"); b.hidden=false; b.className=bad?"banner bad":"banner"; b.textContent=t; }
+
+function uiCheck(){
+  const c=$("check"), r=F.check;
+  c.hidden=false;
+  const J=F.jobs.length;
+  if(!F.verified&&r.match){ c.className="check"; c.innerHTML=`検算しています…`; return; }
+  if(r.match){ c.className="check"; c.innerHTML=r.seqs.every(q=>q.ok)?`<span class="long">逐次実行と</span>一致 ✓<span class="long">${J>1?` ${J}件とも`:""} 全 ${F.L.ticks} tick</span>`:`逐次実行と同じく停止 ✓`; }
+  else if(r.deadErr){ c.className="check"; c.textContent="逐次実行はエラーで停止（工場では使われない計算）"; }
+  else { c.className="check bad"; c.textContent=`食い違い！ 逐次実行と工場の出荷が違います`; }
+  if(r.deadErr){ const q=r.seqs.find(x=>!x.ok); showBanner(`注意: 逐次実行は ${q.line}行目で止まりました（${q.msg}）。その値はどこにも出荷されないので、工場にはその機械がありません`); }
+  else if(!r.match) showBanner("工場の出荷が逐次実行と食い違いました。これはバグです",true);
+}
+function uiOutputs(){
+  const o=eng?eng.outs:[];
+  if(F&&F.G.multi){ const d=eng?eng.jobsDone:0; $("outputs").textContent=`${d} / ${F.jobs.length} 件`; return; }
+  $("outputs").textContent=o.length?(o.length>8?"… ":"")+o.slice(-8).map(x=>x.v).join(", "):"なし";
+}
+function uiMeter(){
+  $("mTick").textContent=eng?eng.tick:0;
+  $("mFlight").textContent=eng?(eng.flight||0):0;
+  $("mMax").textContent=eng?eng.maxFlight:0;
+  const multi=!!(F&&F.G.multi);
+  $("mJobsBox").hidden=!multi; $("mRateBox").hidden=!multi;
+  if(multi){ $("mJobs").textContent=eng?eng.jobsLive:0; $("mRate").textContent=eng&&eng.tick?(eng.jobsDone*100/eng.tick).toFixed(1):"0"; }
+}
+function onDone(){
+  setPlaying(false);
+  if(eng.err){ showBanner(`止まりました — ${eng.err.line?eng.err.line+"行目: ":""}${eng.err.msg}`,true); updateBands(); return; }
+  const per=eng.outsByJob(), seqs=F.check.seqs;
+  if(F.check.deadErr){ showBanner("完成。逐次実行はエラーで止まる計算を含みますが、その値は出荷されないので工場にはありません"); return; }
+  const bad=seqs.findIndex((q,j)=>!q.ok||per[j].length!==q.outs.length||per[j].some((v,k)=>v!==q.outs[k]));
+  if(bad>=0){ showBanner(`食い違い！ ${F.G.multi?jobName(bad)+" — ":""}逐次実行: ${seqs[bad].outs.join(", ")} ／ 工場: ${per[bad].join(", ")}`,true); return; }
+  if(F.G.multi){ showBanner(`完成！ ${F.jobs.length}件すべて逐次実行と一致（${eng.tick} tick、${(eng.jobsDone*100/eng.tick).toFixed(1)}件/100 tick）`); return; }
+  const got=per[0];
+  showBanner(got.length?`完成！ 出荷した値: ${got.join(", ")}（逐次実行と一致）`:"完成！（出荷はありません）");
+}
+
+/* one tick of the real simulation, plus bookkeeping for drawing */
+function tickOnce(){
+  if(!eng||eng.done) return;
+  const fired=eng.step();
+  for(const f of fired){
+    const n=f.n, p=f.p;
+    const anyTok=p.outTok&&(p.outTok[0]||p.outTok[1]);
+    const ns=nodeState.get(n.id)||{};
+    if(p.v!==undefined) ns.v=p.v;
+    if(p.side!==undefined) ns.side=p.side;
+    ns.count=(ns.count||0)+1;
+    nodeState.set(n.id,ns);
+    fireFx.set(n.id,{tick:eng.tick,p,tint:anyTok?tintOf(anyTok.its,anyTok.job):null});
+    if(n.kind==="ship"&&F.L.chutes[n.id]){
+      const o=eng.outs.filter(x=>x.node===n.id&&x.tick===eng.tick).pop();
+      let P=F.L.chutes[n.id].P;
+      if(F.G.multi&&F.L.dock){ const r=slotRect(F.L.dock.box,o.job,F.jobs.length); const e=P[P.length-1]; P=[...P,{x:e.x,y:r.y+r.h/2},{x:r.x+r.w/2,y:r.y+r.h/2}]; }
+      flying.push({P,len:plen(P),d:0,v:o.v,its:o.its,job:o.job});
+    }
+    if((n.kind==="op"||n.kind==="opi")&&tps<25){ const b=F.L.N[n.id].box; puff(b.x+b.w/2,b.y+b.h,n.op); }
+  }
+  uiMeter();
+  if(fired.some(f=>f.n.kind==="ship")) uiOutputs();
+  if(eng.done) onDone();
+}
+
+/* ============================================================
+   Editor helpers
+   ============================================================ */
+function lineMetrics(){ const cs=getComputedStyle(ta); return {lh:parseFloat(cs.lineHeight),pt:parseFloat(cs.paddingTop)}; }
+function updateBands(){
+  const {lh,pt}=lineMetrics();
+  const el=$("bandBad");
+  const line=compileError?compileError.line:(eng&&eng.err?eng.err.line:0);
+  if(!line){ el.style.display="none"; return; }
+  el.style.display="block"; el.style.top=(pt+(line-1)*lh-ta.scrollTop)+"px";
+}
+function updateGutter(){
+  const n=ta.value.split("\n").length;
+  let s=""; for(let i=1;i<=n;i++) s+=i+"\n";
+  $("gutter").textContent=s; $("gutter").scrollTop=ta.scrollTop;
+}
+
+/* ============================================================
+   Camera
+   ============================================================ */
+let HUD_TOP=54;
+function measureHud(){ const h=document.querySelector(".hud"); HUD_TOP=Math.max(50,h.offsetTop+h.offsetHeight+6); }
+function fitTarget(L=F.L){
+  measureHud();
+  const W=cv.clientWidth, H=cv.clientHeight, pad=10;
+  const s=Math.max(.08,Math.min((W-pad*2)/L.W,(H-HUD_TOP-pad)/L.H,1.3));
+  return {s,x:(W-L.W*s)/2,y:HUD_TOP+Math.max(0,(H-HUD_TOP-pad-L.H*s)/2)};
+}
+function jobName(j){ const x=F.jobs[j]; return F.label?`${F.label}(${x})`:`${F.inName}=${x}`; }
+function currentLabel(){ const smp=SAMPLES[+sel.value]; return smp&&ta.value===smp.src?smp.label:null; }
+function fit(){
+  if(!F) return;
+  camMode="all"; $("bFit").setAttribute("aria-pressed","true");
+  Object.assign(cam,fitTarget(F.L));
+}
+function freeCam(){ camMode="free"; $("bFit").setAttribute("aria-pressed","false"); }
+const pointers=new Map(); let pinch=null;
+cv.addEventListener("pointerdown",e=>{ if(CON){ conFinish(); return; } cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); cv.classList.add("drag");
+  if(pointers.size===2){ const [a,b]=[...pointers.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y),mx:(a.x+b.x)/2,my:(a.y+b.y)/2}; } });
+cv.addEventListener("pointermove",e=>{
+  if(!pointers.has(e.pointerId)) return;
+  const prev=pointers.get(e.pointerId), cur={x:e.clientX,y:e.clientY};
+  pointers.set(e.pointerId,cur);
+  if(Math.abs(cur.x-prev.x)+Math.abs(cur.y-prev.y)>0) freeCam();
+  if(pointers.size===1){ cam.x+=cur.x-prev.x; cam.y+=cur.y-prev.y; }
+  else if(pointers.size===2&&pinch){
+    const [a,b]=[...pointers.values()];
+    const d=Math.hypot(a.x-b.x,a.y-b.y), mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    const r=cv.getBoundingClientRect();
+    zoomAt(pinch.mx-r.left,pinch.my-r.top,d/pinch.d);
+    cam.x+=mx-pinch.mx; cam.y+=my-pinch.my; pinch={d,mx,my};
+  }
+});
+const up=e=>{ pointers.delete(e.pointerId); if(pointers.size<2) pinch=null; if(!pointers.size) cv.classList.remove("drag"); };
+cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+cv.addEventListener("wheel",e=>{ e.preventDefault(); freeCam(); const r=cv.getBoundingClientRect(); zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(-e.deltaY*.0015)); },{passive:false});
+cv.addEventListener("dblclick",fit);
+function zoomAt(sx,sy,k){ const ns=Math.min(3,Math.max(.06,cam.s*k)); k=ns/cam.s; cam.x=sx-(sx-cam.x)*k; cam.y=sy-(sy-cam.y)*k; cam.s=ns; }
+
+/* ============================================================
+   Drawing
+   ============================================================ */
+let dpr=1;
+function resize(){ dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(cv.clientWidth*dpr); cv.height=Math.round(cv.clientHeight*dpr); }
+new ResizeObserver(()=>{ resize(); if(F&&camMode==="all") fit(); }).observe(cv);
+
+const FONT_D='"Dela Gothic One", sans-serif';
+const FONT_M='"M PLUS 1 Code", ui-monospace, monospace';
+const FAM={
+  "+":{c:"#2D7DD2",d:"#1B568F",sym:"+",ink:"#fff"},
+  "-":{c:"#2D7DD2",d:"#1B568F",sym:"−",ink:"#fff"},
+  "*":{c:"#E84855",d:"#A92A37",sym:"×",ink:"#fff"},
+  "/":{c:"#9B5DE5",d:"#6837A8",sym:"÷",ink:"#fff"},
+  "%":{c:"#9B5DE5",d:"#6837A8",sym:"%",ink:"#fff"},
+  "<":{c:"#F9C80E",d:"#B48F00",sym:"<",ink:"#2A2200"},
+  "<=":{c:"#F9C80E",d:"#B48F00",sym:"≤",ink:"#2A2200"},
+  ">":{c:"#F9C80E",d:"#B48F00",sym:">",ink:"#2A2200"},
+  ">=":{c:"#F9C80E",d:"#B48F00",sym:"≥",ink:"#2A2200"},
+  "==":{c:"#F9C80E",d:"#B48F00",sym:"=",ink:"#2A2200"},
+  "!=":{c:"#F9C80E",d:"#B48F00",sym:"≠",ink:"#2A2200"},
+};
+const varName=v=>v===CTRL?"伝票":v;
+
+function poly(P){ ctx.beginPath(); ctx.moveTo(P[0].x,P[0].y); for(let i=1;i<P.length;i++) ctx.lineTo(P[i].x,P[i].y); }
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function fitText(txt,maxW,size,font,weight=""){ let s=size; ctx.font=`${weight} ${s}px ${font}`; while(s>7&&ctx.measureText(txt).width>maxW){ s-=1; ctx.font=`${weight} ${s}px ${font}`; } return s; }
+function hexA(h,a){ const n=parseInt(h.slice(1),16); return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`; }
+
+let BIG=1, PH=0;   // token scale at low zoom; phase inside the current tick
+function draw(){
+  const W=cv.clientWidth, H=cv.clientHeight;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle="#335A4F"; ctx.fillRect(0,0,W,H);
+  if(!F){ drawEmpty(W,H); return; }
+  const L=F.L;
+  ctx.setTransform(dpr*cam.s,0,0,dpr*cam.s,dpr*cam.x,dpr*cam.y);
+  BIG=Math.min(2.2,Math.max(1,.8/cam.s));
+  PH=Math.min(1,Math.max(0,simT-eng.tick+1));
+  if(CON) conTick();
+  const fa=CON?Math.min(1,conT/.35):1;
+  ctx.globalAlpha=fa; drawFloor(L); ctx.globalAlpha=1;
+  const zoneA=z=>CON?Math.max(0,Math.min(1,(conT-z.conAt)/.45)):1;
+  for(const z of L.zones){
+    const a=zoneA(z); if(a<=0) continue;
+    // fences are put up as a wipe from the entrance side
+    ctx.save(); if(a<1){ ctx.beginPath(); if(L.dir==="RIGHT") ctx.rect(z.x-12,z.y-12,(z.w+24)*a,z.h+24); else ctx.rect(z.x-12,z.y-12,z.w+24,(z.h+24)*a); ctx.clip(); }
+    drawZone(z,false); ctx.restore();
+  }
+  drawBelts(L);
+  for(const z of L.zones){ const a=zoneA(z); if(a<=0) continue; ctx.globalAlpha=a; drawZone(z,true); ctx.globalAlpha=1; }
+  for(const n of L.N){ if(CON){ conDrawNode(n); } else drawNode(n); }
+  if(!CON) drawTokens(L);
+  drawFlying();
+  drawParticles();
+  if(showLines) for(const n of L.N) drawLineTag(n);
+}
+/* ============================================================
+   Construction: the factory is assembled before it runs.
+   Order follows the flow: crate first, then machines by their distance
+   (in belts) from the crate; each belt is laid once its source machine has
+   landed; the dock / shelf slides in last. Tap to skip.
+   ============================================================ */
+let CON=null, conT=0;
+const easeOutBounce=x=>{ const n=7.5625,d=2.75; if(x<1/d) return n*x*x; if(x<2/d) return n*(x-=1.5/d)*x+.75; if(x<2.5/d) return n*(x-=2.25/d)*x+.9375; return n*(x-=2.625/d)*x+.984375; };
+const easeOutBack=x=>{ const c=1.9; return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2); };
+const DROP=.5;
+function conStart(){
+  const L=F.L, G=F.G, N=L.N;
+  if(reduceMotion){ CON=null; setPlaying(true); return; }
+  // rank = shortest distance in belts from the crate
+  const rank=new Array(N.length).fill(Infinity), adj=N.map(()=>[]);
+  G.edges.forEach(e=>adj[e.from.n].push(e.to.n));
+  const src=N.findIndex(n=>n.kind==="src"); const q=[src]; rank[src]=0;
+  while(q.length){ const u=q.shift(); for(const v of adj[u]) if(rank[v]===Infinity){ rank[v]=rank[u]+1; q.push(v); } }
+  let R=0; N.forEach((n,i)=>{ if(n.kind==="dock") return; if(rank[i]===Infinity) rank[i]=0; R=Math.max(R,rank[i]); });
+  const T=Math.max(2.2,Math.min(4,1.6+.06*N.length));
+  const span=T-1.3, seen={};
+  N.forEach((n,i)=>{
+    if(n.kind==="dock"){ n.conAt=T-.75; return; }
+    const k=(seen[rank[i]]=(seen[rank[i]]||0)+1)-1;
+    n.conAt=.3+(R?rank[i]/R:0)*span+k*.05;
+    n.landed=false;
+  });
+  for(const z of L.zones){ const m=N.filter(n=>{ let zz=n.zone; while(zz!==null&&zz!==undefined){ if(zz===z.id) return true; const Z=F.G.zones[zz]; zz=Z?Z.parent:null; } return false; }); z.conAt=Math.max(.05,(m.length?Math.min(...m.map(n=>n.conAt)):.2)-.3); }
+  L.belts.forEach((b,i)=>{ if(!b) return; const e=G.edges[i]; b.conAt=N[e.from.n].conAt+DROP*.8; b.conDur=Math.max(.2,Math.min(.65,b.len/1100)); });
+  for(const k in L.chutes){ const c=L.chutes[k]; c.conAt=N[+k].conAt+DROP*.8; c.conDur=Math.max(.2,Math.min(.6,c.len/1100)); }
+  CON={t0:clock,T:T+.25};
+  conT=0;
+  showBanner("建設中… タップで飛ばせます"); $("banner").classList.add("hint");
+}
+function conBelt(b){ return b.conAt===undefined?1:Math.max(0,Math.min(1,(conT-b.conAt)/b.conDur)); }
+function conTick(){
+  conT=clock-CON.t0;
+  for(const n of F.L.N){
+    if(!n.landed&&n.kind!=="dock"&&conT>=n.conAt+DROP*.36){
+      n.landed=true; const b=n.box;
+      dust(b.x+b.w/2,b.y+b.h,b.w);
+    }
+  }
+  if(conT>=CON.T) conFinish();
+}
+function conDrawNode(n){
+  const t=conT-n.conAt; if(t<0) return;
+  const b=n.box;
+  ctx.save();
+  if(n.kind==="dock"){
+    // slides in from the side it faces
+    const k=Math.min(1,t/.55), e=easeOutBack(k);
+    const dx=F.L.dir==="RIGHT"?(1-e)*260:0, dy=F.L.dir==="RIGHT"?0:(1-e)*200;
+    ctx.globalAlpha=Math.min(1,k*2); ctx.translate(dx,dy); drawNode(n); ctx.restore(); return;
+  }
+  const k=Math.min(1,t/DROP);
+  if(n.kind==="steer"||n.kind==="mu"||n.kind==="merge"){
+    // installed: swings into place with a pop
+    const e=easeOutBack(k), cx=b.x+b.w/2, cy=b.y+b.h/2;
+    ctx.translate(cx,cy); ctx.rotate((1-e)*-.9); ctx.scale(.2+.8*e,.2+.8*e); ctx.translate(-cx,-cy);
+    ctx.globalAlpha=Math.min(1,k*3);
+  } else {
+    // dropped in from above with a bounce, squashing on impact
+    const y=(1-easeOutBounce(k))*-90;
+    const sq=k>.33&&k<.6?1-.12*Math.sin((k-.33)/.27*Math.PI):1;
+    ctx.translate(0,y);
+    ctx.translate(b.x+b.w/2,b.y+b.h); ctx.scale(2-sq,sq); ctx.translate(-(b.x+b.w/2),-(b.y+b.h));
+    // shadow grows as it falls
+    ctx.globalAlpha=Math.min(1,k*4);
+  }
+  drawNode(n);
+  ctx.restore();
+}
+function conStop(){ CON=null; if($("banner").classList.contains("hint")) $("banner").hidden=true; }
+function conFinish(){
+  if(!CON) return;
+  CON=null;
+  if(F&&!$("banner").classList.contains("bad")) $("banner").hidden=true;
+  setPlaying(true);
+}
+function dust(x,y,w){
+  if(reduceMotion) return;
+  for(let i=0;i<12;i++){ const dir=i%2?1:-1, sp=40+Math.random()*90; particles.push({x:x+dir*Math.random()*w*.4,y,vx:dir*sp,vy:-Math.random()*40,life:0,max:.45+Math.random()*.35,r:4+Math.random()*5,col:i%3===0?"#C9B48A":"#DDE5E1"}); }
+  if(particles.length>400) particles.splice(0,particles.length-400);
+}
+function drawEmpty(W,H){
+  ctx.fillStyle="rgba(255,255,255,.06)";
+  for(let x=0;x<W;x+=48) ctx.fillRect(x,0,1,H);
+  for(let y=0;y<H;y+=48) ctx.fillRect(0,y,W,1);
+  ctx.fillStyle="#CFE0D8"; ctx.font=`18px ${FONT_D}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(compileError?"設計図を直すと、ここに工場が建ちます":"「建てる」を押すと工場が建ちます",W/2,H/2);
+}
+function drawFloor(L){
+  ctx.fillStyle="#3F6B5E"; rr(0,0,L.W,L.H,18); ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.strokeStyle="rgba(0,0,0,.09)"; ctx.lineWidth=1; ctx.beginPath();
+  for(let x=48;x<L.W;x+=48){ ctx.moveTo(x,0); ctx.lineTo(x,L.H); }
+  for(let y=48;y<L.H;y+=48){ ctx.moveTo(0,y); ctx.lineTo(L.W,y); }
+  ctx.stroke(); ctx.restore();
+  ctx.strokeStyle="rgba(249,200,14,.5)"; ctx.lineWidth=3; ctx.setLineDash([18,10]);
+  rr(8,8,L.W-16,L.H-16,12); ctx.stroke(); ctx.setLineDash([]);
+}
+function sign(x,y,txt,bg,ink,size=14){
+  ctx.font=`${size}px ${FONT_D}`; const w=ctx.measureText(txt).width+18, h=size+12;
+  ctx.fillStyle="rgba(0,0,0,.3)"; rr(x+3,y+4,w,h,6); ctx.fill();
+  ctx.fillStyle=bg; rr(x,y,w,h,6); ctx.fill();
+  ctx.fillStyle=ink; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(txt,x+9,y+h/2+1);
+  return w;
+}
+function drawZone(z,signs){
+  const {x,y,w,h}=z;
+  if(signs){ zoneSign(z); return; }
+  if(z.kind==="loop"){
+    ctx.fillStyle="rgba(10,30,25,.20)"; rr(x,y,w,h,14); ctx.fill();
+    // hazard fence
+    ctx.lineWidth=6; ctx.strokeStyle="#262626"; rr(x,y,w,h,14); ctx.stroke();
+    ctx.setLineDash([12,12]); ctx.strokeStyle="#F9C80E"; ctx.stroke(); ctx.setLineDash([]);
+    // fence posts
+    ctx.fillStyle="#C9D4D0";
+    for(const [px,py] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]]){ ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fill(); }
+  } else if(z.kind==="if"){
+    ctx.fillStyle="rgba(255,255,255,.04)"; rr(x,y,w,h,12); ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle="rgba(241,244,236,.35)"; ctx.setLineDash([8,6]); ctx.stroke(); ctx.setLineDash([]);
+  } else {
+    const yes=z.kind==="then";
+    ctx.fillStyle=yes?"rgba(76,195,138,.13)":"rgba(232,72,85,.12)"; rr(x,y,w,h,10); ctx.fill();
+    ctx.strokeStyle=yes?"rgba(76,195,138,.55)":"rgba(232,72,85,.5)"; ctx.lineWidth=2; ctx.stroke();
+  }
+}
+function zoneSign(z){
+  const {x,y,w,h}=z;
+  if(z.kind==="loop"){
+    const sw=sign(x+16,y+12,`くりかえし　${z.line}行目`,"#F9C80E","#2A2200",15);
+    // circular arrow icon
+    const cx=x+16+sw+20, cy=y+25; ctx.strokeStyle="#F9C80E"; ctx.lineWidth=3.5;
+    ctx.beginPath(); ctx.arc(cx,cy,9,-Math.PI*.15,Math.PI*1.45); ctx.stroke();
+    const a=Math.PI*1.45; ctx.fillStyle="#F9C80E"; ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*9+6,cy+Math.sin(a)*9-1); ctx.lineTo(cx+Math.cos(a)*9-3,cy+Math.sin(a)*9-7); ctx.lineTo(cx+Math.cos(a)*9-3,cy+Math.sin(a)*9+5); ctx.fill();
+  } else if(z.kind==="if"){
+    sign(x+10,y+8,`分かれ道　${z.line}行目`,"#E6EDE3","#1F3C36",12);
+  } else {
+    const yes=z.kind==="then";
+    ctx.font=`13px ${FONT_D}`; ctx.fillStyle=yes?"#7FE0B0":"#FF9AA2"; ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.fillText(yes?"はい のとき":"いいえ のとき",x+10,y+15);
+  }
+}
+const BELT={
+  dec:{w:12,edge:"#C9A0DC",bed:"#2E2238",cleat:"#4A3A58"},
+  credit:{w:12,edge:"#FF7AA8",bed:"#3A1F2A",cleat:"#5A3040"},
+  val:{w:22,edge:"#7E8C88",bed:"#262C2E",cleat:"#4A5357"},
+  sig:{w:12,edge:"#6F8FA3",bed:"#1F3440",cleat:"#35566A"},
+  ord:{w:14,edge:"#BFA14A",bed:"#3A321A",cleat:"#5A4C22"},
+};
+function partialPath(P,d){
+  const out=[P[0]];
+  for(let i=1;i<P.length;i++){
+    const a=P[i-1], b=P[i], sl=Math.hypot(b.x-a.x,b.y-a.y);
+    if(d>=sl){ out.push(b); d-=sl; continue; }
+    if(d>0) out.push({x:a.x+(b.x-a.x)*d/sl,y:a.y+(b.y-a.y)*d/sl});
+    break;
+  }
+  return out;
+}
+function drawBelts(L){
+  ctx.lineJoin="round";
+  const order=["credit","dec","sig","ord","val"];
+  // while under construction each belt is laid out to the length built so far
+  const view=b=>{ if(!CON) return b; const f=conBelt(b); if(f<=0) return null; if(f>=1) return b; const P=partialPath(b.P,b.len*f); return P.length>1?{...b,P,partial:true}:null; };
+  const run=(fn)=>{ for(const k of order) for(const b0 of L.belts){ if(!b0||b0.kind!==k||b0.P.length<2) continue; const b=view(b0); if(b) fn(b,BELT[k]); } };
+  const chs=Object.values(L.chutes).map(view).filter(Boolean);
+  // chutes to the dock: wide roller lanes
+  for(const c of chs){ poly(c.P); ctx.lineCap="round"; ctx.strokeStyle="#8A9894"; ctx.lineWidth=24; ctx.stroke(); poly(c.P); ctx.strokeStyle="#5B6763"; ctx.lineWidth=19; ctx.stroke(); ctx.setLineDash([2,6]); ctx.lineCap="butt"; poly(c.P); ctx.strokeStyle="#A7B3AF"; ctx.lineWidth=17; ctx.stroke(); ctx.setLineDash([]); }
+  run((b,s)=>{ poly(b.P); ctx.lineCap="round"; ctx.strokeStyle=b.back?"#D98E3A":s.edge; ctx.lineWidth=s.w+5; ctx.stroke(); });
+  run((b,s)=>{ poly(b.P); ctx.lineCap="round"; ctx.strokeStyle=s.bed; ctx.lineWidth=s.w; ctx.stroke(); });
+  ctx.lineCap="butt"; ctx.lineDashOffset=-beltPhase;
+  run((b,s)=>{ ctx.setLineDash(s.w>16?[3,9]:[2,7]); poly(b.P); ctx.strokeStyle=s.cleat; ctx.lineWidth=s.w-3; ctx.stroke(); });
+  ctx.setLineDash([]); ctx.lineDashOffset=0;
+  // direction chevrons at the end of each belt
+  run((b,s)=>{ if(b.partial) return; const P=b.P, a=P[P.length-2], e=P[P.length-1]; const ang=Math.atan2(e.y-a.y,e.x-a.x); ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(ang); ctx.fillStyle=b.back?"#D98E3A":s.edge; ctx.beginPath(); ctx.moveTo(1,0); ctx.lineTo(-7,-s.w/2-2); ctx.lineTo(-7,s.w/2+2); ctx.fill(); ctx.restore(); });
+}
+
+function nodeGlow(n,f){
+  if(!f) return 0;
+  const age=(eng.tick-f.tick)+PH;   // 0..1 within the tick it fired
+  return age<1?1-age:0;
+}
+function drawNode(n){
+  const f=fireFx.get(n.id); const g=f&&f.tick===eng.tick?nodeGlow(n,f):0;
+  const b=n.box, ns=nodeState.get(n.id)||{};
+  const err=eng.err&&eng.err.node===n.id;
+  if(g>0&&n.kind!=="dock"){ const t=f.tint||"#F9C80E"; ctx.fillStyle=hexA(t,.18+.25*g); rr(b.x-8,b.y-8,b.w+16,b.h+18,14); ctx.fill(); ctx.strokeStyle=hexA(t,.4+.6*g); ctx.lineWidth=3; ctx.stroke(); }
+  if(err){ ctx.strokeStyle="#E84855"; ctx.lineWidth=5; rr(b.x-8,b.y-8,b.w+16,b.h+18,14); ctx.stroke(); }
+  switch(n.kind){
+    case "op": case "opi": drawMachine(n,b,ns,g,f); break;
+    case "const": drawConst(n,b,ns,g); break;
+    case "src": drawCrate(n,b); break;
+    case "steer": drawSteer(n,b,ns,g); break;
+    case "mu": case "merge": drawFunnel(n,b,ns,g); break;
+    case "ship": drawShip(n,b,ns,g); break;
+    case "dock": drawDock(n,b); break;
+  }
+}
+function shadow(x,y,w,h,r){ ctx.fillStyle="rgba(0,0,0,.3)"; rr(x+5,y+8,w,h,r); ctx.fill(); }
+function drawMachine(n,b,ns,g,f){
+  const fam=FAM[n.op];
+  const press=g>0?Math.sin(Math.min(1,(1-g)*1.6)*Math.PI)*7:0;
+  const shake=g>0?Math.sin((1-g)*50)*g*1.2:0;
+  const X=b.x+shake, Y=b.y, w=b.w, h=b.h-8;
+  shadow(X,Y,w,h+6,9);
+  ctx.fillStyle=fam.d; rr(X,Y+8,w,h,9); ctx.fill();
+  ctx.fillStyle=fam.c; rr(X,Y+press,w,h-2,9); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.22)"; rr(X+5,Y+press+4,w-10,5,3); ctx.fill();
+  // symbol (with the immediate operand stamped on the press)
+  let sym=fam.sym;
+  if(n.kind==="opi") sym=n.side==="r"?`${fam.sym}${n.imm}`:`${n.imm}${fam.sym}`;
+  ctx.fillStyle=fam.ink; ctx.textAlign="center"; ctx.textBaseline="middle";
+  fitText(sym,w-10,n.kind==="opi"?22:26,FONT_D);
+  ctx.fillText(sym,b.x+w/2+shake,Y+h*.42+press);
+  // LCD
+  ctx.fillStyle="#132621"; rr(X+6,Y+h-20+press,w-12,16,3); ctx.fill();
+  let lcd=ns.v===undefined?"·":String(ns.v);
+  if(g>0&&f.p.a!==undefined) lcd=`${f.p.a}${fam.sym}${f.p.b}`;
+  fitText(lcd,w-16,12,FONT_M,"700");
+  ctx.fillStyle=g>0?"#F9C80E":"#7FE0B0"; ctx.fillText(lcd,b.x+w/2+shake,Y+h-11+press);
+}
+function drawConst(n,b,ns,g){
+  const press=g>0?Math.sin(Math.min(1,(1-g)*1.6)*Math.PI)*5:0;
+  shadow(b.x,b.y,b.w,b.h-4,8);
+  ctx.fillStyle="#8C5E2E"; rr(b.x,b.y+6,b.w,b.h-8,8); ctx.fill();
+  ctx.fillStyle="#B27A40"; rr(b.x,b.y+press,b.w,b.h-10,8); ctx.fill();
+  ctx.strokeStyle="#6E4520"; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle="#FCE7C8"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  fitText(String(n.k),b.w-10,20,FONT_D); ctx.fillText(String(n.k),b.x+b.w/2,b.y+b.h*.42+press);
+  ctx.font=`10px ${FONT_D}`; ctx.fillStyle="rgba(252,231,200,.75)"; ctx.fillText("定数",b.x+b.w/2,b.y+b.h-14+press);
+}
+// local "down" frame for directional nodes; text stays upright
+function frameIn(n){ const b=n.box; ctx.save(); if(n.dir==="RIGHT") ctx.transform(0,1,1,0,b.x,b.y); else ctx.translate(b.x,b.y); return n.box0; }
+function utext(n,txt,u,v){ ctx.save(); ctx.translate(u,v); if(n.dir==="RIGHT") ctx.transform(0,1,1,0,0,0); ctx.fillText(txt,0,0); ctx.restore(); }
+function upright(n,u,v,fn){ ctx.save(); ctx.translate(u,v); if(n.dir==="RIGHT") ctx.transform(0,1,1,0,0,0); fn(); ctx.restore(); }
+function drawCrate(n,b){
+  const {w,h}=frameIn(n);
+  ctx.fillStyle="rgba(0,0,0,.3)"; rr(5,8,w,h,6); ctx.fill();
+  ctx.fillStyle="#8C5E2E"; rr(0,0,w,h,6); ctx.fill();
+  ctx.fillStyle="#C38A4D"; rr(4,4,w-8,h-8,4); ctx.fill();
+  ctx.strokeStyle="rgba(110,69,32,.55)"; ctx.lineWidth=2; ctx.beginPath();
+  for(let yy=14;yy<h-4;yy+=12){ ctx.moveTo(4,yy); ctx.lineTo(w-4,yy); } ctx.stroke();
+  // a slot per output: what this crate supplies
+  n.outs.forEach((o,i)=>{
+    const x=w*(i+1)/(n.outs.length+1), y=h-20;
+    upright(n,x,y,()=>{
+      const txt=o.name===CTRL?"伝票":o.name; ctx.font=`700 15px ${FONT_M}`;
+      const tw=Math.max(34,ctx.measureText(txt).width+14);
+      ctx.fillStyle="#3A2810"; rr(-tw/2,-13,tw,26,5); ctx.fill();
+      ctx.fillStyle=o.name===CTRL?"#F9C80E":"#FCE7C8"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(txt,0,1);
+    });
+  });
+  ctx.restore();
+  ctx.fillStyle="#F1F4EC"; ctx.font=`15px ${FONT_D}`; ctx.textAlign="left"; ctx.textBaseline="bottom"; ctx.fillText("材料の木箱",b.x+2,b.y-6);
+}
+function varTag(n,txt,u,v){
+  upright(n,u,v,()=>{
+    ctx.font=`14px ${FONT_D}`; const w=Math.max(24,ctx.measureText(txt).width+12);
+    ctx.fillStyle="#F1F4EC"; rr(-w/2,-11,w,22,11); ctx.fill();
+    ctx.strokeStyle="#1F3C36"; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle="#1F3C36"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(txt,0,1);
+  });
+}
+function drawSteer(n,b,ns,g){
+  const {w,h}=frameIn(n);
+  ctx.fillStyle="rgba(0,0,0,.3)"; rr(5,8,w,h,10); ctx.fill();
+  ctx.fillStyle="#5E6E6A"; rr(0,0,w,h,10); ctx.fill();
+  ctx.fillStyle="#24332F"; rr(5,5,w-10,h-10,7); ctx.fill();
+  // the diverter flap: pivots toward the side the last token was sent
+  const loop=n.cond==="loop";
+  const tgt=ns.side===undefined?0:(ns.side===0?(loop?0:0.6):(loop?-1.2:-0.6));
+  const cur=ns.ang??tgt; ns.ang=cur+(tgt-cur)*.25; nodeState.set(n.id,ns);
+  const px=w/2, py=15;
+  ctx.save(); ctx.translate(px,py); ctx.rotate(ns.ang);
+  ctx.fillStyle="#F9C80E"; rr(-6,-2,12,h-24,5); ctx.fill();
+  ctx.strokeStyle="#2A2200"; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fillStyle="#E6EDE3"; ctx.fill();
+  // lamps next to the two exits
+  const on=ns.side;
+  const lamp=(x,y,c,lit)=>{ ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2); ctx.fillStyle=lit?c:"#3E4A47"; ctx.fill(); if(lit&&g>0){ ctx.beginPath(); ctx.arc(x,y,6+7*g,0,Math.PI*2); ctx.fillStyle=hexA(c,.4*g); ctx.fill(); } };
+  if(loop){ lamp(w/2-15,h-10,"#4CC38A",on===0); lamp(w-10,h*.62+11,"#E84855",on===1); }
+  else { lamp(w*.28,h-10,"#4CC38A",on===0); lamp(w*.72,h-10,"#E84855",on===1); }
+  varTag(n,varName(n.var),w/2,-2);
+  ctx.restore();
+}
+function drawFunnel(n,b,ns,g){
+  const mu=n.kind==="mu";
+  const {w,h}=frameIn(n);
+  ctx.fillStyle="rgba(0,0,0,.3)"; ctx.beginPath(); ctx.moveTo(5,8); ctx.lineTo(w+5,8); ctx.lineTo(w*.66+5,h*.7+8); ctx.lineTo(w*.66+5,h+8); ctx.lineTo(w*.34+5,h+8); ctx.lineTo(w*.34+5,h*.7+8); ctx.fill();
+  const gr=ctx.createLinearGradient(0,0,w,0); gr.addColorStop(0,"#9AA8A4"); gr.addColorStop(.5,"#E4EBE8"); gr.addColorStop(1,"#83918D");
+  ctx.fillStyle=gr; ctx.beginPath();
+  ctx.moveTo(0,0); ctx.lineTo(w,0); ctx.lineTo(w*.66,h*.7); ctx.lineTo(w*.66,h); ctx.lineTo(w*.34,h); ctx.lineTo(w*.34,h*.7); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle="#5E6E6A"; ctx.lineWidth=1.5; ctx.stroke();
+  // inlet lamps: which side it took from last
+  const side=ns.side;
+  const lamp=(x,y,c,lit)=>{ ctx.beginPath(); ctx.arc(x,y,5.5,0,Math.PI*2); ctx.fillStyle=lit?c:"#6B7774"; ctx.fill(); ctx.strokeStyle="#2B3532"; ctx.lineWidth=1.2; ctx.stroke(); };
+  if(mu){ lamp(w*.3,9,"#F1F4EC",side===0); lamp(w-9,h*.4,"#FF9F1C",side===1); }
+  else { lamp(w*.28,9,"#4CC38A",side===0); lamp(w*.72,9,"#E84855",side===1); }
+  if(g>0){ ctx.fillStyle=hexA("#F9C80E",.6*g); ctx.beginPath(); ctx.arc(w/2,h*.62,8+6*g,0,Math.PI*2); ctx.fill(); }
+  varTag(n,varName(n.var),w/2,h*.36);
+  if(n.lead) upright(n,w*.5,h+6,()=>{
+    // admission controller (loop) / first-come lead merge (if)
+    const t=mu?`受付 券${eng.q[n.ins.find(i=>i.name==="credit").edge].length}`:"先着";
+    ctx.font=`12px ${FONT_D}`; const tw=ctx.measureText(t).width+12;
+    ctx.fillStyle="#FF7AA8"; rr(-tw/2,0,tw,18,5); ctx.fill();
+    ctx.fillStyle="#3A0F20"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(t,0,10);
+  });
+  ctx.restore();
+}
+function drawShip(n,b,ns,g){
+  shadow(b.x,b.y,b.w,b.h,10);
+  ctx.fillStyle="#A7783E"; rr(b.x,b.y+6,b.w,b.h-6,10); ctx.fill();
+  ctx.fillStyle="#D4A464"; rr(b.x,b.y,b.w,b.h-8,10); ctx.fill();
+  ctx.save(); rr(b.x,b.y,b.w,12,[10,10,0,0]); ctx.clip();
+  ctx.fillStyle="#F9C80E"; ctx.fillRect(b.x,b.y,b.w,12); ctx.fillStyle="#262626";
+  for(let i=-16;i<b.w+16;i+=16){ ctx.beginPath(); ctx.moveTo(b.x+i,b.y+12); ctx.lineTo(b.x+i+8,b.y+12); ctx.lineTo(b.x+i+20,b.y); ctx.lineTo(b.x+i+12,b.y); ctx.fill(); }
+  ctx.restore();
+  ctx.fillStyle="#3A2810"; ctx.font=`15px ${FONT_D}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("出荷",b.x+b.w/2,b.y+b.h*.5+(g>0?2*g:0));
+  ctx.font=`700 11px ${FONT_M}`; ctx.fillText(`${ns.count||0}箱`,b.x+b.w/2,b.y+b.h-17);
+}
+function drawShelf(n,b){
+  shadow(b.x,b.y,b.w,b.h,10);
+  ctx.fillStyle="#7A8A85"; rr(b.x,b.y,b.w,b.h,10); ctx.fill();
+  ctx.save(); rr(b.x,b.y,b.w,16,[10,10,0,0]); ctx.clip();
+  ctx.fillStyle="#F9C80E"; ctx.fillRect(b.x,b.y,b.w,16); ctx.fillStyle="#262626";
+  for(let i=-20;i<b.w+20;i+=20){ ctx.beginPath(); ctx.moveTo(b.x+i,b.y+16); ctx.lineTo(b.x+i+10,b.y+16); ctx.lineTo(b.x+i+26,b.y); ctx.lineTo(b.x+i+16,b.y); ctx.fill(); }
+  ctx.restore();
+  const J=F.jobs.length, done=eng.jobsDone;
+  { const t=`出荷棚　${done} / ${J} 件`; ctx.font=`14px ${FONT_D}`; const tw=ctx.measureText(t).width+16; ctx.fillStyle="#1F3C36"; rr(b.x+b.w/2-tw/2,b.y-4,tw,24,6); ctx.fill(); ctx.fillStyle="#F1F4EC"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(t,b.x+b.w/2,b.y+9); }
+  // finishing order, so overtaking is visible
+  const order=[]; eng.jobDoneAt.forEach((t,j)=>{ if(t!==undefined) order.push([t,j]); }); order.sort((a,c)=>a[0]-c[0]||a[1]-c[1]);
+  const rank=new Map(order.map((x,k)=>[x[1],k+1]));
+  for(let j=0;j<J;j++){
+    const r=slotRect(b,j,J), col=jobColor(j);
+    const started=j<eng.jobNext, fin=eng.jobDoneAt[j]!==undefined, sl=shelf[j]||{outs:[]};
+    ctx.fillStyle=fin?"#E2B475":started?"#2B3B37":"#4E5B57"; rr(r.x,r.y,r.w,r.h,5); ctx.fill();
+    ctx.fillStyle=col; ctx.fillRect(r.x,r.y+3,6,r.h-6);
+    if(started&&!fin){ ctx.strokeStyle=hexA(col,.55+.45*Math.sin(clock*6)); ctx.lineWidth=2.5; rr(r.x,r.y,r.w,r.h,5); ctx.stroke(); }
+    const age=clock-sl.at; if(sl.at>0&&age<.5){ ctx.strokeStyle=`rgba(255,255,255,${1-age/.5})`; ctx.lineWidth=4; rr(r.x-2,r.y-2,r.w+4,r.h+4,6); ctx.stroke(); }
+    const name=jobName(j);
+    let txt=name;
+    if(sl.outs.length){ const v=sl.outs.length>3?sl.outs.slice(0,2).join(",")+"…":sl.outs.join(","); txt=`${name}=${v}`; }
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    fitText(txt,r.w-14-(fin?16:0),13,FONT_M,"700");
+    ctx.fillStyle=fin?"#3A2810":started?"#F1F4EC":"#9FB0AA"; ctx.fillText(txt,r.x+10,r.y+r.h/2+1);
+    if(fin){ ctx.font=`10px ${FONT_D}`; ctx.fillStyle="#7A5A2E"; ctx.textAlign="right"; ctx.fillText(`${rank.get(j)}着`,r.x+r.w-4,r.y+r.h/2+1); }
+  }
+}
+function drawDock(n,b){
+  if(F.G.multi) return drawShelf(n,b);
+  shadow(b.x,b.y,b.w,b.h,10);
+  ctx.fillStyle="#7A8A85"; rr(b.x,b.y,b.w,b.h,10); ctx.fill();
+  ctx.fillStyle="#5F6E69"; rr(b.x+8,b.y+22,b.w-16,b.h-30,6); ctx.fill();
+  ctx.save(); rr(b.x,b.y,b.w,16,[10,10,0,0]); ctx.clip();
+  ctx.fillStyle="#F9C80E"; ctx.fillRect(b.x,b.y,b.w,16); ctx.fillStyle="#262626";
+  for(let i=-20;i<b.w+20;i+=20){ ctx.beginPath(); ctx.moveTo(b.x+i,b.y+16); ctx.lineTo(b.x+i+10,b.y+16); ctx.lineTo(b.x+i+26,b.y); ctx.lineTo(b.x+i+16,b.y); ctx.fill(); }
+  ctx.restore();
+  ctx.fillStyle="#F1F4EC"; ctx.font=`15px ${FONT_D}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+  { const t=`出荷口　${dockBoxes.length}箱`; ctx.font=`14px ${FONT_D}`; const tw=ctx.measureText(t).width+16; ctx.fillStyle="#1F3C36"; rr(b.x+b.w/2-tw/2,b.y-4,tw,24,6); ctx.fill(); ctx.fillStyle="#F1F4EC"; ctx.fillText(t,b.x+b.w/2,b.y+9); }
+  const cols=5, max=15, s0=Math.max(0,dockBoxes.length-max);
+  for(let i=s0;i<dockBoxes.length;i++){
+    const k=i-s0, cx=b.x+30+(k%cols)*43, cy=b.y+b.h-26-Math.floor(k/cols)*38;
+    const age=clock-dockBoxes[i].at; const drop=age<.3?(1-age/.3)*-20:0;
+    drawBox(cx,cy+drop,dockBoxes[i].v,"val",dockBoxes[i],1,i===dockBoxes.length-1);
+  }
+}
+function drawLineTag(n){
+  if(!n.line) return;
+  const b=n.box; ctx.font=`11px ${FONT_D}`; const t=`${n.line}行`; const w=ctx.measureText(t).width+8;
+  ctx.fillStyle="rgba(21,48,42,.9)"; rr(b.x+b.w-w+6,b.y-10,w,16,4); ctx.fill();
+  ctx.fillStyle="#F9C80E"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(t,b.x+b.w-w/2+6,b.y-1);
+}
+
+/* tokens */
+function drawBox(x,y,v,kind,t,big=1,hi=false,fromKind){
+  const its=t&&t.its, job=t?t.job:undefined;
+  ctx.save(); ctx.translate(x,y); ctx.scale(big,big);
+  if(kind==="credit"){
+    // entry ticket (入場券)
+    ctx.fillStyle="rgba(0,0,0,.3)"; ctx.fillRect(-9,-5,20,13);
+    ctx.fillStyle="#FF7AA8"; ctx.beginPath(); ctx.moveTo(-11,-7); ctx.lineTo(11,-7); ctx.lineTo(11,-2); ctx.arc(11,0,2,-Math.PI/2,Math.PI/2,true); ctx.lineTo(11,7); ctx.lineTo(-11,7); ctx.lineTo(-11,2); ctx.arc(-11,0,2,Math.PI/2,-Math.PI/2,true); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="#8A2A4E"; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.fillStyle="#5A0F2E"; ctx.font=`9px ${FONT_D}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("券",0,1);
+    ctx.restore(); return;
+  }
+  if(kind==="dec"){
+    // broadcast decision: for loop entries 新 (new job) / 戻 (back); for merges は / い
+    const mu=fromKind==="mu";
+    const c=mu?(v?"#FF9F1C":"#F1F4EC"):(v?"#E84855":"#4CC38A");
+    ctx.beginPath(); ctx.arc(1.5,3,9,0,Math.PI*2); ctx.fillStyle="rgba(0,0,0,.35)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fillStyle=c; ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle=job>=0&&F&&F.G.multi?jobColor(job):"#2B3532"; ctx.stroke();
+    ctx.fillStyle="#1F1A10"; ctx.font=`10px ${FONT_D}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(mu?(v?"戻":"新"):(v?"い":"は"),0,1);
+    ctx.restore(); return;
+  }
+  if(kind==="sig"){
+    const yes=v!==0;
+    ctx.beginPath(); ctx.arc(1.5,3,9,0,Math.PI*2); ctx.fillStyle="rgba(0,0,0,.35)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fillStyle=yes?"#4CC38A":"#E84855"; ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle=yes?"#1E6B45":"#8A1F2B"; ctx.stroke();
+    ctx.strokeStyle="#fff"; ctx.lineWidth=2.6; ctx.lineCap="round"; ctx.beginPath();
+    if(yes){ ctx.moveTo(-4,0); ctx.lineTo(-1,3.5); ctx.lineTo(4.5,-3.5); } else { ctx.moveTo(-3.5,-3.5); ctx.lineTo(3.5,3.5); ctx.moveTo(3.5,-3.5); ctx.lineTo(-3.5,3.5); }
+    ctx.stroke(); ctx.restore(); return;
+  }
+  if(kind==="ord"){
+    ctx.fillStyle="rgba(0,0,0,.3)"; ctx.fillRect(-9,-6,20,15);
+    ctx.fillStyle="#F9C80E"; ctx.beginPath(); ctx.moveTo(-11,-8); ctx.lineTo(5,-8); ctx.lineTo(11,-2); ctx.lineTo(11,8); ctx.lineTo(-11,8); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="#8A6D00"; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.fillStyle="#5A4600"; ctx.fillRect(-7,-3,12,1.6); ctx.fillRect(-7,1,9,1.6); ctx.fillRect(-7,4.5,11,1.4);
+    ctx.restore(); return;
+  }
+  const txt=String(v);
+  const fs=txt.length>6?12:15;
+  ctx.font=`700 ${fs}px ${FONT_M}`;
+  const w=Math.max(30,ctx.measureText(txt).width+14), h=26;
+  ctx.fillStyle="rgba(0,0,0,.32)"; ctx.fillRect(-w/2+3,-h/2+6,w,h);
+  ctx.fillStyle="#A7783E"; ctx.fillRect(-w/2,-h/2+4,w,h);
+  ctx.fillStyle="#E2B475"; ctx.fillRect(-w/2,-h/2,w,h);
+  const tc=tintOf(its,job);
+  if(tc&&F&&F.G.multi){ ctx.fillStyle=hexA(tc,.42); ctx.fillRect(-w/2,-h/2,w,h); }
+  if(tc){ ctx.fillStyle=tc; ctx.fillRect(-w/2,-h/2,7,h); ctx.fillRect(w/2-7,-h/2,7,h); }
+  else { ctx.fillStyle="rgba(150,104,48,.45)"; ctx.fillRect(-3,-h/2,6,h); }
+  ctx.strokeStyle="rgba(58,40,16,.55)"; ctx.lineWidth=1.2; ctx.strokeRect(-w/2+.6,-h/2+.6,w-1.2,h-1.2);
+  if(hi){ ctx.strokeStyle="#F9C80E"; ctx.lineWidth=3; ctx.strokeRect(-w/2-3,-h/2-3,w+6,h+10); }
+  ctx.fillStyle="#3A2810"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(txt,0,1);
+  ctx.restore();
+}
+const SLOT={val:32,sig:22,ord:24,dec:22,credit:22};
+let lastFrameDt=0;
+function drawTokens(L){
+  const next=new Map();
+  const dt=lastFrameDt;
+  // draw signal/order tokens first, value boxes on top
+  for(const pass of ["credit","dec","sig","ord","val"]){
+    for(let e=0;e<L.belts.length;e++){
+      const b=L.belts[e]; if(!b||b.kind!==pass) continue;
+      const q=eng.q[e]; if(!q.length) continue;
+      const sp=Math.min(SLOT[b.kind]*Math.min(BIG,1.4),(b.len-14)/Math.max(1,eng.caps[e]));
+      const speed=Math.max(120,BELT_PX*tps*2.5);
+      for(let i=q.length-1;i>=0;i--){
+        const t=q[i];
+        const target=Math.max(0,b.len-14-i*sp-(b.kind==="val"?4:0));
+        const lat=eng.lat[e], prog=t.at===undefined?1:Math.min(1,Math.max(0,(simT-t.at)/lat));
+        const want=Math.min(target,prog*(b.len-14));
+        let d=vis.has(t.uid)?vis.get(t.uid):want;
+        if(reduceMotion||want<d) d=want; else d=Math.min(want,d+speed*dt);
+        next.set(t.uid,d);
+        const p=posAt(b.P,d);
+        drawBox(p.x,p.y,t.v,b.kind,t,BIG,false,b.from);
+      }
+    }
+  }
+  vis=next;
+}
+function drawFlying(){
+  const dt=lastFrameDt;
+  for(const f of flying){
+    f.d+=Math.max(220,f.len*tps/0.9)*dt;
+    if(f.d>=f.len){ f.done=true; if(F.G.multi){ const sl=shelf[f.job]; sl.outs.push(f.v); sl.at=clock; } else dockBoxes.push({v:f.v,its:f.its,at:clock}); continue; }
+    const p=posAt(f.P,f.d); drawBox(p.x,p.y,f.v,"val",f,BIG);
+  }
+  flying=flying.filter(f=>!f.done);
+}
+
+function puff(x,y,op){
+  if(reduceMotion) return;
+  const col=FAM[op]?FAM[op].c:"#fff";
+  for(let i=0;i<7;i++){ const a=Math.random()*Math.PI*2, sp=30+Math.random()*50; particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-20,life:0,max:.4+Math.random()*.3,r:3+Math.random()*3,col:i%3===0?col:"#E8EEEA"}); }
+  if(particles.length>260) particles.splice(0,particles.length-260);
+}
+function drawParticles(){
+  for(const p of particles){ const k=p.life/p.max; ctx.globalAlpha=(1-k)*.8; ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*(1+k*1.5),0,Math.PI*2); ctx.fill(); }
+  ctx.globalAlpha=1;
+}
+
+/* ============================================================
+   Main loop: sim time is measured in ticks
+   ============================================================ */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.1,(now-last)/1000); last=now; clock+=dt; lastFrameDt=dt;
+  if(playing&&eng&&!eng.done){
+    simT+=dt*tps;
+    if(stepTo!==null&&simT>=stepTo){ simT=stepTo; stepTo=null; playing=false; setPlaying(false); }
+    let guard=0;
+    while(eng.tick<Math.floor(simT)&&!eng.done&&guard++<400) tickOnce();
+    if(eng.tick<Math.floor(simT)-400) simT=eng.tick;
+    if(!reduceMotion) beltPhase=(beltPhase+dt*Math.min(BELT_PX*tps,420))%1200;
+  }
+  for(const p of particles){ p.life+=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=.92; p.vy*=.92; }
+  particles=particles.filter(p=>p.life<p.max);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+const sel=$("sample");
+SAMPLES.forEach((s,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=s.name; sel.appendChild(o); });
+function loadSample(i){ const smp=SAMPLES[i]; ta.value=smp.src; $("inputs").value=smp.inputs||""; updateGutter(); }
+sel.addEventListener("change",()=>{ loadSample(+sel.value); build(); });
+$("inputs").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); build(); } });
+$("inputs").addEventListener("change",()=>build());
+$("bBuild").addEventListener("click",build);
+$("bPlay").addEventListener("click",()=>{ if(!F){ build(); return; } stepTo=null; setPlaying(!playing); });
+$("bStep").addEventListener("click",()=>{
+  if(!F) return;
+  conStop();
+  if(eng.done) resetRun();
+  playing=false; setPlaying(false);
+  tickOnce(); simT=eng.tick+.999;
+});
+$("bReset").addEventListener("click",()=>{ if(!F) return; conStop(); resetRun(); setPlaying(false); });
+$("bFit").addEventListener("click",fit);
+$("bLines").addEventListener("click",()=>{ showLines=!showLines; $("bLines").setAttribute("aria-pressed",showLines); });
+const speedOf=v=>.5*Math.pow(2,v/11);
+function updSpeed(){ tps=speedOf(+$("speed").value); $("speedOut").textContent=(tps<10?(Math.round(tps*10)/10):Math.round(tps))+" tick/秒"; }
+$("speed").addEventListener("input",updSpeed);
+ta.addEventListener("input",updateGutter);
+ta.addEventListener("scroll",()=>{ $("gutter").scrollTop=ta.scrollTop; updateBands(); });
+ta.addEventListener("keydown",e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){ e.preventDefault(); build(); return; }
+  if(e.key==="Tab"&&!e.shiftKey){ e.preventDefault(); const s=ta.selectionStart, en=ta.selectionEnd; ta.setRangeText("  ",s,en,"end"); updateGutter(); }
+});
+addEventListener("resize",()=>{ if(innerWidth>760) $("codebox").open=true; });
+
+// test hooks
+window.__df={
+  samples:SAMPLES.map(s=>s.name),
+  async load(i){ sel.value=i; loadSample(i); await build(); return true; },
+  finish(){ if(!eng) return null; while(!eng.done) tickOnce(); return eng.outsByJob(); },
+  // headless: every sample, every job, against the sequential interpreter and plain-JS expectations
+  verifyAll(){ return SAMPLES.map(s=>{ const jobs=s.inputs?parseInputs(s.inputs):[]; const r=buildAndCheck(s.src,jobs); const exp=sampleExpect(s,jobs); return {name:s.name,jobs:jobs.length||1,match:r.match&&JSON.stringify(r.df.per)===JSON.stringify(exp),ticks:r.df.ticks,maxFlight:r.df.maxFlight,nodes:r.G.nodes.length}; }); },
+  state:()=>({tick:eng&&eng.tick,done:eng&&eng.done,per:eng&&eng.outsByJob(),jobs:F&&F.jobs,jobsDone:eng&&eng.jobsDone,jobsLive:eng&&eng.jobsLive,flight:eng&&eng.flight,max:eng&&eng.maxFlight,banner:$("banner").hidden?null:$("banner").textContent,check:$("check").textContent,layout:F&&F.L.dir+"/"+F.L.variant,finishOrder:eng&&eng.jobDoneAt.map((t,j)=>[t,j]).filter(x=>x[0]!==undefined).sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(x=>x[1])}),
+  expected(i){ const s=SAMPLES[i]; const jobs=s.inputs?parseInputs(s.inputs):[]; return sampleExpect(s,jobs); },
+  layoutStats:()=>F&&F.layoutTable,
+  building:()=>building,
+  constructing:()=>!!CON,
+  skipConstruction(){ conFinish(); },
+  setSpeed(v){ $("speed").value=v; updSpeed(); },
+  play(){ setPlaying(true); },
+};
+
+loadSample(0);
+updateGutter(); resize(); updSpeed();
+(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>build());
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
