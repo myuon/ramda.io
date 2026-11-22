@@ -4,7 +4,7 @@ import type { Item } from "./notion";
 export const staticWorks: Item[] = [
   {
     id: "works/code-factory",
-    title: "流れ工場",
+    title: "コードファクトリー",
     link: "/works/code-factory",
     summary:
       "プログラムを書くと工場が建つ。値が箱になってベルトを流れ、本当に計算する",
