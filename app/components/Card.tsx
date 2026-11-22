@@ -69,7 +69,7 @@ export const Card = ({ title, summary, href, date, image }: CardProps) => {
               src={image}
               alt=""
               width={1200}
-              height={675}
+              height={630}
               sizes="(max-width: 720px) 100vw, 360px"
               className={css`
                 display: block;
