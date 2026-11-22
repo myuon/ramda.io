@@ -111,6 +111,7 @@ export default async function Page() {
               summary={item.summary}
               href={item.link}
               date={item.publishedAt}
+              image={item.image}
             />
           ))}
         </div>

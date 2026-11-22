@@ -11,6 +11,7 @@ export interface Item {
   link?: string;
   summary?: string;
   publishedAt: string;
+  image?: string;
 }
 
 export const fetchItems = cache(async () => {
