@@ -9,5 +9,6 @@ export const staticWorks: Item[] = [
     summary:
       "プログラムを書くと工場が建つ。値が箱になってベルトを流れ、本当に計算する",
     publishedAt: "2026-11-22",
+    image: "/works/code-factory/thumbnail.jpg",
   },
 ];

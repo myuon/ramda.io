@@ -25,11 +25,11 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head prefix="og: https://ogp.me/ns#">
-        <meta property="og:url" content="https://ramda.io" />
+        <meta property="og:url" content="https://www.ramda.io" />
         <meta property="og:type" content="website" />
         <meta property="og:title" content="ramda.io" />
         <meta property="og:site_name" content="ramda.io" />
-        <meta property="og:image" content="https://ramda.io/ogp.png" />
+        <meta property="og:image" content="https://www.ramda.io/ogp.png" />
         <meta name="twitter:card" content="summary" />
       </head>
       <body className={`${ibmPlexSans.variable}`}>

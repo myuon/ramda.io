@@ -3,6 +3,7 @@
 import { css } from "@kuma-ui/core";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import Image from "next/image";
 import Link from "next/link";
 dayjs.extend(relativeTime);
 
@@ -11,6 +12,7 @@ export interface CardProps {
   summary?: string;
   href?: string;
   date?: string;
+  image?: string;
 }
 
 const LinkWrapper = ({
@@ -33,7 +35,7 @@ const LinkWrapper = ({
   );
 };
 
-export const Card = ({ title, summary, href, date }: CardProps) => {
+export const Card = ({ title, summary, href, date, image }: CardProps) => {
   return (
     <LinkWrapper href={href} external>
       <div
@@ -62,6 +64,22 @@ export const Card = ({ title, summary, href, date }: CardProps) => {
             gap: 16px;
           `}
         >
+          {image ? (
+            <Image
+              src={image}
+              alt=""
+              width={1200}
+              height={675}
+              sizes="(max-width: 720px) 100vw, 360px"
+              className={css`
+                display: block;
+                width: calc(100% + 40px);
+                height: auto;
+                margin: -20px -20px 4px;
+                border-radius: 6px 6px 0 0;
+              `}
+            />
+          ) : null}
           <h3
             className={css`
               font-size: 24px;
