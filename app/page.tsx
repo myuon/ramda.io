@@ -2,9 +2,12 @@ import { css } from "@kuma-ui/core";
 import { Card } from "./components/Card";
 import { fetchItems, fetchLinks, fetchProfile } from "./notion";
 import Image from "next/image";
+import { staticWorks } from "./works";
 
 export default async function Page() {
-  const items = await fetchItems();
+  const items = [...(await fetchItems()), ...staticWorks].sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt),
+  );
   const profile = await fetchProfile();
   const links = await fetchLinks();
 
