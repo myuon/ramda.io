@@ -21,9 +21,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Overpass:wght@500;700;800;900&family=Overpass+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>try{if(localStorage.getItem("rr-theme")==="dark")document.documentElement.dataset.theme="dark";}catch(e){}</script>
 <style>
 :root{
   --paper:#FFFFFF;
+  --surface:#FFFFFF;
+  --hover:#E3E6E9;
+  --bar:#E6E8EB;
+  --glass:rgba(255,255,255,.92);
+  --free:#1C1C1E;
   --chrome:#EEF0F2;
   --ink:#1C1C1E;
   --ink-2:#5B6169;
@@ -36,6 +42,21 @@
   --sign:"Overpass","Zen Kaku Gothic New",sans-serif;
   --mono:"Overpass Mono",ui-monospace,monospace;
   --dot:"DotGothic16",monospace;
+  color-scheme:light;
+}
+:root[data-theme=dark]{
+  --paper:#121821;
+  --surface:#1A222D;
+  --chrome:#0C1117;
+  --ink:#E8ECF1;
+  --ink-2:#9AA4B1;
+  --rule:#2A3340;
+  --walk:#7E8996;
+  --hover:#222B37;
+  --bar:#2A3340;
+  --glass:rgba(18,24,33,.9);
+  --free:#6B7684;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--chrome);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
@@ -60,7 +81,7 @@ button{cursor:pointer}
 .ch.now{background:#FFB000;color:#000;border-radius:3px}
 .ch.end{font-family:var(--sans);font-size:12px;color:#BDBDBD}
 #mapwrap{position:relative;min-height:0;overflow:hidden;background:var(--paper)}
-#map{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+#map{background:var(--paper);position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
 #map.dragging{cursor:grabbing}
 #hudbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--rule);background:var(--paper);min-height:52px}
 .ctr{display:flex;align-items:baseline;gap:5px;font-size:12px;color:var(--ink-2)}
@@ -71,26 +92,35 @@ button{cursor:pointer}
 .chipv.bad{background:var(--stop)}
 .seg{display:inline-flex;border:2px solid var(--ink);border-radius:20px;overflow:hidden}
 .seg button{background:none;border:0;padding:4px 13px;font-size:13px;font-weight:700}
-.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
-#buildMsg{position:absolute;left:16px;top:12px;font-size:13px;font-weight:700;color:var(--ink-2);background:rgba(255,255,255,.9);padding:2px 8px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity .4s}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+#buildMsg{position:absolute;left:16px;top:12px;font-size:13px;font-weight:700;color:var(--ink-2);background:var(--glass);padding:2px 8px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity .4s}
 #buildMsg.show{opacity:1}
-#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:5px 14px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:5px 14px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
 #toast.show{opacity:1}
+/* first-visit guide */
+#tour{position:absolute;left:0;top:0;z-index:5;width:min(300px,calc(100% - 24px));background:var(--surface);color:var(--ink);border:2px solid var(--ink);border-radius:10px;padding:10px 12px;box-shadow:0 6px 22px rgba(0,0,0,.18);opacity:0;visibility:hidden;transition:opacity .25s}
+#tour.show{opacity:1;visibility:visible}
+.tour-step{font-family:var(--sign);font-size:11px;font-weight:800;color:var(--ink-2);letter-spacing:.04em}
+#tour h3{margin:0 0 3px;font-size:15px;font-weight:900}
+#tour p{margin:0 0 9px;font-size:13px;line-height:1.6}
+.tour-btns{display:flex;gap:8px;justify-content:flex-end}
+.tour-btns .btn{padding:4px 12px;font-size:13px}
+.tour-ring{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-dasharray:5 5}
 
-#legend{position:absolute;left:14px;bottom:12px;display:flex;flex-direction:column;gap:3px;background:rgba(255,255,255,.92);padding:8px 10px;border-radius:6px;box-shadow:0 0 0 1px var(--rule);font-size:11px;font-weight:700;pointer-events:none;max-width:46%}
+#legend{position:absolute;left:14px;bottom:12px;display:flex;flex-direction:column;gap:3px;background:var(--glass);padding:8px 10px;border-radius:6px;box-shadow:0 0 0 1px var(--rule);font-size:11px;font-weight:700;pointer-events:none;max-width:46%}
 .lg{display:flex;align-items:center;gap:7px}
-.lg-b{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 4px;border:3.5px solid;border-radius:10px;font-family:var(--sign);font-weight:900;font-size:11px;line-height:1;background:#fff;white-space:nowrap}
+.lg-b{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 4px;border:3.5px solid;border-radius:10px;font-family:var(--sign);font-weight:900;font-size:11px;line-height:1;background:var(--surface);white-space:nowrap}
 .lg-w{display:inline-block;width:20px;border-top:3px dotted var(--walk)}
 /* infographic overlay on the map */
-#versus{position:absolute;right:16px;bottom:16px;width:min(380px,calc(100% - 32px));background:#fff;border:2px solid var(--ink);border-radius:10px;padding:12px 14px 12px;opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s;pointer-events:none}
+#versus{position:absolute;right:16px;bottom:16px;width:min(380px,calc(100% - 32px));background:var(--surface);border:2px solid var(--ink);border-radius:10px;padding:12px 14px 12px;opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s;pointer-events:none}
 #versus.show{opacity:1;transform:none}
 
 /* ---------- side panel ---------- */
 #panel>*{flex-shrink:0}
 #panel{grid-area:panel;background:var(--chrome);border-right:1px solid var(--rule);overflow-y:auto;padding:16px 16px 30px;display:flex;flex-direction:column;gap:20px;z-index:2}
-.sign{background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 0 0 1px var(--rule)}
+.sign{background:var(--surface);border-radius:6px;overflow:hidden;box-shadow:0 0 0 1px var(--rule)}
 .sign-top{display:flex;align-items:center;gap:12px;padding:10px 14px 6px}
-.sign-num{display:grid;place-items:center;width:46px;height:46px;border:5px solid var(--line);border-radius:50%;background:#fff;line-height:1;flex:none;font-family:var(--sign)}
+.sign-num{display:grid;place-items:center;width:46px;height:46px;border:5px solid var(--line);border-radius:50%;background:var(--surface);line-height:1;flex:none;font-family:var(--sign)}
 .sign-num small{font-size:10px;font-weight:800;margin-top:3px}
 .sign-num b{font-size:18px;font-weight:900;margin-top:-3px}
 .sign h1{margin:0;font-size:28px;line-height:1.1;font-weight:900;letter-spacing:.1em}
@@ -98,39 +128,40 @@ button{cursor:pointer}
 .sign-band{display:flex;justify-content:space-between;background:var(--line);color:#fff;font-size:12px;font-weight:700;padding:3px 12px}
 .field-name{font-size:13px;color:var(--ink-2);margin:0 0 6px;font-weight:700}
 .rxrow{display:flex;gap:8px}
-#rx{flex:1;min-width:0;background:#fff;border:2px solid var(--ink);border-radius:6px;padding:8px 11px;font-family:var(--mono);font-weight:700;font-size:19px}
+#rx{flex:1;min-width:0;background:var(--surface);border:2px solid var(--ink);border-radius:6px;padding:8px 11px;font-family:var(--mono);font-weight:700;font-size:19px}
 #rx.bad{border-color:var(--stop)}
-.btn{background:#fff;border:2px solid var(--ink);border-radius:6px;padding:6px 13px;font-weight:700;white-space:nowrap}
-.btn:hover{background:#F6F7F8}
-.btn.go{background:var(--ink);color:#fff}
-.btn.go:hover{background:#3A3A3E}
+.btn{background:var(--surface);border:2px solid var(--ink);border-radius:6px;padding:6px 13px;font-weight:700;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.go{background:var(--ink);color:var(--paper)}
+.btn.go:hover{background:var(--ink);opacity:.86}
 #rxErr{min-height:20px;font-size:13px;color:var(--stop);margin-top:6px;font-family:var(--mono);white-space:pre;overflow-x:auto}
 #rxStat{font-size:13px;color:var(--ink-2)}
 #rxStat b{color:var(--ink);font-family:var(--sign);font-weight:800}
 .modes{margin-top:10px}
+.theme-m{display:none;align-self:flex-start}
 .samples{display:flex;flex-direction:column;gap:2px}
 .chip{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;text-align:left;background:none;border:0;border-radius:6px;padding:6px 8px}
-.chip:hover{background:#E3E6E9}
-.chip[aria-current=true]{background:#fff;box-shadow:0 0 0 2px var(--ink)}
-.chip i{width:22px;height:22px;border-radius:50%;border:5px solid var(--c);background:#fff}
+.chip:hover{background:var(--hover)}
+.chip[aria-current=true]{background:var(--surface);box-shadow:0 0 0 2px var(--ink)}
+.chip i{width:22px;height:22px;border-radius:50%;border:5px solid var(--c);background:var(--surface)}
 .chip code{font-family:var(--mono);font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip span{font-size:11px;color:var(--ink-2);text-align:right}
 .ticket{display:flex;gap:8px}
-#str{flex:1;min-width:0;background:#fff;border:2px solid var(--ink);border-radius:6px;padding:7px 11px;font-family:var(--mono);font-weight:700;font-size:17px}
+#str{flex:1;min-width:0;background:var(--surface);border:2px solid var(--ink);border-radius:6px;padding:7px 11px;font-family:var(--mono);font-weight:700;font-size:17px}
 .runrow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-#list{width:100%;min-height:92px;background:#fff;border:2px solid var(--ink);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:14px;resize:vertical;line-height:1.5}
+#list{width:100%;min-height:92px;background:var(--surface);border:2px solid var(--ink);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:14px;resize:vertical;line-height:1.5}
 .hint{font-size:12px;color:var(--ink-2);margin:6px 0 0}
 /* versus infographic (shared by panel card and map overlay) */
 .vs-title{font-size:13px;font-weight:900;margin:0 0 8px}
 .vs-row{display:grid;grid-template-columns:96px 1fr;gap:4px 10px;align-items:center;margin-bottom:8px}
 .vs-row .nm{font-size:12px;font-weight:700;line-height:1.3}
 .vs-num{font-family:var(--sign);font-weight:900;font-size:22px;line-height:1;font-variant-numeric:tabular-nums}
-.vs-bar{grid-column:2;height:10px;border-radius:5px;background:#E6E8EB;overflow:hidden}
+.vs-bar{grid-column:2;height:10px;border-radius:5px;background:var(--bar);overflow:hidden}
 .vs-bar i{display:block;height:100%;width:0;border-radius:5px;transition:width .2s linear}
 .vs-row.bt .vs-num{color:var(--stop)}.vs-row.bt .vs-bar i{background:var(--stop)}
 .vs-row.nfa .vs-num{color:var(--go)}.vs-row.nfa .vs-bar i{background:var(--go)}
 .vs-note{font-size:11px;color:var(--ink-2);margin:0}
-#vsCard{background:#fff;border-radius:8px;padding:12px 14px;box-shadow:0 0 0 1px var(--rule)}
+#vsCard{background:var(--surface);border-radius:8px;padding:12px 14px;box-shadow:0 0 0 1px var(--rule)}
 #vsCard[hidden]{display:none}
 /* LED board (flat) */
 .board{background:#000;border-radius:6px;padding:8px 10px 6px;font-family:var(--dot);color:#FF9F1C}
@@ -149,18 +180,19 @@ button{cursor:pointer}
 .board-foot{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #333;margin-top:4px;padding-top:3px;font-size:11px;color:#fff}
 
 /* ---------- SVG map ---------- */
-#map text{font-family:var(--sign);paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+#map text{font-family:var(--sign);paint-order:stroke;stroke:var(--paper);stroke-width:4px;stroke-linejoin:round}
 .walk{fill:none;stroke:var(--walk);stroke-width:3;stroke-linecap:round;stroke-dasharray:.1 7}
-.walk-base{fill:none;stroke:#fff;stroke-width:9;stroke-linecap:round}
-.casing{fill:none;stroke:#fff;stroke-width:15;stroke-linecap:round;stroke-linejoin:round}
+.walk-base{fill:none;stroke:var(--paper);stroke-width:9;stroke-linecap:round}
+.casing{fill:none;stroke:var(--paper);stroke-width:15;stroke-linecap:round;stroke-linejoin:round}
 .tline{fill:none;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
 .stub{fill:none;stroke:var(--ink);stroke-width:5;stroke-linecap:round;stroke-dasharray:2 6}
-.st-circ{fill:#fff;stroke:var(--ink);stroke-width:3.5}
-.st-junc{fill:#fff;stroke:var(--walk);stroke-width:2.5}
+.st-circ{fill:var(--paper);stroke:var(--ink);stroke-width:3.5}
+.st-junc{fill:var(--paper);stroke:var(--walk);stroke-width:2.5}
 .st-name{font-weight:900;font-size:14px;fill:var(--ink)}
 .st-desc{font-family:var(--sans)!important;font-weight:700;font-size:10.5px;fill:var(--ink-2)}
 .st-jnum{font-weight:700;font-size:9px;fill:var(--walk)}
-.badge circle,.badge rect{fill:#fff;stroke-width:4.5}
+.badge text{fill:var(--ink)}
+.badge circle,.badge rect{fill:var(--paper);stroke-width:4.5}
 .badge text{font-weight:900;font-size:13px;text-anchor:middle;dominant-baseline:central;stroke:none!important}
 .badge.hot circle,.badge.hot rect{fill:var(--bc)}
 .badge.hot text{fill:#fff!important}
@@ -168,6 +200,8 @@ button{cursor:pointer}
 .accept-badge rect{fill:var(--go)}
 .accept-badge text{fill:#fff;font-weight:900;font-size:14px;stroke:none!important;font-family:var(--sans)!important}
 .ring{fill:none}
+.depot{fill:var(--ink)}
+.depot-ic{stroke:var(--paper)}
 .xmark{stroke:var(--stop);stroke-width:3.5;stroke-linecap:round}
 .train .body{stroke-width:2.5}
 
@@ -186,6 +220,8 @@ button{cursor:pointer}
   .sign h1{font-size:24px}
   #versus{right:10px;bottom:10px;padding:10px 12px}
   #legend{display:none}
+  .theme-d{display:none}
+  .theme-m{display:inline-flex}
 }
 @media (prefers-reduced-motion:reduce){ .brow.run .st{animation:none} }
 </style>
@@ -202,6 +238,12 @@ button{cursor:pointer}
       <svg id="map" role="img" aria-label="正規表現から作った路線図"></svg>
       <div id="buildMsg"></div>
       <div id="toast"></div>
+      <div id="tour" role="dialog" aria-label="はじめての案内" aria-live="polite">
+        <div class="tour-step" id="tourStep"></div>
+        <h3 id="tourTitle"></h3>
+        <p id="tourText"></p>
+        <div class="tour-btns"><button class="btn" id="tourSkip">案内を閉じる</button><button class="btn go" id="tourNext">続ける</button></div>
+      </div>
       <div id="versus" aria-hidden="true"></div>
       <div id="legend" aria-label="凡例"></div>
     </div>
@@ -214,6 +256,10 @@ button{cursor:pointer}
         <button data-cam="auto" aria-pressed="true">追跡</button>
         <button data-cam="all" aria-pressed="false">全体</button>
       </div>
+      <div class="seg theme-d" role="group" aria-label="配色">
+        <button data-theme="light" aria-pressed="true">昼</button>
+        <button data-theme="dark" aria-pressed="false">夜</button>
+      </div>
     </div>
   </main>
 
@@ -224,6 +270,11 @@ button{cursor:pointer}
         <div><h1>正規表現線</h1><p>Regular Expression Line</p></div>
       </div>
       <div class="sign-band"><span>← 文字列</span><span>受理 →</span></div>
+    </div>
+
+    <div class="seg theme-m" role="group" aria-label="配色">
+      <button data-theme="light" aria-pressed="true">昼の路線図</button>
+      <button data-theme="dark" aria-pressed="false">夜の路線図</button>
     </div>
 
     <section>
@@ -535,12 +586,12 @@ const SAMPLES=[
 // one colour per distinct letter track, like the lines of a metro network
 const LINE_PAL=["#F39700","#E60012","#00A7DB","#009944","#9B7CB6","#00ADA9","#BB641D","#D7C447","#E85298","#0079C2"];
 // trains in the timetable: dark outline dots in their own colours
-const TRAIN_PAL=["#1C1C1E","#E4007F","#0067C0","#00A651","#F39700","#7B3F98","#00A7DB","#B8860B","#E60012","#00ADA9"];
+const TRAIN_PAL=["var(--ink)","#E4007F","#0067C0","#00A651","#F39700","#7B3F98","#00A7DB","#B8860B","#E60012","#00ADA9"];
 
 /* ============================================================
    Octilinear serpentine layout
    ============================================================ */
-const DX=100, DXJ=50, DY=66, LG=18, GL=13, FIL=16;
+const DX=100, DXJ=50, DY=66, LG=18, GL=13, FIL=16, PORT=8, SCALE_CAP=1.35;
 function layoutMap(nfa,vw,vh){
   const E=nfa.edges, n=nfa.n;
   const hasChar=nfa.out.map(l=>l.some(ei=>E[ei].cs));
@@ -565,93 +616,174 @@ function layoutMap(nfa,vw,vh){
     for(const it of items){ let best=null; for(let d=0;d<40&&best===null;d++){ for(const c of [Math.round(it.want)+d,Math.round(it.want)-d]) if(!used.has(c)){ best=c; break; } } used.add(best); lane[it.s]=best; }
   }
   const lw=byL.map(ss=>ss.some(sig)?DX:DXJ);
-  // how many layers per row: the serpentine that best fills the viewport
-  const lmin=Math.min(...lane), lmax=Math.max(...lane);
-  const bandH=(lmax-lmin)*DY+150;
-  let K=L, maxS=-1;
+  // how many layers per row: try every fold, keep the one that reads best in this frame
+  // (largest fitted scale up to a cap, with a cost per fold and per track that crosses rows)
+  let best=null;
   for(let k=Math.min(L,3);k<=L;k++){
-    const rows=Math.ceil(L/k); let w=0;
-    for(let r=0;r<rows;r++){ let sw=0; for(let l=r*k;l<Math.min(L,(r+1)*k);l++) sw+=lw[l]; w=Math.max(w,sw); }
-    const sc=Math.min(vw/(w+120),vh/(rows*bandH+40));
-    if(sc>=maxS*.97) K=k; maxS=Math.max(maxS,sc);
+    const r=arrange(k);
+    const sc=Math.min(vw/(r.bbox.w+40),vh/(r.bbox.h+40),SCALE_CAP);
+    const lastRow=L-(r.rows-1)*k;
+    // below ~0.8 the station names get hard to read, so small scales cost extra
+    const read=sc<.8?sc*sc/.8:sc;
+    const score=read*Math.pow(.97,r.cross)*Math.pow(.96,r.rows-1)*(r.rows>1&&lastRow<2?.8:1);
+    if(!best||score>=best.score-1e-9) best=Object.assign(r,{score,K:k});
   }
-  const rowOf=l=>Math.floor(l/K), rows=Math.ceil(L/K), dirOf=r=>r%2?-1:1;
-  const lx=new Array(L), rowW=new Array(rows).fill(0);
-  for(let r=0;r<rows;r++){ let cum=0; for(let l=r*K;l<Math.min(L,(r+1)*K);l++){ lx[l]=cum+lw[l]/2; cum+=lw[l]; } rowW[r]=cum; }
-  const W=Math.max(...rowW);
-  for(let l=0;l<L;l++){ const r=rowOf(l); if(r%2) lx[l]=W-lx[l]; lx[l]+=60; }
-  const N=Array.from({length:n},(_,s)=>({id:s,layer:layer[s],lane:lane[s],row:rowOf(layer[s]),x:lx[layer[s]],y:0,sig:sig(s),acc:s===nfa.accept,start:s===nfa.start,indeg:0}));
-  E.forEach(e=>{ if(e.from!==e.to) N[e.to].indeg++; });
-  const rLmin=new Array(rows).fill(1e9), rLmax=new Array(rows).fill(-1e9);
-  N.forEach(v=>{ rLmin[v.row]=Math.min(rLmin[v.row],v.lane); rLmax[v.row]=Math.max(rLmax[v.row],v.lane); });
-  // classify the tracks
-  const spec=E.map(e=>{
-    const u=N[e.from], v=N[e.to];
-    if(u.row!==v.row) return {kind:"cross",g:Math.min(u.row,v.row)};
-    if(e.from===e.to||back.has(e.id)||v.layer<=u.layer) return {kind:"loop"};
-    if(v.layer-u.layer>1){
-      const lo=Math.min(u.lane,v.lane), hi=Math.max(u.lane,v.lane);
-      if(N.some(w=>w.row===u.row&&w.layer>u.layer&&w.layer<v.layer&&w.lane>=lo&&w.lane<=hi)) return {kind:"bypass"};
-    }
-    return {kind:"direct"};
-  });
-  // levels for loops (above the row) and bypasses (below), lanes in the gaps between rows
-  const levelsOf=kind=>{ const per=Array.from({length:rows},()=>[]), maxL=new Array(rows).fill(0);
-    E.forEach((e,i)=>{ if(spec[i].kind!==kind) return; const a=N[e.from].x, b=N[e.to].x; per[N[e.from].row].push({i,x0:Math.min(a,b)-14,x1:Math.max(a,b)+14}); });
-    per.forEach((list,r)=>{ list.sort((p,q)=>(p.x1-p.x0)-(q.x1-q.x0)); const placed=[];
-      for(const it of list){ let lv=1; while(placed.some(p=>p.lv===lv&&p.x0<it.x1&&it.x0<p.x1)) lv++; it.lv=lv; placed.push(it); spec[it.i].lv=lv; maxL[r]=Math.max(maxL[r],lv); } });
-    return maxL; };
-  const loopL=levelsOf("loop"), byL2=levelsOf("bypass");
-  const gapN=new Array(rows).fill(0);
-  E.forEach((e,i)=>{ if(spec[i].kind==="cross"){ spec[i].gl=gapN[spec[i].g]++; } });
-  // vertical metrics
-  const lane0=new Array(rows), topY=new Array(rows), botY=new Array(rows), gapY=new Array(rows);
-  let Y=20;
-  for(let r=0;r<rows;r++){
-    Y+=34+loopL[r]*LG;
-    topY[r]=Y; lane0[r]=Y-rLmin[r]*DY;
-    Y+=(rLmax[r]-rLmin[r])*DY; botY[r]=Y;
-    Y+=44+byL2[r]*LG;
-    gapY[r]=Y; Y+=gapN[r]*GL+18;
-  }
-  N.forEach(v=>{ v.y=lane0[v.row]+v.lane*DY; });
-  // route each track as octilinear corners
-  const routes=E.map((e,i)=>{
-    const u=N[e.from], v=N[e.to], sp=spec[i], dir=dirOf(u.row);
-    const pu=[u.x,u.y], pv=[v.x,v.y];
-    if(sp.kind==="direct"){
-      const h=Math.abs(v.x-u.x), a=Math.abs(v.y-u.y), sx=Math.sign(v.x-u.x)||dir, sy=Math.sign(v.y-u.y);
-      if(a<1) return [pu,pv];
-      if(a<=h){ const st=Math.min(14,(h-a)/2);
-        return u.sig&&!v.sig||!u.sig&&v.sig&&false?[pu,[v.x-sx*(st+a),u.y],[v.x-sx*st,v.y],pv]:(!u.sig?[pu,[u.x+sx*st,u.y],[u.x+sx*(st+a),v.y],pv]:[pu,[v.x-sx*(st+a),u.y],[v.x-sx*st,v.y],pv]); }
-      return [pu,[u.x+sx*h/2,u.y+sy*h/2],[u.x+sx*h/2,v.y-sy*h/2],pv];
-    }
-    if(sp.kind==="loop"){
-      const yT=topY[u.row]-20-(sp.lv-1)*LG, d1=u.y-yT, d2=v.y-yT;
-      if(e.from===e.to) return [pu,[u.x+14,u.y-14],[u.x+14,yT],[u.x-14,yT],[u.x-14,u.y-14],pv];
-      if((u.x-v.x)*dir>=d1+d2+16) return [pu,[u.x-dir*d1,yT],[v.x+dir*d2,yT],pv];
-      return [pu,[u.x,yT],[v.x,yT],pv];
-    }
-    if(sp.kind==="bypass"){
-      const yB=botY[u.row]+30+(sp.lv-1)*LG, d1=yB-u.y, d2=yB-v.y;
-      if((v.x-u.x)*dir>=d1+d2+16) return [pu,[u.x+dir*d1,yB],[v.x-dir*d2,yB],pv];
-      return [pu,[u.x,yB],[v.x,yB],pv];
-    }
-    const yG=gapY[sp.g]+(sp.gl+.5)*GL-GL*.5, du=dirOf(u.row), dv=dirOf(v.row), S=26;
-    return [pu,[u.x+du*S,u.y],[u.x+du*S,yG],[v.x-dv*S,yG],[v.x-dv*S,v.y],pv];
-  });
+  const {N,routes,spec,rows,dirOf,K}=best;
   const paths=routes.map((c,i)=>{ const p=densify(c,E[i].from===E[i].to?8:FIL); p.corners=c; return p; });
   // badge: middle of the longest straight run
   paths.forEach((p,i)=>{ if(!E[i].cs) return; const c=p.corners; let bi=0,bl=-1; for(let k=0;k<c.length-1;k++){ const l=Math.hypot(c[k+1][0]-c[k][0],c[k+1][1]-c[k][1])-(k===0||k===c.length-2?14:0); if(l>bl){ bl=l; bi=k; } }
     p.badge=[(c[bi][0]+c[bi+1][0])/2,(c[bi][1]+c[bi+1][1])/2]; });
   const s0=N[nfa.start], d0=dirOf(s0.row);
   const depot=densify([[s0.x-d0*54,s0.y],[s0.x,s0.y]],0);
+  const labels=placeLabels(nfa,N,paths,depot,E);
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   const acc=(x,y)=>{ x0=Math.min(x0,x); y0=Math.min(y0,y); x1=Math.max(x1,x); y1=Math.max(y1,y); };
-  N.forEach(v=>{ acc(v.x-46,v.y-24); acc(v.x+46,v.y+48); });
+  N.forEach(v=>{ acc(v.x-22,v.y-22); acc(v.x+22,v.y+22); });
+  labels.rects.forEach(r=>{ acc(r.x0,r.y0); acc(r.x1,r.y1); });
+  { const a=N[nfa.accept]; acc(a.x-32,a.y-50); }
   paths.forEach(p=>{ for(let k=0;k<p.N;k+=4) acc(p.xs[k],p.ys[k]); });
   acc(s0.x-d0*70,s0.y);
   return {N,paths,depot,spec,back,bbox:{x:x0-16,y:y0-16,w:x1-x0+32,h:y1-y0+32},K,rows,dirOf};
+
+  function arrange(K){
+    const rowOf=l=>Math.floor(l/K), rows=Math.ceil(L/K), dirOf=r=>r%2?-1:1;
+    const lx=new Array(L), rowW=new Array(rows).fill(0);
+    for(let r=0;r<rows;r++){ let cum=0; for(let l=r*K;l<Math.min(L,(r+1)*K);l++){ lx[l]=cum+lw[l]/2; cum+=lw[l]; } rowW[r]=cum; }
+    const W=Math.max(...rowW);
+    for(let l=0;l<L;l++){ const r=rowOf(l); if(r%2) lx[l]=W-lx[l]; lx[l]+=60; }
+    const N=Array.from({length:n},(_,s)=>({id:s,layer:layer[s],lane:lane[s],row:rowOf(layer[s]),x:lx[layer[s]],y:0,sig:sig(s),acc:s===nfa.accept,start:s===nfa.start,indeg:0}));
+    E.forEach(e=>{ if(e.from!==e.to) N[e.to].indeg++; });
+    const rLmin=new Array(rows).fill(1e9), rLmax=new Array(rows).fill(-1e9);
+    N.forEach(v=>{ rLmin[v.row]=Math.min(rLmin[v.row],v.lane); rLmax[v.row]=Math.max(rLmax[v.row],v.lane); });
+    const spec=E.map(e=>{
+      const u=N[e.from], v=N[e.to];
+      if(u.row!==v.row) return {kind:"cross",g:Math.min(u.row,v.row)};
+      if(e.from===e.to||back.has(e.id)||v.layer<=u.layer) return {kind:"loop"};
+      if(v.layer-u.layer>1){
+        const lo=Math.min(u.lane,v.lane), hi=Math.max(u.lane,v.lane);
+        if(N.some(w=>w.row===u.row&&w.layer>u.layer&&w.layer<v.layer&&w.lane>=lo&&w.lane<=hi)) return {kind:"bypass"};
+      }
+      return {kind:"direct"};
+    });
+    const levelsOf=kind=>{ const per=Array.from({length:rows},()=>[]), maxL=new Array(rows).fill(0);
+      E.forEach((e,i)=>{ if(spec[i].kind!==kind) return; const a=N[e.from].x, b=N[e.to].x; per[N[e.from].row].push({i,x0:Math.min(a,b)-14,x1:Math.max(a,b)+14}); });
+      per.forEach((list,r)=>{ list.sort((p,q)=>(p.x1-p.x0)-(q.x1-q.x0)); const placed=[];
+        for(const it of list){ let lv=1; while(placed.some(p=>p.lv===lv&&p.x0<it.x1&&it.x0<p.x1)) lv++; it.lv=lv; placed.push(it); spec[it.i].lv=lv; maxL[r]=Math.max(maxL[r],lv); } });
+      return maxL; };
+    const loopL=levelsOf("loop"), byL2=levelsOf("bypass");
+    const gapN=new Array(rows).fill(0);
+    let cross=0;
+    E.forEach((e,i)=>{ if(spec[i].kind==="cross"){ spec[i].gl=gapN[spec[i].g]++; cross++; } });
+    // ports: tracks that leave a station on the same side get their own x, nested so they never cross
+    const port=new Map();
+    for(const kind of ["loop","bypass"]){
+      const at=Array.from({length:n},()=>[]);
+      E.forEach((e,i)=>{ if(spec[i].kind!==kind||e.from===e.to) return; const u=N[e.from], v=N[e.to];
+        at[e.from].push({i,end:0,s:Math.sign(v.x-u.x)||1,lv:spec[i].lv}); at[e.to].push({i,end:1,s:Math.sign(u.x-v.x)||1,lv:spec[i].lv}); });
+      at.forEach(list=>{ if(list.length<2) return;
+        const ord=list.filter(a=>a.s<0).sort((a,b)=>a.lv-b.lv).concat(list.filter(a=>a.s>0).sort((a,b)=>b.lv-a.lv));
+        ord.forEach((a,j)=>port.set(a.i+":"+a.end,(j-(ord.length-1)/2)*PORT)); });
+    }
+    { const at=Array.from({length:n},()=>[]);
+      E.forEach((e,i)=>{ if(spec[i].kind!=="cross") return; at[e.from].push(i+":0"); at[e.to].push(i+":1"); });
+      at.forEach(list=>list.forEach((k,j)=>port.set(k,j*PORT))); }
+    const po=(i,end)=>port.get(i+":"+end)||0;
+    const lane0=new Array(rows), topY=new Array(rows), botY=new Array(rows), gapY=new Array(rows);
+    let Y=20;
+    for(let r=0;r<rows;r++){
+      Y+=40+loopL[r]*LG;
+      topY[r]=Y; lane0[r]=Y-rLmin[r]*DY;
+      Y+=(rLmax[r]-rLmin[r])*DY; botY[r]=Y;
+      Y+=44+byL2[r]*LG;
+      gapY[r]=Y; Y+=gapN[r]*GL+18;
+    }
+    N.forEach(v=>{ v.y=lane0[v.row]+v.lane*DY; });
+    const routes=E.map((e,i)=>{
+      const u=N[e.from], v=N[e.to], sp=spec[i], dir=dirOf(u.row);
+      const pu=[u.x,u.y], pv=[v.x,v.y];
+      if(sp.kind==="direct"){
+        const h=Math.abs(v.x-u.x), a=Math.abs(v.y-u.y), sx=Math.sign(v.x-u.x)||dir, sy=Math.sign(v.y-u.y);
+        if(a<1) return [pu,pv];
+        if(a<=h){ const st=Math.min(14,(h-a)/2);
+          return !u.sig?[pu,[u.x+sx*st,u.y],[u.x+sx*(st+a),v.y],pv]:[pu,[v.x-sx*(st+a),u.y],[v.x-sx*st,v.y],pv]; }
+        return [pu,[u.x+sx*h/2,u.y+sy*h/2],[u.x+sx*h/2,v.y-sy*h/2],pv];
+      }
+      const ou=po(i,0), ov=po(i,1), ux=u.x+ou, vx=v.x+ov;
+      const pre=ou?[pu,[ux,u.y]]:[pu], post=ov?[[vx,v.y],pv]:[pv];
+      if(sp.kind==="loop"){
+        const yT=topY[u.row]-26-(sp.lv-1)*LG, d1=u.y-yT, d2=v.y-yT;
+        if(e.from===e.to) return [pu,[u.x+14,u.y-14],[u.x+14,yT],[u.x-14,yT],[u.x-14,u.y-14],pv];
+        if((ux-vx)*dir>=d1+d2+16) return [...pre,[ux-dir*d1,yT],[vx+dir*d2,yT],...post];
+        return [...pre,[ux,yT],[vx,yT],...post];
+      }
+      if(sp.kind==="bypass"){
+        const yB=botY[u.row]+30+(sp.lv-1)*LG, d1=yB-u.y, d2=yB-v.y;
+        if((vx-ux)*dir>=d1+d2+16) return [...pre,[ux+dir*d1,yB],[vx-dir*d2,yB],...post];
+        return [...pre,[ux,yB],[vx,yB],...post];
+      }
+      const yG=gapY[sp.g]+sp.gl*GL, du=dirOf(u.row), dv=dirOf(v.row), Su=26+ou, Sv=26+ov;
+      return [pu,[u.x+du*Su,u.y],[u.x+du*Su,yG],[v.x-dv*Sv,yG],[v.x-dv*Sv,v.y],pv];
+    });
+    let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;
+    const ac=(x,y)=>{ bx0=Math.min(bx0,x); by0=Math.min(by0,y); bx1=Math.max(bx1,x); by1=Math.max(by1,y); };
+    N.forEach(v=>{ ac(v.x-46,v.y-24); ac(v.x+46,v.y+48); });
+    routes.forEach(c=>c.forEach(p=>ac(p[0],p[1])));
+    return {N,routes,spec,rows,dirOf,cross,bbox:{x:bx0,y:by0,w:bx1-bx0,h:by1-by0}};
+  }
+}
+// Station labels: each label tries a few spots around its station and takes the one that
+// covers the fewest tracks, stations, badges and already-placed labels.
+const _mctx=document.createElement("canvas").getContext("2d");
+function textW(t,font){ _mctx.font=font; return _mctx.measureText(t).width; }
+const F_NAME='900 14px Overpass,"Zen Kaku Gothic New",sans-serif', F_DESC='700 10.5px "Zen Kaku Gothic New",sans-serif', F_JN='700 9px Overpass,sans-serif';
+function stationText(nfa,v,E){
+  const outs=nfa.out[v.id].filter(ei=>E[ei].cs).map(ei=>E[ei].label);
+  const name=(v.start?"車庫 ":v.acc?"終点 ":"")+"q"+v.id;
+  const desc=v.start?"始発":v.acc?"受理":outs.length?(outs[0].length>3?"クラス線のりば":"「"+outs[0]+"」線のりば"):"始発";
+  return {name,desc};
+}
+function stationExtent(v){ return v.start?[13,13]:v.acc?[14,14]:v.sig&&v.indeg>=2?[10,17]:v.sig?[9.5,9.5]:[4.5,4.5]; }
+function placeLabels(nfa,N,paths,depot,E){
+  const C=16, grid=new Map(), objs=[];
+  const put=o=>{ objs.push(o); const i0=Math.floor((o.x-o.r)/C), i1=Math.floor((o.x+o.r)/C), j0=Math.floor((o.y-o.r)/C), j1=Math.floor((o.y+o.r)/C);
+    for(let i=i0;i<=i1;i++) for(let j=j0;j<=j1;j++){ const k=i+","+j; let b=grid.get(k); if(!b) grid.set(k,b=[]); b.push(objs.length-1); } };
+  paths.forEach((p,i)=>{ const line=!!E[i].cs; for(let k=0;k<p.N;k+=2) put({x:p.xs[k],y:p.ys[k],r:line?7.5:4,w:line?1:.6}); });
+  for(let k=0;k<depot.N;k+=2) put({x:depot.xs[k],y:depot.ys[k],r:4,w:.6});
+  N.forEach(v=>{ const [rx,ry]=stationExtent(v); put({x:v.x,y:v.y-ry+rx,r:rx+2,w:8}); if(ry>rx) put({x:v.x,y:v.y+ry-rx,r:rx+2,w:8}); });
+  paths.forEach((p,i)=>{ if(p.badge){ const w=E[i].label.length>1?Math.max(24,E[i].label.length*9+12)/2:12; for(let d=-w+12;d<=w-12+1e-6;d+=Math.max(1,(w-12)/2)||1) put({x:p.badge[0]+d,y:p.badge[1],r:13,w:8}); } });
+  { const a=N[nfa.accept]; for(const d of [-18,0,18]) put({x:a.x+d,y:a.y-34,r:14,w:6}); }
+  let stamp=0; const seen=new Int32Array(objs.length+1);
+  const hit=(x0,y0,x1,y1)=>{ stamp++; let c=0;
+    for(let i=Math.floor(x0/C)-1;i<=Math.floor(x1/C)+1;i++) for(let j=Math.floor(y0/C)-1;j<=Math.floor(y1/C)+1;j++){ const b=grid.get(i+","+j); if(!b) continue;
+      for(const oi of b){ if(seen[oi]===stamp) continue; seen[oi]=stamp; const o=objs[oi]; const dx=Math.max(x0-o.x,0,o.x-x1), dy=Math.max(y0-o.y,0,o.y-y1); if(dx*dx+dy*dy<o.r*o.r) c+=o.w; } }
+    return c; };
+  const rects=[];
+  const overlap=(a)=>{ let c=0; for(const b of rects){ const w=Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0), h=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0); if(w>-2&&h>-2) c+=30+Math.max(0,w)*Math.max(0,h)/8; } return c; };
+  const choose=cands=>{ let best=null; for(const c of cands){ const r=c.r; const cost=c.pref+hit(r.x0,r.y0,r.x1,r.y1)+overlap(r); if(!best||cost<best.cost) best={c,cost}; } rects.push(best.c.r); return best.c; };
+  const box=(anchor,x,y0,w,h)=>{ const x0=anchor==="middle"?x-w/2:anchor==="start"?x:x-w; return {x0,y0,x1:x0+w,y1:y0+h}; };
+  const order=N.filter(v=>v.sig).sort((a,b)=>(b.acc||b.start)-(a.acc||a.start)||a.id-b.id).concat(N.filter(v=>!v.sig));
+  for(const v of order){
+    const [rx,ry]=stationExtent(v);
+    if(v.sig){
+      const t=stationText(nfa,v,E); const w=Math.max(textW(t.name,F_NAME),textW(t.desc,F_DESC))+2, H=28;
+      const C0=[["middle",0,ry+7,0],["middle",0,-ry-9-H,v.acc?3:.8],["start",rx+8,-H/2,1],["end",-rx-8,-H/2,1],
+        ["start",rx-2,ry+4,1.3],["end",-rx+2,ry+4,1.3],["start",rx-2,-ry-6-H,1.6],["end",-rx+2,-ry-6-H,1.6]];
+      const c=choose(C0.map(([a,dx,dy,pref])=>({a,dx,dy,pref,r:box(a,v.x+dx,v.y+dy,w,H)})));
+      v.lab={anchor:c.a,dx:c.dx,y1:c.dy+11.5,y2:c.dy+25.5,name:t.name,desc:t.desc};
+    } else {
+      const t=String(v.id), w=textW(t,F_JN)+1, H=9;
+      const C0=[["start",6,-15,0],["end",-6,-15,.3],["start",6,6,.5],["end",-6,6,.6],["middle",0,-19,.8],["middle",0,10,.9]];
+      const c=choose(C0.map(([a,dx,dy,pref])=>({a,dx,dy,pref,r:box(a,v.x+dx,v.y+dy,w,H)})));
+      v.lab={anchor:c.a,dx:c.dx,y1:c.dy+8};
+    }
+  }
+  // where a derailment ✕ goes: a free spot next to the station
+  for(const v of N){ if(!v.sig) continue; const [rx,ry]=stationExtent(v); let best=null;
+    for(const [dx,dy,pref] of [[0,-ry-14,0],[rx+14,-ry-8,.4],[-rx-14,-ry-8,.4],[rx+16,0,.6],[-rx-16,0,.6],[rx+14,ry+8,.9],[-rx-14,ry+8,.9]]){
+      const r={x0:v.x+dx-9,y0:v.y+dy-9,x1:v.x+dx+9,y1:v.y+dy+9}; const cost=pref+hit(r.x0,r.y0,r.x1,r.y1)+overlap(r);
+      if(!best||cost<best.cost) best={cost,x:v.x+dx,y:v.y+dy}; }
+    v.mark=[best.x,best.y]; }
+  return {rects};
 }
 // corners → filleted dense polyline
 function densify(pts,R){
@@ -696,8 +828,8 @@ function buildNetwork(src,{animate=true,keep=false}={}){
     if(nfa.n>90||nfa.edges.length>200){ fail("大きすぎます（駅 "+nfa.n+"）。もう少し短い式にしてください"); return false; }
     try{ RX.nativeRe(parsed,false); }catch(e){ fail("ブラウザの RegExp がこの式を受け付けません: "+e.message); return false; }
   }
-  const vs=viewSize();
-  const LY=layoutMap(nfa,vs.w,vs.h);
+  const vs=viewSize(), ins=insets();
+  const LY=layoutMap(nfa,vs.w-ins.l-ins.r,vs.h-ins.t-ins.b);
   const E=nfa.edges;
   // a line colour per distinct letter label, in the order the tracks were built
   const labelColor=new Map();
@@ -733,7 +865,7 @@ function buildNetwork(src,{animate=true,keep=false}={}){
     const t=e.label, wide=t.length>1;
     const w=Math.max(24,t.length*9+12);
     if(wide) mk("rect",{x:-w/2,y:-12,width:w,height:24,rx:12,stroke:c},g); else mk("circle",{r:12,stroke:c},g);
-    const tx=mk("text",{y:1,fill:"#1C1C1E"},g); tx.textContent=t;
+    const tx=mk("text",{y:1},g); tx.textContent=t;
     return {g,x,y,cs:e.cs,shown:!anim};
   });
   // stations
@@ -741,9 +873,9 @@ function buildNetwork(src,{animate=true,keep=false}={}){
     const g=mk("g",{transform:`translate(${v.x} ${v.y})`},G.stations);
     const halo=mk("circle",{r:v.sig?20:13,class:"halo",fill:"none"},G.halo); halo.setAttribute("cx",v.x); halo.setAttribute("cy",v.y);
     if(v.start){
-      mk("rect",{x:-13,y:-13,width:26,height:26,rx:5,fill:"#1C1C1E"},g);
-      mk("path",{d:"M-7 6V-1L0-7L7-1V6Z",fill:"none",stroke:"#fff","stroke-width":2.4,"stroke-linejoin":"round"},g);
-      mk("path",{d:"M-2.5 6V1.5H2.5V6",fill:"none",stroke:"#fff","stroke-width":2},g);
+      mk("rect",{x:-13,y:-13,width:26,height:26,rx:5,class:"depot"},g);
+      mk("path",{d:"M-7 6V-1L0-7L7-1V6Z",fill:"none",class:"depot-ic","stroke-width":2.4,"stroke-linejoin":"round"},g);
+      mk("path",{d:"M-2.5 6V1.5H2.5V6",fill:"none",class:"depot-ic","stroke-width":2},g);
     } else if(v.acc){
       mk("circle",{r:14,class:"st-circ"},g); mk("circle",{r:7.5,class:"st-circ"},g);
     } else if(v.sig&&v.indeg>=2){
@@ -752,19 +884,15 @@ function buildNetwork(src,{animate=true,keep=false}={}){
       mk("circle",{r:9.5,class:"st-circ"},g);
     } else mk("circle",{r:4.5,class:"st-junc"},g);
     // label
+    const lb=v.lab;
     if(v.sig){
-      const outs=nfa.out[v.id].filter(ei=>E[ei].cs).map(ei=>E[ei].label);
-      const ly=v.indeg>=2&&!v.acc&&!v.start?33:30;
-      const nm=mk("text",{x:0,y:ly,"text-anchor":"middle",class:"st-name"},G.labels);
-      nm.textContent=(v.start?"車庫 ":v.acc?"終点 ":"")+"q"+v.id;
-      nm.setAttribute("transform",`translate(${v.x} ${v.y})`);
-      const ds=mk("text",{x:0,y:ly+14,"text-anchor":"middle",class:"st-desc"},G.labels);
-      let desc=v.acc?"受理":outs.length?(outs[0].length>3?"クラス線のりば":"「"+outs[0]+"」線のりば"):"始発";
-      if(v.start) desc="始発";
-      ds.textContent=desc; ds.setAttribute("transform",`translate(${v.x} ${v.y})`);
+      const nm=mk("text",{x:lb.dx,y:lb.y1,"text-anchor":lb.anchor,class:"st-name"},G.labels);
+      nm.textContent=lb.name; nm.setAttribute("transform",`translate(${v.x} ${v.y})`);
+      const ds=mk("text",{x:lb.dx,y:lb.y2,"text-anchor":lb.anchor,class:"st-desc"},G.labels);
+      ds.textContent=lb.desc; ds.setAttribute("transform",`translate(${v.x} ${v.y})`);
       return {g,halo,lbl:[nm,ds],v};
     }
-    const jn=mk("text",{x:7,y:-7,class:"st-jnum"},G.labels); jn.textContent=v.id; jn.setAttribute("transform",`translate(${v.x} ${v.y})`);
+    const jn=mk("text",{x:lb.dx,y:lb.y1,"text-anchor":lb.anchor,class:"st-jnum"},G.labels); jn.textContent=v.id; jn.setAttribute("transform",`translate(${v.x} ${v.y})`);
     return {g,halo,lbl:[jn],v};
   });
   // accept badge (hidden until a match)
@@ -811,12 +939,15 @@ function updateBuild(dt){
    Camera: a viewBox that eases toward its target
    ============================================================ */
 let camMode="auto", camSnap=true, focusUntil=0, focusBox=null;
-const vb={x:0,y:0,w:100,h:100}, vbT={x:0,y:0,w:100,h:100};
-function fitBox(b,pad=0){
-  const vs=viewSize(), a=vs.w/vs.h;
-  let w=b.w+pad*2, h=b.h+pad*2;
-  if(w/h>a) h=w/a; else w=h*a;
-  return {x:b.x+b.w/2-w/2,y:b.y+b.h/2-h/2,w,h};
+const vb={x:0,y:0,w:100,h:100}, vbT={x:0,y:0,w:100,h:100}, curVB={x:0,y:0,w:100,h:100};
+// the part of the frame the map may use: the legend card keeps the bottom strip on wide screens
+function insets(){ const lg=$("legend"); const on=lg&&lg.offsetParent!==null&&lg.offsetHeight>0; return {t:28,b:on?lg.offsetHeight+18:8,l:8,r:8}; }
+function fitBox(b,pad=0,cap=SCALE_CAP){
+  const vs=viewSize(), ins=insets();
+  const aw=Math.max(80,vs.w-ins.l-ins.r), ah=Math.max(80,vs.h-ins.t-ins.b);
+  const s=Math.min(aw/(b.w+pad*2),ah/(b.h+pad*2),cap);
+  const w=vs.w/s, h=vs.h/s, cx=b.x+b.w/2, cy=b.y+b.h/2;
+  return {x:cx-(ins.l+aw/2)/s,y:cy-(ins.t+ah/2)/s,w,h};
 }
 function activeBox(){
   const live=services.filter(s=>!s.done&&simT>=s.t0);
@@ -849,9 +980,16 @@ function updateCamera(dt){
   // keep aspect with the element
   const a=vs.w/vs.h, cx=vb.x+vb.w/2, cy=vb.y+vb.h/2; let w=vb.w, h=vb.h; if(w/h>a) h=w/a; else w=h*a;
   svg.setAttribute("viewBox",`${(cx-w/2).toFixed(1)} ${(cy-h/2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+  curVB.x=cx-w/2; curVB.y=cy-h/2; curVB.w=w; curVB.h=h;
 }
 function setCam(m){ camMode=m; document.querySelectorAll("[data-cam]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.cam===m))); }
 document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>setCam(b.dataset.cam)));
+// 昼 / 夜: the same printed map, or the night version of it
+function setTheme(t){ const dark=t==="dark"; if(dark) document.documentElement.dataset.theme="dark"; else delete document.documentElement.dataset.theme;
+  try{ localStorage.setItem("rr-theme",dark?"dark":"light"); }catch(e){}
+  document.querySelectorAll("[data-theme]").forEach(b=>{ if(b.tagName==="BUTTON") b.setAttribute("aria-pressed",String((b.dataset.theme==="dark")===dark)); }); }
+document.querySelectorAll("button[data-theme]").forEach(b=>b.addEventListener("click",()=>setTheme(b.dataset.theme)));
+setTheme(document.documentElement.dataset.theme==="dark"?"dark":"light");
 // drag to pan, wheel / pinch to zoom
 {
   const pts=new Map(); let last=null, pinch=null;
@@ -884,7 +1022,7 @@ function makeService(str,{single=false}={}){
   const pl=RX.plan(nfa,str,opt), sim=RX.simulate(nfa,str,opt);
   let nat=null; try{ nat=RX.nativeRe(p,searchMode).test(str); }catch(e){}
   const idx=svcSeq++;
-  const col=single?"#1C1C1E":TRAIN_PAL[idx%TRAIN_PAL.length];
+  const col=single?"var(--ink)":TRAIN_PAL[idx%TRAIN_PAL.length];
   pl.trains.forEach(tr=>{ tr.legs.forEach((l,i)=>{ if(l.kind!=="move") return; const pv=tr.legs[i-1], nx=tr.legs[i+1]; l.ei=!pv?(tr.parent<0):pv.kind==="park"; l.eo=!nx?(tr.fate!=="merge"):nx.kind==="park"; }); });
   const consumeT=pl.steps.filter(s=>s.rides>0).map(s=>s.t+pl.TM.RIDE*.5);
   const svc={id:idx,str,plan:pl,t0:simT,col,single,consumeT,evI:0,search:searchMode,
@@ -906,10 +1044,11 @@ function headPos(tr,t){
 // train dots (pooled SVG groups)
 const pool=[];
 function trainEl(){ let e=pool.pop(); if(!e){ e=mk("g",{class:"train"}); mk("rect",{class:"body",x:-14,y:-7.5,width:28,height:15,rx:7.5},e); mk("circle",{class:"lamp",cx:8,cy:0,r:2.6,fill:"#FFD24A"},e); } e.userData={}; NET.G.trains.appendChild(e); return e; }
-function updateTrains(){
+function updateTrains(dt=0){
   livePos.length=0;
   const used=new Set();
   const halo=new Map();
+  const atSt=new Map(), items=[];
   for(const svc of services){
     const t=simT-svc.t0; if(t<0||svc.done) continue;
     for(const tr of svc.plan.trains){
@@ -927,29 +1066,42 @@ function updateTrains(){
       const {o,L}=headPos(tr,t);
       const ox=o.x, oy=o.y;
       let ang=null; if(L.kind==="move"){ const p=pathOf(L.edge), u=clamp01((t-L.t0)/(L.t1-L.t0)), s1=p.len*clamp01(hermite(u,L.ei?0:1,L.eo?0:1)); pathAt(p,Math.max(0,s1-3),_o2); pathAt(p,Math.min(p.len,s1+3),_o3); if(Math.hypot(_o3.x-_o2.x,_o3.y-_o2.y)>.5) ang=Math.atan2(_o3.y-_o2.y,_o3.x-_o2.x)*180/Math.PI; }
-      let el=svc.els.get(tr.id); if(!el){ el=trainEl(); svc.els.set(tr.id,el); const c=el.firstChild; c.setAttribute("fill",svc.col); c.setAttribute("stroke","#fff"); const par=tr.parent>=0?svc.els.get(tr.parent):null; el.userData.ang=par&&par.userData.ang!=null?par.userData.ang:0; }
+      let el=svc.els.get(tr.id); if(!el){ el=trainEl(); svc.els.set(tr.id,el); const c=el.firstChild; c.style.fill=svc.col; c.style.stroke="var(--paper)"; const par=tr.parent>=0?svc.els.get(tr.parent):null; el.userData.ang=par&&par.userData.ang!=null?par.userData.ang:0; if(par&&par.userData.fx){ el.userData.fx=par.userData.fx; el.userData.fy=par.userData.fy; el.userData.fr=par.userData.fr; } }
       if(ang!==null) el.userData.ang=ang;
-      el.setAttribute("transform",`translate(${ox.toFixed(1)} ${oy.toFixed(1)}) rotate(${(el.userData.ang||0).toFixed(1)}) scale(${sc.toFixed(3)})`);
-      el.style.opacity=op; used.add(el);
+      // standing at a station (waiting, or just arrived to merge / derail)?
+      const st=L.kind==="park"?L.state:(L.edge>=0&&t>=L.t1?NET.E[L.edge].to:-1);
+      const it={el,ox,oy,sc,op,key:svc.id*4096+tr.id,st};
+      items.push(it); if(st>=0){ let g=atSt.get(st); if(!g) atSt.set(st,g=[]); g.push(it); }
+      used.add(el);
       if(t<tr.end){ livePos.push({x:ox,y:oy}); if(L.kind==="park"&&L.edge===undefined) halo.set(L.state,svc.col); }
     }
     if(t>svc.tEnd) svc.done=true;
   }
+  // trains sharing a platform fan out across it, so every one stays visible
+  // (away from the station's name: the first train keeps the platform, the rest stack on the free side)
+  for(const [st,g] of atSt){ if(g.length<2) continue; g.sort((a,b)=>a.key-b.key); const m=g.length, gap=Math.min(12,48/(m-1));
+    const lb=NET.LY.N[st].lab, side=lb&&lb.anchor==="middle"?(lb.y1>0?-1:1):0;
+    g.forEach((it,j)=>{ const c=side?j*side:j-(m-1)/2; it.tx=0; it.ty=c*gap; it.tr=(side?j:c)*Math.min(12,36/(m-1))*(side||1)*-1; }); }
+  const k=1-Math.exp(-dt*12);
+  for(const it of items){ const u=it.el.userData;
+    u.fx=(u.fx||0)+((it.tx||0)-(u.fx||0))*k; u.fy=(u.fy||0)+((it.ty||0)-(u.fy||0))*k; u.fr=(u.fr||0)+((it.tr||0)-(u.fr||0))*k;
+    it.el.setAttribute("transform",`translate(${(it.ox+u.fx).toFixed(1)} ${(it.oy+u.fy).toFixed(1)}) rotate(${((u.ang||0)+u.fr).toFixed(1)}) scale(${it.sc.toFixed(3)})`);
+    it.el.style.opacity=it.op; }
   // retire unused dots
   for(const svc of services){ for(const [id,el] of svc.els){ if(!used.has(el)){ el.remove(); pool.push(el); svc.els.delete(id); } } }
-  NET.stEls.forEach((s,i)=>{ const c=halo.get(i); if(c){ s.halo.setAttribute("fill",c); s.halo.style.display=""; } else s.halo.style.display="none"; });
+  NET.stEls.forEach((s,i)=>{ const c=halo.get(i); if(c){ s.halo.style.fill=c; s.halo.style.display=""; } else s.halo.style.display="none"; });
   services=services.filter(s=>{ if(s.done){ for(const el of s.els.values()){ el.remove(); pool.push(el); } s.els.clear(); return false; } return true; });
 }
 /* effects: rings and ✕ marks */
 const fx=[];
-function ring(x,y,color,{r0=10,r1=34,dur=.6,w=3,delay=0}={}){ if(!NET) return; const c=mk("circle",{cx:x,cy:y,r:r0,class:"ring",stroke:color,"stroke-width":w,opacity:0},NET.G.fx); fx.push({el:c,t:-delay,dur,r0,r1,w,kind:"ring"}); }
+function ring(x,y,color,{r0=10,r1=34,dur=.6,w=3,delay=0}={}){ if(!NET) return; const c=mk("circle",{cx:x,cy:y,r:r0,class:"ring","stroke-width":w,opacity:0},NET.G.fx); c.style.stroke=color; fx.push({el:c,t:-delay,dur,r0,r1,w,kind:"ring"}); }
 function xmark(x,y){ if(!NET) return; const g=mk("g",{transform:`translate(${x} ${y})`},NET.G.fx); mk("line",{x1:-7,y1:-7,x2:7,y2:7,class:"xmark"},g); mk("line",{x1:7,y1:-7,x2:-7,y2:7,class:"xmark"},g); fx.push({el:g,t:0,dur:1.3,kind:"x",x,y}); }
 function updateFx(dt){
   for(let i=fx.length-1;i>=0;i--){ const f=fx[i]; f.t+=dt; const k=f.t/f.dur;
     if(k>=1){ f.el.remove(); fx.splice(i,1); continue; }
     if(f.t<0) continue;
     if(f.kind==="ring"){ f.el.setAttribute("r",f.r0+(f.r1-f.r0)*easeOut(k)); f.el.setAttribute("opacity",(1-k).toFixed(3)); f.el.setAttribute("stroke-width",(f.w*(1-k*.6)).toFixed(2)); }
-    else { const s=k<.15?easeOut(k/.15)*1.2:1; f.el.setAttribute("transform",`translate(${f.x} ${f.y-14-k*6}) scale(${s.toFixed(3)})`); f.el.setAttribute("opacity",(1-clamp01((k-.6)/.4)).toFixed(3)); } }
+    else { const s=k<.15?easeOut(k/.15)*1.2:1; f.el.setAttribute("transform",`translate(${f.x} ${f.y-k*4}) scale(${s.toFixed(3)})`); f.el.setAttribute("opacity",(1-clamp01((k-.6)/.4)).toFixed(3)); } }
 }
 function processEvents(){
   for(const svc of services){
@@ -957,15 +1109,61 @@ function processEvents(){
     while(svc.evI<ev.length&&ev[svc.evI].t<=t){
       const e=ev[svc.evI++]; const v=e.state>=0?NET.LY.N[e.state]:null;
       const loud=svc.single||services.length<=2;
-      if(e.type==="split"&&v&&loud){ ring(v.x,v.y,svc.single?"#1C1C1E":svc.col,{r0:8,r1:24,dur:.45,w:2.5}); }
+      if(svc===hudFor&&tourHook(e,v)) { /* the guide pauses just after this */ }
+      if(e.type==="split"&&v&&loud){ ring(v.x,v.y,svc.single?"var(--ink)":svc.col,{r0:8,r1:24,dur:.45,w:2.5}); }
       else if(e.type==="merge"&&v){ ring(v.x,v.y,"#7B3F98",{r0:8,r1:30,dur:.55,w:3.5}); }
-      else if(e.type==="derail"&&v){ xmark(v.x,v.y); }
+      else if(e.type==="derail"&&v){ const m=v.mark||[v.x,v.y-24]; xmark(m[0],m[1]); }
       else if(e.type==="accept"){ finished(svc,true); if(v){ const k=svc.single?3:1; for(let i=0;i<k;i++) ring(v.x,v.y,"#00A651",{r0:14,r1:svc.single?90:44,dur:1.3,w:svc.single?5:3,delay:i*.28});
           if(svc.single){ showAccept(true); focusBox={x:v.x-120,y:v.y-90,w:240,h:180}; focusUntil=performance.now()+2600; } } }
       else if(e.type==="reject"){ finished(svc,false); }
     }
   }
 }
+/* ============================================================
+   First-visit guide: stop at the first split and the first merge of (a|b)*abb
+   ============================================================ */
+const TOUR=[
+  {title:"分岐",text:"点線は乗換通路（ε）です。文字を使わずに通れるので、列車はここで分かれ、行ける駅すべてで次の文字を待ちます。"},
+  {title:"合流",text:"線路がここで合流します。2本の列車が同じ駅に着いたら1本にまとめるので、列車は駅の数より増えません。だから手数は文字数に比例します。"},
+];
+const tour={stage:-1,pauseAt:null,at:-1,ring:null};
+function tourSeen(){ try{ return /[?&]notour/.test(location.search)||localStorage.getItem("rr-tour")==="done"; }catch(e){ return true; } }
+function tourArm(){ if(!tourSeen()) tour.stage=0; }
+function tourHook(e,v){
+  if(tour.stage===0&&e.type==="split"&&v){ tour.stage=1; tour.at=e.state; tour.pauseAt=simT+.3; return true; }
+  return false;
+}
+function tourShow(){
+  const i=tour.stage===1?0:1, T=TOUR[i];
+  $("tourStep").textContent=`はじめての案内 ${i+1} / ${TOUR.length}`; $("tourTitle").textContent=T.title; $("tourText").textContent=T.text;
+  $("tourNext").textContent=i===TOUR.length-1?"わかった":"続ける";
+  const v=NET.LY.N[tour.at]; focusBox={x:v.x-170,y:v.y-120,w:340,h:240}; focusUntil=Infinity;
+  if(tour.ring) tour.ring.remove(); tour.ring=mk("circle",{cx:v.x,cy:v.y,r:26,class:"tour-ring"},NET.G.top);
+  $("tour").classList.add("show"); tourPlace(); setTimeout(()=>$("tourNext").focus({preventScroll:true}),50);
+}
+function tourPlace(){
+  const el=$("tour"); if(!el.classList.contains("show")||!NET||tour.at<0) return;
+  const v=NET.LY.N[tour.at], vs=viewSize();
+  const sx=(v.x-curVB.x)/curVB.w*vs.w, sy=(v.y-curVB.y)/curVB.h*vs.h;
+  const bw=el.offsetWidth, bh=el.offsetHeight;
+  const x=Math.max(12,Math.min(vs.w-bw-12,sx-bw/2));
+  // above the station when it fits (the branches run right and down), otherwise below
+  let y=sy-44-bh; if(y<8) y=sy+44; y=Math.max(8,Math.min(vs.h-bh-8,y));
+  el.style.transform=`translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`;
+}
+function tourHide(){ $("tour").classList.remove("show"); if(tour.ring){ tour.ring.remove(); tour.ring=null; } focusUntil=0; }
+function tourEnd(save){ if(tour.stage<0) return; tourHide(); tour.stage=-1; tour.pauseAt=null; if(save) try{ localStorage.setItem("rr-tour","done"); }catch(e){} }
+// the first place two tracks join (or two trains meet) after the split
+function tourFindJoin(){
+  const svc=hudFor; if(!svc) return;
+  const t=simT-svc.t0, E=NET.E; let best=null;
+  for(const e of svc.plan.events) if(e.type==="merge"&&e.t>t&&(!best||e.t<best.t)) best={t:e.t+.12,st:e.state};
+  for(const tr of svc.plan.trains) for(const L of tr.legs){ if(L.kind!=="move"||L.edge<0||L.t1<=t) continue; const to=E[L.edge].to; if(NET.LY.N[to].indeg>=2&&(!best||L.t1<best.t)) best={t:L.t1+.05,st:to}; }
+  if(best){ tour.stage=3; tour.at=best.st; tour.pauseAt=svc.t0+best.t; } else tourEnd(true);
+}
+function tourNext(){ if(tour.stage===1){ tourHide(); tourFindJoin(); } else tourEnd(true); playing=true; syncPause(); }
+$("tourNext").addEventListener("click",tourNext);
+$("tourSkip").addEventListener("click",()=>{ tourEnd(true); playing=true; syncPause(); });
 function showAccept(on){ if(!NET) return; NET.ab.setAttribute("opacity",on?1:0); NET.abt.textContent=searchMode?"一致":"受理"; }
 function finished(svc,ok){
   svc.result=ok;
@@ -1024,6 +1222,7 @@ function hudFinal(svc){
   setHot(null);
   for(const ch of $("lcdChars").children) ch.classList.remove("now");
   if(!searchMode) showVersus(svc,true);
+  if(tour.stage>=0) tourEnd(true);
 }
 /* the backtracking comparison infographic */
 let vsAnim=null;
@@ -1072,7 +1271,7 @@ function renderBoard(force){
     const d=document.createElement("div"); d.className="brow "+st;
     const label=st==="wait"?"待機":st==="run"?"運行中":(s.result?(s.search?"✓ 発見":"✓ 終点"):(s.search?"✗ なし":s.plan.result.dead?"✗ 脱線":"✗ 不受理"));
     d.innerHTML=`<span>${s.depart}</span><span><span class="code"></span></span><span class="dest"></span><span class="st">${label}${st==="ok"||st==="ng"?(s.verified?'<span class="vf">一致</span>':'<span class="vf bad">不一致</span>'):""}</span>`;
-    const c=d.querySelector(".code"); c.textContent=s.code; c.style.setProperty("--c",s.single?"#FFFFFF":s.col==="#1C1C1E"?"#C8C8C8":s.col);
+    const c=d.querySelector(".code"); c.textContent=s.code; c.style.setProperty("--c",s.single?"#FFFFFF":s.col.startsWith("var")?"#C8C8C8":s.col);
     d.querySelector(".dest").textContent=s.str===""?"（空文字列）":s.str;
     box.appendChild(d);
   }
@@ -1102,10 +1301,10 @@ function loadSample(i,{autorun=true}={}){
   if(ok&&autorun) pendingRun=s.str;
   return ok;
 }
-function stopAll(){ history=history.filter(h=>h.result!==undefined); for(const s of services){ for(const el of s.els.values()) el.remove(); } services=[]; massOn=false; massQueue=[]; pendingRun=null; hudFor=null; buildLcd(null); $("stepLog").textContent=""; $("mTrains").textContent="0"; $("mSet").textContent="{}"; $("versus").classList.remove("show"); if(NET) showAccept(false); renderBoard(true); }
+function stopAll(){ tourEnd(false); history=history.filter(h=>h.result!==undefined); for(const s of services){ for(const el of s.els.values()) el.remove(); } services=[]; massOn=false; massQueue=[]; pendingRun=null; hudFor=null; buildLcd(null); $("stepLog").textContent=""; $("mTrains").textContent="0"; $("mSet").textContent="{}"; $("versus").classList.remove("show"); if(NET) showAccept(false); renderBoard(true); }
 function rebuildFromInput(){
   const src=$("rx").value; curSample=SAMPLES.findIndex(s=>s.re===src); markSample();
-  if(curSample<0){ setLineColor("#1C1C1E"); $("lcdLine").textContent="自由路線"; }
+  if(curSample<0){ setLineColor("var(--free)"); $("lcdLine").textContent="自由路線"; }
   stopAll(); return buildNetwork(src);
 }
 $("bBuild").addEventListener("click",rebuildFromInput);
@@ -1113,6 +1312,7 @@ $("rx").addEventListener("keydown",e=>{ if(e.key==="Enter") rebuildFromInput(); 
 $("bRun").addEventListener("click",()=>startSingle($("str").value));
 $("str").addEventListener("keydown",e=>{ if(e.key==="Enter") startSingle($("str").value); });
 function startSingle(str){
+  if(hudFor&&tour.stage>=0) tourEnd(false);
   if(!NET||NET.src!==$("rx").value){ if(rebuildFromInput()) pendingRun=str; return; }
   if(NET.buildT<NET.buildEnd){ pendingRun=str; return; }
   for(const s of services.filter(s=>s.single)){ for(const el of s.els.values()){ el.remove(); } s.els.clear(); }
@@ -1126,8 +1326,8 @@ function startSingle(str){
 function setSpeed(s){ speed=s; $("bSpeed").textContent="速さ ×"+(s<1?"½":s); }
 $("bSpeed").addEventListener("click",()=>{ const L=[.5,1,2,4]; setSpeed(L[(L.indexOf(speed)+1)%L.length]); });
 function syncPause(){ $("bPause").textContent=playing?"一時停止":"再開"; }
-$("bPause").addEventListener("click",()=>{ playing=!playing; stepUntil=null; syncPause(); });
-$("bStep").addEventListener("click",()=>{ const svc=hudFor; if(!svc) return; const t=simT-svc.t0; const nx=svc.plan.steps.find(s=>s.rides>0&&s.t+svc.plan.TM.RIDE+.02>t+.05); stepUntil=nx?svc.t0+nx.t+svc.plan.TM.RIDE+.02:null; playing=true; syncPause(); });
+$("bPause").addEventListener("click",()=>{ if($("tour").classList.contains("show")){ tourNext(); return; } playing=!playing; stepUntil=null; syncPause(); });
+$("bStep").addEventListener("click",()=>{ if($("tour").classList.contains("show")) tourNext(); const svc=hudFor; if(!svc) return; const t=simT-svc.t0; const nx=svc.plan.steps.find(s=>s.rides>0&&s.t+svc.plan.TM.RIDE+.02>t+.05); stepUntil=nx?svc.t0+nx.t+svc.plan.TM.RIDE+.02:null; playing=true; syncPause(); });
 $("mFull").addEventListener("click",()=>setSearch(false)); $("mSearch").addEventListener("click",()=>setSearch(true));
 function setSearch(v){ searchMode=v; $("mFull").setAttribute("aria-pressed",String(!v)); $("mSearch").setAttribute("aria-pressed",String(v)); stopAll(); }
 $("bMass").addEventListener("click",()=>startMass());
@@ -1162,10 +1362,11 @@ function frame(now){
   if(NET){
     updateBuild(dt);
     if(pendingRun!==null&&NET.buildT>=NET.buildEnd+.2){ const s=pendingRun; pendingRun=null; startSingle(s); }
-    if(playing){ simT+=dt*speed; if(stepUntil!==null&&simT>=stepUntil){ simT=stepUntil; stepUntil=null; playing=false; syncPause(); } }
-    massTick(); processEvents(); updateTrains(); updateHud(); renderBoard(false);
+    if(playing&&tour.pauseAt!==null&&simT+dt*speed>=tour.pauseAt){ simT=tour.pauseAt; tour.pauseAt=null; playing=false; syncPause(); tourShow(); }
+    else if(playing){ simT+=dt*speed; if(stepUntil!==null&&simT>=stepUntil){ simT=stepUntil; stepUntil=null; playing=false; syncPause(); } }
+    massTick(); processEvents(); updateTrains(dt); updateHud(); renderBoard(false);
   }
-  updateFx(dt); updateVersus(); updateCamera(dt);
+  updateFx(dt); updateVersus(); updateCamera(dt); tourPlace();
 }
 // re-lay the map when the frame changes shape (trains keep running: the timetable is topological)
 let relayTO=0, lastAspect=0;
@@ -1186,6 +1387,7 @@ async function boot(){
   renderBoard(true);
   requestAnimationFrame(frame);
   loadSample(0);
+  tourArm();
   window.__rr.ready=true;
 }
 boot();
