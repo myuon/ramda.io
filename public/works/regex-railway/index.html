@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>正規表現線</title>
+<meta name="description" content="正規表現を路線図にする。文字列は列車になって分岐し、合流し、終点を目指す">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ramda.io">
+<meta property="og:title" content="正規表現線">
+<meta property="og:description" content="正規表現を路線図にする。文字列は列車になって分岐し、合流し、終点を目指す">
+<meta property="og:url" content="https://www.ramda.io/works/regex-railway/">
+<meta property="og:image" content="https://www.ramda.io/works/regex-railway/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="正規表現線">
+<meta name="twitter:description" content="正規表現を路線図にする。文字列は列車になって分岐し、合流し、終点を目指す">
+<meta name="twitter:image" content="https://www.ramda.io/works/regex-railway/ogp.png">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Overpass:wght@500;700;800;900&family=Overpass+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFFFFF;
+  --chrome:#EEF0F2;
+  --ink:#1C1C1E;
+  --ink-2:#5B6169;
+  --rule:#D5D9DE;
+  --walk:#A7ADB4;
+  --go:#00A651;
+  --stop:#E60012;
+  --line:#F39700;
+  --sans:"Zen Kaku Gothic New",system-ui,sans-serif;
+  --sign:"Overpass","Zen Kaku Gothic New",sans-serif;
+  --mono:"Overpass Mono",ui-monospace,monospace;
+  --dot:"DotGothic16",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--chrome);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #00A7DB;outline-offset:2px}
+#app{display:grid;grid-template-columns:340px minmax(0,1fr);grid-template-areas:"panel map";height:100vh;height:100svh;overflow:hidden}
+
+/* ---------- map column ---------- */
+#mapcol{grid-area:map;display:grid;grid-template-rows:auto 1fr auto;min-width:0;min-height:0;background:var(--paper)}
+#lcd{display:flex;align-items:stretch;background:#000;color:#fff;min-height:58px;overflow:hidden}
+.lcd-kind{display:flex;flex-direction:column;justify-content:center;padding:6px 14px;background:var(--line);color:#fff;font-weight:900;line-height:1.15;min-width:92px}
+.lcd-kind b{font-size:20px;letter-spacing:.08em}
+.lcd-kind small{font-size:11px;font-weight:700;opacity:.92}
+.lcd-dest{display:flex;flex-direction:column;justify-content:center;padding:4px 16px;border-right:1px solid #333;min-width:120px}
+.lcd-dest small{font-size:11px;color:#BDBDBD}
+.lcd-dest b{font-size:19px;font-weight:900;letter-spacing:.1em;color:#FFB000}
+.lcd-dest b.ok{color:#5BE37D}.lcd-dest b.ng{color:#FF5A5A}
+#lcdChars{display:flex;align-items:center;gap:3px;padding:0 14px;overflow:hidden;flex:1;min-width:0}
+.ch{min-width:26px;height:34px;display:grid;place-items:center;padding:0 4px;font-family:var(--mono);font-weight:700;font-size:20px;color:#FFB000;border-bottom:3px solid transparent}
+.ch.done{color:#5A4A1E}
+.ch.now{background:#FFB000;color:#000;border-radius:3px}
+.ch.end{font-family:var(--sans);font-size:12px;color:#BDBDBD}
+#mapwrap{position:relative;min-height:0;overflow:hidden;background:var(--paper)}
+#map{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+#map.dragging{cursor:grabbing}
+#hudbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--rule);background:var(--paper);min-height:52px}
+.ctr{display:flex;align-items:baseline;gap:5px;font-size:12px;color:var(--ink-2)}
+.ctr b{font-family:var(--sign);font-weight:900;font-size:24px;color:var(--ink);line-height:1}
+.ctr code{font-family:var(--mono);font-size:13px;color:var(--ink)}
+#stepLog{flex:1;min-width:200px;font-size:13px;color:var(--ink)}
+.chipv{display:inline-block;font-size:12px;font-weight:700;border-radius:20px;padding:1px 9px;margin-left:6px;background:var(--go);color:#fff}
+.chipv.bad{background:var(--stop)}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:20px;overflow:hidden}
+.seg button{background:none;border:0;padding:4px 13px;font-size:13px;font-weight:700}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+#buildMsg{position:absolute;left:16px;top:12px;font-size:13px;font-weight:700;color:var(--ink-2);background:rgba(255,255,255,.9);padding:2px 8px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity .4s}
+#buildMsg.show{opacity:1}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:5px 14px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+
+#legend{position:absolute;left:14px;bottom:12px;display:flex;flex-direction:column;gap:3px;background:rgba(255,255,255,.92);padding:8px 10px;border-radius:6px;box-shadow:0 0 0 1px var(--rule);font-size:11px;font-weight:700;pointer-events:none;max-width:46%}
+.lg{display:flex;align-items:center;gap:7px}
+.lg-b{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 4px;border:3.5px solid;border-radius:10px;font-family:var(--sign);font-weight:900;font-size:11px;line-height:1;background:#fff;white-space:nowrap}
+.lg-w{display:inline-block;width:20px;border-top:3px dotted var(--walk)}
+/* infographic overlay on the map */
+#versus{position:absolute;right:16px;bottom:16px;width:min(380px,calc(100% - 32px));background:#fff;border:2px solid var(--ink);border-radius:10px;padding:12px 14px 12px;opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s;pointer-events:none}
+#versus.show{opacity:1;transform:none}
+
+/* ---------- side panel ---------- */
+#panel>*{flex-shrink:0}
+#panel{grid-area:panel;background:var(--chrome);border-right:1px solid var(--rule);overflow-y:auto;padding:16px 16px 30px;display:flex;flex-direction:column;gap:20px;z-index:2}
+.sign{background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 0 0 1px var(--rule)}
+.sign-top{display:flex;align-items:center;gap:12px;padding:10px 14px 6px}
+.sign-num{display:grid;place-items:center;width:46px;height:46px;border:5px solid var(--line);border-radius:50%;background:#fff;line-height:1;flex:none;font-family:var(--sign)}
+.sign-num small{font-size:10px;font-weight:800;margin-top:3px}
+.sign-num b{font-size:18px;font-weight:900;margin-top:-3px}
+.sign h1{margin:0;font-size:28px;line-height:1.1;font-weight:900;letter-spacing:.1em}
+.sign p{margin:2px 0 0;font-size:11px;letter-spacing:.05em;color:var(--ink-2);font-family:var(--sign);font-weight:700}
+.sign-band{display:flex;justify-content:space-between;background:var(--line);color:#fff;font-size:12px;font-weight:700;padding:3px 12px}
+.field-name{font-size:13px;color:var(--ink-2);margin:0 0 6px;font-weight:700}
+.rxrow{display:flex;gap:8px}
+#rx{flex:1;min-width:0;background:#fff;border:2px solid var(--ink);border-radius:6px;padding:8px 11px;font-family:var(--mono);font-weight:700;font-size:19px}
+#rx.bad{border-color:var(--stop)}
+.btn{background:#fff;border:2px solid var(--ink);border-radius:6px;padding:6px 13px;font-weight:700;white-space:nowrap}
+.btn:hover{background:#F6F7F8}
+.btn.go{background:var(--ink);color:#fff}
+.btn.go:hover{background:#3A3A3E}
+#rxErr{min-height:20px;font-size:13px;color:var(--stop);margin-top:6px;font-family:var(--mono);white-space:pre;overflow-x:auto}
+#rxStat{font-size:13px;color:var(--ink-2)}
+#rxStat b{color:var(--ink);font-family:var(--sign);font-weight:800}
+.modes{margin-top:10px}
+.samples{display:flex;flex-direction:column;gap:2px}
+.chip{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;text-align:left;background:none;border:0;border-radius:6px;padding:6px 8px}
+.chip:hover{background:#E3E6E9}
+.chip[aria-current=true]{background:#fff;box-shadow:0 0 0 2px var(--ink)}
+.chip i{width:22px;height:22px;border-radius:50%;border:5px solid var(--c);background:#fff}
+.chip code{font-family:var(--mono);font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip span{font-size:11px;color:var(--ink-2);text-align:right}
+.ticket{display:flex;gap:8px}
+#str{flex:1;min-width:0;background:#fff;border:2px solid var(--ink);border-radius:6px;padding:7px 11px;font-family:var(--mono);font-weight:700;font-size:17px}
+.runrow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+#list{width:100%;min-height:92px;background:#fff;border:2px solid var(--ink);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:14px;resize:vertical;line-height:1.5}
+.hint{font-size:12px;color:var(--ink-2);margin:6px 0 0}
+/* versus infographic (shared by panel card and map overlay) */
+.vs-title{font-size:13px;font-weight:900;margin:0 0 8px}
+.vs-row{display:grid;grid-template-columns:96px 1fr;gap:4px 10px;align-items:center;margin-bottom:8px}
+.vs-row .nm{font-size:12px;font-weight:700;line-height:1.3}
+.vs-num{font-family:var(--sign);font-weight:900;font-size:22px;line-height:1;font-variant-numeric:tabular-nums}
+.vs-bar{grid-column:2;height:10px;border-radius:5px;background:#E6E8EB;overflow:hidden}
+.vs-bar i{display:block;height:100%;width:0;border-radius:5px;transition:width .2s linear}
+.vs-row.bt .vs-num{color:var(--stop)}.vs-row.bt .vs-bar i{background:var(--stop)}
+.vs-row.nfa .vs-num{color:var(--go)}.vs-row.nfa .vs-bar i{background:var(--go)}
+.vs-note{font-size:11px;color:var(--ink-2);margin:0}
+#vsCard{background:#fff;border-radius:8px;padding:12px 14px;box-shadow:0 0 0 1px var(--rule)}
+#vsCard[hidden]{display:none}
+/* LED board (flat) */
+.board{background:#000;border-radius:6px;padding:8px 10px 6px;font-family:var(--dot);color:#FF9F1C}
+.board-head{display:grid;grid-template-columns:3.1em 2.6em 1fr 6.2em;gap:6px;color:#fff;font-size:12px;border-bottom:1px solid #333;padding-bottom:3px;margin-bottom:3px}
+.board-rows{display:flex;flex-direction:column;gap:1px;min-height:44px}
+.brow{display:grid;grid-template-columns:3.1em 2.6em 1fr 6.2em;gap:6px;align-items:center;font-size:14px;line-height:1.45}
+.brow .code{display:inline-block;width:100%;text-align:center;color:#000;background:var(--c);border-radius:2px;font-size:11px;line-height:1.55}
+.brow .dest{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.brow .st{text-align:right;white-space:nowrap}
+.brow.run .st{animation:blink 1s steps(2) infinite}
+.brow.ok .st{color:#47E07A}.brow.ng .st{color:#FF4D4D}
+.brow.wait{color:#6B4A12}
+.brow .vf{font-size:10px;color:#7FD7FF;margin-left:3px}
+.brow .vf.bad{color:#fff;background:var(--stop);padding:0 3px}
+@keyframes blink{50%{opacity:.3}}
+.board-foot{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #333;margin-top:4px;padding-top:3px;font-size:11px;color:#fff}
+
+/* ---------- SVG map ---------- */
+#map text{font-family:var(--sign);paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.walk{fill:none;stroke:var(--walk);stroke-width:3;stroke-linecap:round;stroke-dasharray:.1 7}
+.walk-base{fill:none;stroke:#fff;stroke-width:9;stroke-linecap:round}
+.casing{fill:none;stroke:#fff;stroke-width:15;stroke-linecap:round;stroke-linejoin:round}
+.tline{fill:none;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+.stub{fill:none;stroke:var(--ink);stroke-width:5;stroke-linecap:round;stroke-dasharray:2 6}
+.st-circ{fill:#fff;stroke:var(--ink);stroke-width:3.5}
+.st-junc{fill:#fff;stroke:var(--walk);stroke-width:2.5}
+.st-name{font-weight:900;font-size:14px;fill:var(--ink)}
+.st-desc{font-family:var(--sans)!important;font-weight:700;font-size:10.5px;fill:var(--ink-2)}
+.st-jnum{font-weight:700;font-size:9px;fill:var(--walk)}
+.badge circle,.badge rect{fill:#fff;stroke-width:4.5}
+.badge text{font-weight:900;font-size:13px;text-anchor:middle;dominant-baseline:central;stroke:none!important}
+.badge.hot circle,.badge.hot rect{fill:var(--bc)}
+.badge.hot text{fill:#fff!important}
+.halo{opacity:.2}
+.accept-badge rect{fill:var(--go)}
+.accept-badge text{fill:#fff;font-weight:900;font-size:14px;stroke:none!important;font-family:var(--sans)!important}
+.ring{fill:none}
+.xmark{stroke:var(--stop);stroke-width:3.5;stroke-linecap:round}
+.train .body{stroke-width:2.5}
+
+@media (max-width:900px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;grid-template-areas:"map" "panel";height:auto;min-height:100svh;overflow:visible}
+  #mapcol{height:72svh;position:sticky;top:0;z-index:1;border-bottom:1px solid var(--rule)}
+  #lcd{min-height:46px}
+  .lcd-kind{min-width:64px;padding:4px 9px}.lcd-kind b{font-size:15px}.lcd-kind small{font-size:9px}
+  .lcd-dest{min-width:0;padding:3px 9px}.lcd-dest b{font-size:14px}.lcd-dest small{font-size:9px}
+  #lcdChars{padding:0 8px;gap:2px}
+  .ch{min-width:17px;height:26px;font-size:15px;padding:0 2px}
+  #hudbar{gap:10px;padding:6px 10px;min-height:0}
+  .ctr b{font-size:19px}
+  #stepLog{font-size:11.5px;min-width:100%;order:9;line-height:1.45}
+  #panel{border-right:0;overflow:visible;padding:14px 14px 40px}
+  .sign h1{font-size:24px}
+  #versus{right:10px;bottom:10px;padding:10px 12px}
+  #legend{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .brow.run .st{animation:none} }
+</style>
+</head>
+<body>
+<div id="app">
+  <main id="mapcol">
+    <div id="lcd" aria-live="polite">
+      <div class="lcd-kind"><b>各停</b><small id="lcdLine">正規表現線</small></div>
+      <div class="lcd-dest"><small id="lcdDestS">行先</small><b id="lcdDest">受理</b></div>
+      <div id="lcdChars"></div>
+    </div>
+    <div id="mapwrap">
+      <svg id="map" role="img" aria-label="正規表現から作った路線図"></svg>
+      <div id="buildMsg"></div>
+      <div id="toast"></div>
+      <div id="versus" aria-hidden="true"></div>
+      <div id="legend" aria-label="凡例"></div>
+    </div>
+    <div id="hudbar">
+      <div class="ctr"><b id="mTrains">0</b>本 走行中</div>
+      <div class="ctr"><b id="mMax">0</b>本 最大</div>
+      <div class="ctr">状態集合 <code id="mSet">{}</code></div>
+      <div id="stepLog"></div>
+      <div class="seg" role="group" aria-label="地図の表示">
+        <button data-cam="auto" aria-pressed="true">追跡</button>
+        <button data-cam="all" aria-pressed="false">全体</button>
+      </div>
+    </div>
+  </main>
+
+  <aside id="panel">
+    <div class="sign" aria-hidden="true">
+      <div class="sign-top">
+        <div class="sign-num"><small>RX</small><b id="signNo">01</b></div>
+        <div><h1>正規表現線</h1><p>Regular Expression Line</p></div>
+      </div>
+      <div class="sign-band"><span>← 文字列</span><span>受理 →</span></div>
+    </div>
+
+    <section>
+      <h2 class="field-name"><label for="rx">正規表現</label></h2>
+      <div class="rxrow">
+        <input id="rx" spellcheck="false" autocomplete="off" autocapitalize="off" value="(a|b)*abb">
+        <button class="btn" id="bBuild">路線図を作る</button>
+      </div>
+      <div id="rxErr" role="status"></div>
+      <div id="rxStat"></div>
+      <div class="seg modes" role="group" aria-label="照合の方法">
+        <button id="mFull" aria-pressed="true">全体一致</button>
+        <button id="mSearch" aria-pressed="false">部分一致（検索）</button>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="field-name">路線を選ぶ</h2>
+      <div class="samples" id="samples"></div>
+    </section>
+
+    <section>
+      <h2 class="field-name"><label for="str">乗せる文字列</label></h2>
+      <div class="ticket">
+        <input id="str" spellcheck="false" autocomplete="off" autocapitalize="off" value="aababb">
+        <button class="btn go" id="bRun">発車</button>
+      </div>
+      <div class="runrow">
+        <button class="btn" id="bPause">一時停止</button>
+        <button class="btn" id="bStep">1文字進める</button>
+        <button class="btn" id="bSpeed">速さ ×1</button>
+      </div>
+    </section>
+
+    <section id="vsCard" hidden></section>
+
+    <section>
+      <h2 class="field-name"><label for="list">ダイヤ（1行に1本）</label></h2>
+      <textarea id="list" spellcheck="false"></textarea>
+      <div class="runrow"><button class="btn go" id="bMass">ダイヤ運行を始める</button><button class="btn" id="bStop">運行をやめる</button></div>
+      <p class="hint">何本もの列車を時刻表どおりに走らせ、結果を発車標に出します。どの結果もブラウザの RegExp と照合します。</p>
+    </section>
+
+    <section>
+      <div class="board" id="board">
+        <div class="board-head"><span>発車</span><span>列車</span><span>文字列</span><span style="text-align:right">状況</span></div>
+        <div class="board-rows" id="boardRows"></div>
+        <div class="board-foot"><span id="bfDone">運行 0本</span><span id="bfRate">毎分 —</span><span id="bfVerify">RegExp照合 0/0</span></div>
+      </div>
+    </section>
+  </aside>
+</div>
+<script>
+/*ENGINE-BEGIN*/
+var RX=(function(){
+"use strict";
+function RxError(msg,pos){ var e=new Error(msg); e.pos=pos; e.rx=true; return e; }
+var LINE_T=[[10,10],[13,13],[0x2028,0x2029]];
+var DIGIT=[[48,57]], WORD=[[48,57],[65,90],[95,95],[97,122]];
+var SPACE=[[9,13],[32,32],[0xa0,0xa0],[0x1680,0x1680],[0x2000,0x200a],[0x2028,0x2029],[0x202f,0x202f],[0x205f,0x205f],[0x3000,0x3000],[0xfeff,0xfeff]];
+function csTest(cs,ch){ var c=ch.charCodeAt(0), r=cs.ranges, hit=false; for(var i=0;i<r.length;i++){ if(c>=r[i][0]&&c<=r[i][1]){ hit=true; break; } } return cs.neg?!hit:hit; }
+function showCh(c){ return c===" "?"␣":c==="\t"?"\\t":c==="\n"?"\\n":c; }
+
+/* ---- parser: literals . [..] [^..] \d\w\s | * + ? ( ) (?: ) and ^ $ at the ends ---- */
+function parse(src){
+  var i=0, end=src.length, aS=false, aE=false;
+  if(src[0]==="^"){ aS=true; i=1; }
+  if(end>i&&src[end-1]==="$"){ var b=0; for(var j=end-2;j>=i&&src[j]==="\\";j--) b++; if(b%2===0){ aE=true; end--; } }
+  function err(m,p){ throw RxError(m,p===undefined?i:p); }
+  function alt(){ var alts=[cat()]; while(i<end&&src[i]==="|"){ i++; alts.push(cat()); } return alts.length===1?alts[0]:{t:"alt",alts:alts}; }
+  function cat(){ var items=[]; while(i<end&&src[i]!=="|"&&src[i]!==")") items.push(rep()); return items.length===1?items[0]:{t:"cat",items:items}; }
+  function rep(){
+    var a=atom();
+    if(i<end&&"*+?".indexOf(src[i])>=0){
+      var op=src[i++]; a={t:op==="*"?"star":op==="+"?"plus":"opt",a:a};
+      if(i<end&&src[i]==="?") i++;            // lazy: same language
+      if(i<end&&"*+?".indexOf(src[i])>=0) err("繰り返し記号を重ねるときは ( ) で囲んでください");
+    }
+    if(i<end&&src[i]==="{") err("{n,m} の回数指定には未対応です");
+    return a;
+  }
+  function escTok(inClass){
+    var p=i; i++; if(i>=end) err("「\\」のあとに文字がありません",p);
+    var c=src[i++];
+    if(c==="d") return {set:DIGIT,neg:false,label:"\\d"};
+    if(c==="w") return {set:WORD,neg:false,label:"\\w"};
+    if(c==="s") return {set:SPACE,neg:false,label:"\\s"};
+    if("DWS".indexOf(c)>=0){ if(inClass) err("[ ] の中の \\"+c+" には未対応です",p); return {set:c==="D"?DIGIT:c==="W"?WORD:SPACE,neg:true,label:"\\"+c}; }
+    var ctl={n:10,t:9,r:13,f:12,v:11}[c]; if(ctl!==undefined) return {code:ctl,label:"\\"+c};
+    if(inClass&&c==="b") return {code:8,label:"\\b"};
+    if(/[0-9A-Za-z]/.test(c)) err("\\"+c+" には未対応です",p);
+    return {code:c.charCodeAt(0),label:c};
+  }
+  function classAtom(){ if(src[i]==="\\") return escTok(true); var c=src[i++]; return {code:c.charCodeAt(0)}; }
+  function klass(){
+    var p=i; i++; var neg=false; if(src[i]==="^"){ neg=true; i++; }
+    var ranges=[];
+    for(;;){
+      if(i>=end) err("「[」に対応する「]」がありません",p);
+      if(src[i]==="]"){ i++; break; }
+      var lo=classAtom();
+      if(src[i]==="-"&&i+1<end&&src[i+1]!=="]"){
+        var dp=i; i++; var hi=classAtom();
+        if(lo.set||hi.set) err("[ ] の中で \\d などを範囲の端にはできません",dp);
+        if(lo.code>hi.code) err("範囲 "+String.fromCharCode(lo.code)+"-"+String.fromCharCode(hi.code)+" の順序が逆です",dp);
+        ranges.push([lo.code,hi.code]);
+      } else if(lo.set) ranges.push.apply(ranges,lo.set); else ranges.push([lo.code,lo.code]);
+    }
+    return {t:"cs",cs:{neg:neg,ranges:ranges,label:src.slice(p,i)}};
+  }
+  function atom(){
+    var c=src[i];
+    if(c==="("){
+      var p=i; i++;
+      if(src[i]==="?"){ if(src[i+1]===":") i+=2; else err("(?= など先読みには未対応です"); }
+      var a=alt(); if(i>=end||src[i]!==")") err("「(」に対応する「)」がありません",p); i++;
+      return {t:"group",a:a};
+    }
+    if(c==="*"||c==="+"||c==="?") err("「"+c+"」の前に繰り返す文字がありません");
+    if(c==="{"||c==="}") err("{n,m} の回数指定には未対応です");
+    if(c==="^"||c==="$") err("^ と $ はパターンの先頭と末尾にだけ置けます");
+    if(c==="[") return klass();
+    if(c==="."){ i++; return {t:"cs",cs:{neg:true,ranges:LINE_T,label:"."}}; }
+    if(c==="\\"){ var t=escTok(false); return {t:"cs",cs:t.set?{neg:t.neg,ranges:t.set,label:t.label}:{neg:false,ranges:[[t.code,t.code]],label:t.label}}; }
+    i++; return {t:"cs",cs:{neg:false,ranges:[[c.charCodeAt(0),c.charCodeAt(0)]],label:showCh(c)}};
+  }
+  var ast=alt();
+  if((aS||aE)&&ast.t==="alt"&&i>=end) err("^ や $ と | を一緒に使うときは全体を ( ) で囲んでください",0);
+  if(i<end){ if(src[i]===")") err("「)」に対応する「(」がありません"); err("ここが読めません"); }
+  return {ast:ast,aS:aS,aE:aE,core:src.slice(aS?1:0,end),src:src};
+}
+
+/* ---- Thompson's construction. Concatenation identifies the end of the left
+   fragment with the start of the right one (the textbook form), so every
+   ε-edge in the result comes from | * + ? ---- */
+function compile(ast){
+  var st=[], edges=[];
+  function S(){ var s={out:[],dead:false}; st.push(s); return s; }
+  function E(a,b,cs){ var e={from:a,to:b,cs:cs||null,order:edges.length}; edges.push(e); a.out.push(e); return e; }
+  function merge(x,y){ if(x===y) return; y.out.forEach(function(e){ e.from=x; x.out.push(e); }); y.out=[]; edges.forEach(function(e){ if(e.to===y) e.to=x; }); y.dead=true; }
+  function b(n){
+    switch(n.t){
+      case "cs": { var s=S(), f=S(); E(s,f,n.cs); return {s:s,f:f}; }
+      case "group": return b(n.a);
+      case "cat": {
+        if(!n.items.length){ var z=S(); return {s:z,f:z}; }
+        var fr=b(n.items[0]);
+        for(var k=1;k<n.items.length;k++){ var g=b(n.items[k]); var empty=g.s===g.f; merge(fr.f,g.s); if(!empty) fr={s:fr.s,f:g.f}; }
+        return fr;
+      }
+      case "alt": { var s1=S(), f1=S(); n.alts.forEach(function(a){ var g=b(a); E(s1,g.s); E(g.f,f1); }); return {s:s1,f:f1}; }
+      case "star": { var s2=S(), f2=S(), g2=b(n.a); E(s2,g2.s); E(s2,f2); E(g2.f,g2.s); E(g2.f,f2); return {s:s2,f:f2}; }
+      case "plus": { var s3=S(), f3=S(), g3=b(n.a); E(s3,g3.s); E(g3.f,g3.s); E(g3.f,f3); return {s:s3,f:f3}; }
+      case "opt": { var s4=S(), f4=S(), g4=b(n.a); E(s4,g4.s); E(s4,f4); E(g4.f,f4); return {s:s4,f:f4}; }
+    }
+    throw new Error("bad node "+n.t);
+  }
+  var fr=b(ast);
+  // number the stations in breadth-first order from the depot
+  var id=new Map(), q=[fr.s]; id.set(fr.s,0);
+  while(q.length){ var s=q.shift(); s.out.forEach(function(e){ if(!id.has(e.to)){ id.set(e.to,id.size); q.push(e.to); } }); }
+  if(!id.has(fr.f)) id.set(fr.f,id.size);
+  var n=id.size;
+  var E2=edges.filter(function(e){ return id.has(e.from); }).map(function(e,k){ return {id:k,from:id.get(e.from),to:id.get(e.to),cs:e.cs,label:e.cs?e.cs.label:"ε",order:e.order}; });
+  var out=[]; for(var i=0;i<n;i++) out.push([]);
+  E2.forEach(function(e){ out[e.from].push(e.id); });
+  return {n:n,start:0,accept:id.get(fr.f),edges:E2,out:out};
+}
+
+function closure(nfa,seeds){
+  var seen=new Set(seeds), stk=seeds.slice();
+  while(stk.length){ var s=stk.pop(); nfa.out[s].forEach(function(ei){ var e=nfa.edges[ei]; if(!e.cs&&!seen.has(e.to)){ seen.add(e.to); stk.push(e.to); } }); }
+  return seen;
+}
+function move(nfa,set,ch){ var nx=new Set(); set.forEach(function(s){ nfa.out[s].forEach(function(ei){ var e=nfa.edges[ei]; if(e.cs&&csTest(e.cs,ch)) nx.add(e.to); }); }); return nx; }
+// the plain set simulation (no timing) — the reference the animation plan is checked against
+function simulate(nfa,str,opt){
+  opt=opt||{}; var search=!!opt.search, aS=!!opt.aS, aE=!!opt.aE;
+  var cur=closure(nfa,[nfa.start]), sets=[cur];
+  if(search&&!aE&&cur.has(nfa.accept)) return {matched:true,sets:sets,at:0};
+  for(var k=0;k<str.length;k++){
+    var nx=move(nfa,cur,str[k]); if(search&&!aS) nx.add(nfa.start);
+    cur=closure(nfa,Array.from(nx)); sets.push(cur);
+    if(search&&!aE&&cur.has(nfa.accept)) return {matched:true,sets:sets,at:k+1};
+    if(cur.size===0) return {matched:false,sets:sets,at:k+1,dead:true};
+  }
+  return {matched:cur.has(nfa.accept),sets:sets,at:str.length};
+}
+
+/* ---- the timetable: the same set simulation, but every member of the set is a
+   train with a route. ε-closure is a race through the switches: the first train
+   to reach a station holds it, later arrivals merge into it (set semantics).
+   Stations with a lettered track (or the terminal) are where trains wait; then
+   all of them depart together on the next letter. ---- */
+function plan(nfa,str,opt){
+  opt=opt||{}; var search=!!opt.search, aS=!!opt.aS, aE=!!opt.aE;
+  var TM={EPS:.34,RIDE:1.2,PAUSE:.26,EXIT:1.1}; if(opt.timing) for(var kk in opt.timing) TM[kk]=opt.timing[kk];
+  var E=nfa.edges, n=str.length;
+  var hasChar=nfa.out.map(function(l){ return l.some(function(ei){ return !!E[ei].cs; }); });
+  function sig(s){ return hasChar[s]||s===nfa.accept; }
+  var trains=[], events=[], steps=[];
+  function hist(p){ var h=p.prior.concat(p.legs.filter(function(l){ return l.kind!=="park"; }).map(function(l){ return l.edge; })); return h.length>16?h.slice(-16):h; }
+  function mk(parent,t){ var tr={id:trains.length,parent:parent?parent.id:-1,born:t,legs:[],fate:null,end:Infinity,prior:parent?hist(parent):[],win:false}; trains.push(tr); return tr; }
+  function depart(t){ var tr=mk(null,t-TM.EXIT); tr.legs.push({kind:"move",edge:-1,t0:t-TM.EXIT,t1:t}); return {state:nfa.start,t:t,tr:tr}; }
+  var seeds=[depart(TM.EXIT)], result=null;
+  for(var k=0;k<=n;k++){
+    var q=seeds.slice(), reached=new Map(), parked=[], tEnd=0;
+    seeds.forEach(function(sd){ tEnd=Math.max(tEnd,sd.t); });
+    while(q.length){
+      var bi=0; for(var j=1;j<q.length;j++) if(q[j].t<q[bi].t-1e-9) bi=j;
+      var it=q.splice(bi,1)[0], state=it.state, t=it.t, tr=it.tr;
+      tEnd=Math.max(tEnd,t);
+      if(reached.has(state)){ tr.fate="merge"; tr.end=t; tr.into=reached.get(state).id; events.push({t:t,type:"merge",state:state,tr:tr.id,k:k}); continue; }
+      reached.set(state,tr);
+      var eps=nfa.out[state].filter(function(ei){ return !E[ei].cs; });
+      var carriers=[];
+      if(sig(state)){ parked.push({state:state,tr:tr,t:t}); eps.forEach(function(ei){ carriers.push([mk(tr,t),ei]); }); }
+      else { var cs0=eps.map(function(ei,j){ return j===0?tr:mk(tr,t); }); eps.forEach(function(ei,j){ carriers.push([cs0[j],ei]); }); if(!eps.length){ tr.fate="stop"; tr.end=t; } }
+      var total=carriers.length+(sig(state)?1:0);
+      if(total>1) events.push({t:t,type:"split",state:state,n:total,k:k,tr:tr.id});
+      carriers.forEach(function(c){ c[0].legs.push({kind:"move",edge:c[1],t0:t,t1:t+TM.EPS}); q.push({state:E[c[1]].to,t:t+TM.EPS,tr:c[0]}); });
+    }
+    var set=Array.from(reached.keys()).sort(function(a,b){ return a-b; });
+    var D=tEnd+TM.PAUSE;
+    var stp={k:k,t:D,tClose:tEnd,t0:seeds.length?Math.min.apply(null,seeds.map(function(s){ return s.t; })):D,set:set,trains:parked.length,ch:k<n?str[k]:null,derails:0,rides:0};
+    steps.push(stp);
+    parked.forEach(function(p){ p.tr.legs.push({kind:"park",state:p.state,t0:p.t,t1:D}); });
+    var acc=reached.has(nfa.accept);
+    if((acc&&search&&!aE)||k===n){
+      parked.forEach(function(p){ if(acc&&p.state===nfa.accept){ p.tr.fate="accept"; p.tr.win=true; } else p.tr.fate=acc?"cancel":"stop"; p.tr.end=D; });
+      result={matched:acc,t:D,k:k};
+      events.push({t:D,type:acc?"accept":"reject",state:acc?nfa.accept:-1,k:k});
+      break;
+    }
+    var ch=str[k], next=[];
+    parked.forEach(function(p){
+      var m=nfa.out[p.state].filter(function(ei){ return E[ei].cs&&csTest(E[ei].cs,ch); });
+      if(!m.length){ p.tr.fate="derail"; p.tr.end=D; stp.derails++; events.push({t:D,type:"derail",state:p.state,tr:p.tr.id,k:k,ch:ch}); return; }
+      var cars=m.map(function(ei,j){ return j===0?p.tr:mk(p.tr,D); });
+      if(m.length>1) events.push({t:D,type:"split",state:p.state,n:m.length,k:k,tr:p.tr.id});
+      m.forEach(function(ei,j){ cars[j].legs.push({kind:"move",edge:ei,t0:D,t1:D+TM.RIDE,consume:k}); next.push({state:E[ei].to,t:D+TM.RIDE,tr:cars[j]}); });
+    });
+    stp.rides=next.length;
+    if(search&&!aS) next.push(depart(D+TM.RIDE));
+    if(!next.length){ result={matched:false,t:D,k:k,dead:true}; events.push({t:D,type:"reject",state:-1,k:k}); break; }
+    seeds=next;
+  }
+  // the lineage of the winner (or of the last survivor) — the train a follow camera rides
+  var lead=trains.filter(function(t){ return t.win; })[0]||trains.slice().sort(function(a,b){ return (b.end===Infinity?1e9:b.end)-(a.end===Infinity?1e9:a.end); })[0];
+  for(var x=lead;x;x=x.parent>=0?trains[x.parent]:null) x.line=true;
+  events.sort(function(a,b){ return a.t-b.t; });
+  return {trains:trains,events:events,steps:steps,result:result,TM:TM,n:n,str:str};
+}
+
+// The JS RegExp the result is checked against (anchored full match, or search)
+function nativeRe(p,search){ return search?new RegExp((p.aS?"^":"")+p.core+(p.aE?"$":"")):new RegExp("^(?:"+p.core+")$"); }
+
+// A naive backtracking matcher on the same tree, counting its steps (for comparison only)
+function btCount(ast,str,cap){
+  cap=cap||3e6; var steps=0, STOP={};
+  function m(nd,i,k){
+    if(++steps>cap) throw STOP;
+    switch(nd.t){
+      case "cs": return i<str.length&&csTest(nd.cs,str[i])?k(i+1):false;
+      case "group": return m(nd.a,i,k);
+      case "cat": { var go=function(j,ix){ return ix===nd.items.length?k(j):m(nd.items[ix],j,function(jj){ return go(jj,ix+1); }); }; return go(i,0); }
+      case "alt": for(var a=0;a<nd.alts.length;a++) if(m(nd.alts[a],i,k)) return true; return false;
+      case "star": { var loop=function(j){ return m(nd.a,j,function(jj){ return jj!==j&&loop(jj); })||k(j); }; return loop(i); }
+      case "plus": return m(nd.a,i,function(jj){ var loop=function(j){ return m(nd.a,j,function(j2){ return j2!==j&&loop(j2); })||k(j); }; return loop(jj); });
+      case "opt": return m(nd.a,i,k)||k(i);
+    }
+  }
+  try{ var r=m(ast,0,function(j){ return j===str.length; }); return {steps:steps,matched:r,capped:false}; }
+  catch(e){ if(e===STOP) return {steps:steps,capped:true}; if(e instanceof RangeError) return {steps:steps,capped:true}; throw e; }
+}
+return {parse:parse,compile:compile,closure:closure,simulate:simulate,plan:plan,nativeRe:nativeRe,btCount:btCount,csTest:csTest};
+})();
+/*ENGINE-END*/
+</script>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const NS="http://www.w3.org/2000/svg";
+const mk=(tag,attrs,parent)=>{ const e=document.createElementNS(NS,tag); if(attrs) for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; };
+const reduceMotion=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clamp01=x=>x<0?0:x>1?1:x;
+const ease=x=>{ x=clamp01(x); return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; };
+const easeOut=x=>1-Math.pow(1-clamp01(x),3);
+const showCh=c=>c===" "?"␣":c;
+
+/* ============================================================
+   Samples (unchanged) and colours
+   ============================================================ */
+const SAMPLES=[
+  {re:"(a|b)*abb", name:"abb で終わる", str:"aababb", color:"#F39700",
+   list:["abb","aababb","babb","ab","abab","bbabb","aaa","abba","ababb","b","aabb","bab"]},
+  {re:"colou?r", name:"米英どちらの綴りも", str:"colour", color:"#E60012",
+   list:["color","colour","colouur","colr","colors","color","colour"]},
+  {re:"[a-z0-9._]+@[a-z0-9]+\\.[a-z]+", name:"メールアドレス風", str:"hana@eki.jp", color:"#00A7DB",
+   list:["hana@eki.jp","a.b@c.com","rail@yard","no.at.sign","@nobody.jp","yamada_t@line.co","x@y.z","eki@@ben.to"]},
+  {re:"(ab|a)*b", name:"分岐が多い", str:"abaab", color:"#9B7CB6",
+   list:["b","ab","aab","abab","abaab","aba","abb","aaaab","ababa","aabab"]},
+  {re:"(a*)*b", name:"バックトラック泣かせ", str:"aaaaaaaaaaaaaaaa", color:"#009944", speed:2,
+   list:["aaaab","aaaaaaaaaaaa","b","aaaaaaaaaaaaaab","ba","aaaaaaaaaaaaaaaa"]},
+  {re:"(0|1(01*0)*1)*", name:"3の倍数（2進数）", str:"1001", color:"#BB641D",
+   list:["0","1","10","11","100","101","110","111","1000","1001","1010","1011","1100","1101","1110","1111"]},
+];
+// one colour per distinct letter track, like the lines of a metro network
+const LINE_PAL=["#F39700","#E60012","#00A7DB","#009944","#9B7CB6","#00ADA9","#BB641D","#D7C447","#E85298","#0079C2"];
+// trains in the timetable: dark outline dots in their own colours
+const TRAIN_PAL=["#1C1C1E","#E4007F","#0067C0","#00A651","#F39700","#7B3F98","#00A7DB","#B8860B","#E60012","#00ADA9"];
+
+/* ============================================================
+   Octilinear serpentine layout
+   ============================================================ */
+const DX=100, DXJ=50, DY=66, LG=18, GL=13, FIL=16;
+function layoutMap(nfa,vw,vh){
+  const E=nfa.edges, n=nfa.n;
+  const hasChar=nfa.out.map(l=>l.some(ei=>E[ei].cs));
+  const sig=s=>hasChar[s]||s===nfa.accept||s===nfa.start;
+  // back edges (DFS from the depot)
+  const col=new Uint8Array(n), back=new Set();
+  const dfs=s=>{ col[s]=1; for(const ei of nfa.out[s]){ const t=E[ei].to; if(col[t]===1) back.add(ei); else if(!col[t]) dfs(t); } col[s]=2; };
+  dfs(nfa.start); for(let s=0;s<n;s++) if(!col[s]) dfs(s);
+  // longest-path layers on the forward edges
+  const indeg=new Array(n).fill(0); E.forEach(e=>{ if(!back.has(e.id)) indeg[e.to]++; });
+  const layer=new Array(n).fill(0), q=[]; for(let s=0;s<n;s++) if(!indeg[s]) q.push(s);
+  while(q.length){ const s=q.shift(); for(const ei of nfa.out[s]){ if(back.has(ei)) continue; const t=E[ei].to; layer[t]=Math.max(layer[t],layer[s]+1); if(--indeg[t]===0) q.push(t); } }
+  const L=Math.max(...layer)+1;
+  const byL=Array.from({length:L},()=>[]); for(let s=0;s<n;s++) byL[layer[s]].push(s);
+  // lanes: stay on the line you came from; branches step aside
+  const lane=new Array(n).fill(0), preds=Array.from({length:n},()=>[]);
+  E.forEach(e=>{ if(!back.has(e.id)&&e.from!==e.to) preds[e.to].push(e.from); });
+  for(let l=0;l<L;l++){
+    const items=byL[l].map(s=>({s,want:preds[s].length?preds[s].reduce((a,p)=>a+lane[p],0)/preds[s].length:0}));
+    items.sort((a,b)=>a.want-b.want||a.s-b.s);
+    const used=new Set();
+    for(const it of items){ let best=null; for(let d=0;d<40&&best===null;d++){ for(const c of [Math.round(it.want)+d,Math.round(it.want)-d]) if(!used.has(c)){ best=c; break; } } used.add(best); lane[it.s]=best; }
+  }
+  const lw=byL.map(ss=>ss.some(sig)?DX:DXJ);
+  // how many layers per row: the serpentine that best fills the viewport
+  const lmin=Math.min(...lane), lmax=Math.max(...lane);
+  const bandH=(lmax-lmin)*DY+150;
+  let K=L, maxS=-1;
+  for(let k=Math.min(L,3);k<=L;k++){
+    const rows=Math.ceil(L/k); let w=0;
+    for(let r=0;r<rows;r++){ let sw=0; for(let l=r*k;l<Math.min(L,(r+1)*k);l++) sw+=lw[l]; w=Math.max(w,sw); }
+    const sc=Math.min(vw/(w+120),vh/(rows*bandH+40));
+    if(sc>=maxS*.97) K=k; maxS=Math.max(maxS,sc);
+  }
+  const rowOf=l=>Math.floor(l/K), rows=Math.ceil(L/K), dirOf=r=>r%2?-1:1;
+  const lx=new Array(L), rowW=new Array(rows).fill(0);
+  for(let r=0;r<rows;r++){ let cum=0; for(let l=r*K;l<Math.min(L,(r+1)*K);l++){ lx[l]=cum+lw[l]/2; cum+=lw[l]; } rowW[r]=cum; }
+  const W=Math.max(...rowW);
+  for(let l=0;l<L;l++){ const r=rowOf(l); if(r%2) lx[l]=W-lx[l]; lx[l]+=60; }
+  const N=Array.from({length:n},(_,s)=>({id:s,layer:layer[s],lane:lane[s],row:rowOf(layer[s]),x:lx[layer[s]],y:0,sig:sig(s),acc:s===nfa.accept,start:s===nfa.start,indeg:0}));
+  E.forEach(e=>{ if(e.from!==e.to) N[e.to].indeg++; });
+  const rLmin=new Array(rows).fill(1e9), rLmax=new Array(rows).fill(-1e9);
+  N.forEach(v=>{ rLmin[v.row]=Math.min(rLmin[v.row],v.lane); rLmax[v.row]=Math.max(rLmax[v.row],v.lane); });
+  // classify the tracks
+  const spec=E.map(e=>{
+    const u=N[e.from], v=N[e.to];
+    if(u.row!==v.row) return {kind:"cross",g:Math.min(u.row,v.row)};
+    if(e.from===e.to||back.has(e.id)||v.layer<=u.layer) return {kind:"loop"};
+    if(v.layer-u.layer>1){
+      const lo=Math.min(u.lane,v.lane), hi=Math.max(u.lane,v.lane);
+      if(N.some(w=>w.row===u.row&&w.layer>u.layer&&w.layer<v.layer&&w.lane>=lo&&w.lane<=hi)) return {kind:"bypass"};
+    }
+    return {kind:"direct"};
+  });
+  // levels for loops (above the row) and bypasses (below), lanes in the gaps between rows
+  const levelsOf=kind=>{ const per=Array.from({length:rows},()=>[]), maxL=new Array(rows).fill(0);
+    E.forEach((e,i)=>{ if(spec[i].kind!==kind) return; const a=N[e.from].x, b=N[e.to].x; per[N[e.from].row].push({i,x0:Math.min(a,b)-14,x1:Math.max(a,b)+14}); });
+    per.forEach((list,r)=>{ list.sort((p,q)=>(p.x1-p.x0)-(q.x1-q.x0)); const placed=[];
+      for(const it of list){ let lv=1; while(placed.some(p=>p.lv===lv&&p.x0<it.x1&&it.x0<p.x1)) lv++; it.lv=lv; placed.push(it); spec[it.i].lv=lv; maxL[r]=Math.max(maxL[r],lv); } });
+    return maxL; };
+  const loopL=levelsOf("loop"), byL2=levelsOf("bypass");
+  const gapN=new Array(rows).fill(0);
+  E.forEach((e,i)=>{ if(spec[i].kind==="cross"){ spec[i].gl=gapN[spec[i].g]++; } });
+  // vertical metrics
+  const lane0=new Array(rows), topY=new Array(rows), botY=new Array(rows), gapY=new Array(rows);
+  let Y=20;
+  for(let r=0;r<rows;r++){
+    Y+=34+loopL[r]*LG;
+    topY[r]=Y; lane0[r]=Y-rLmin[r]*DY;
+    Y+=(rLmax[r]-rLmin[r])*DY; botY[r]=Y;
+    Y+=44+byL2[r]*LG;
+    gapY[r]=Y; Y+=gapN[r]*GL+18;
+  }
+  N.forEach(v=>{ v.y=lane0[v.row]+v.lane*DY; });
+  // route each track as octilinear corners
+  const routes=E.map((e,i)=>{
+    const u=N[e.from], v=N[e.to], sp=spec[i], dir=dirOf(u.row);
+    const pu=[u.x,u.y], pv=[v.x,v.y];
+    if(sp.kind==="direct"){
+      const h=Math.abs(v.x-u.x), a=Math.abs(v.y-u.y), sx=Math.sign(v.x-u.x)||dir, sy=Math.sign(v.y-u.y);
+      if(a<1) return [pu,pv];
+      if(a<=h){ const st=Math.min(14,(h-a)/2);
+        return u.sig&&!v.sig||!u.sig&&v.sig&&false?[pu,[v.x-sx*(st+a),u.y],[v.x-sx*st,v.y],pv]:(!u.sig?[pu,[u.x+sx*st,u.y],[u.x+sx*(st+a),v.y],pv]:[pu,[v.x-sx*(st+a),u.y],[v.x-sx*st,v.y],pv]); }
+      return [pu,[u.x+sx*h/2,u.y+sy*h/2],[u.x+sx*h/2,v.y-sy*h/2],pv];
+    }
+    if(sp.kind==="loop"){
+      const yT=topY[u.row]-20-(sp.lv-1)*LG, d1=u.y-yT, d2=v.y-yT;
+      if(e.from===e.to) return [pu,[u.x+14,u.y-14],[u.x+14,yT],[u.x-14,yT],[u.x-14,u.y-14],pv];
+      if((u.x-v.x)*dir>=d1+d2+16) return [pu,[u.x-dir*d1,yT],[v.x+dir*d2,yT],pv];
+      return [pu,[u.x,yT],[v.x,yT],pv];
+    }
+    if(sp.kind==="bypass"){
+      const yB=botY[u.row]+30+(sp.lv-1)*LG, d1=yB-u.y, d2=yB-v.y;
+      if((v.x-u.x)*dir>=d1+d2+16) return [pu,[u.x+dir*d1,yB],[v.x-dir*d2,yB],pv];
+      return [pu,[u.x,yB],[v.x,yB],pv];
+    }
+    const yG=gapY[sp.g]+(sp.gl+.5)*GL-GL*.5, du=dirOf(u.row), dv=dirOf(v.row), S=26;
+    return [pu,[u.x+du*S,u.y],[u.x+du*S,yG],[v.x-dv*S,yG],[v.x-dv*S,v.y],pv];
+  });
+  const paths=routes.map((c,i)=>{ const p=densify(c,E[i].from===E[i].to?8:FIL); p.corners=c; return p; });
+  // badge: middle of the longest straight run
+  paths.forEach((p,i)=>{ if(!E[i].cs) return; const c=p.corners; let bi=0,bl=-1; for(let k=0;k<c.length-1;k++){ const l=Math.hypot(c[k+1][0]-c[k][0],c[k+1][1]-c[k][1])-(k===0||k===c.length-2?14:0); if(l>bl){ bl=l; bi=k; } }
+    p.badge=[(c[bi][0]+c[bi+1][0])/2,(c[bi][1]+c[bi+1][1])/2]; });
+  const s0=N[nfa.start], d0=dirOf(s0.row);
+  const depot=densify([[s0.x-d0*54,s0.y],[s0.x,s0.y]],0);
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  const acc=(x,y)=>{ x0=Math.min(x0,x); y0=Math.min(y0,y); x1=Math.max(x1,x); y1=Math.max(y1,y); };
+  N.forEach(v=>{ acc(v.x-46,v.y-24); acc(v.x+46,v.y+48); });
+  paths.forEach(p=>{ for(let k=0;k<p.N;k+=4) acc(p.xs[k],p.ys[k]); });
+  acc(s0.x-d0*70,s0.y);
+  return {N,paths,depot,spec,back,bbox:{x:x0-16,y:y0-16,w:x1-x0+32,h:y1-y0+32},K,rows,dirOf};
+}
+// corners → filleted dense polyline
+function densify(pts,R){
+  const P=pts.filter((p,i)=>i===0||Math.hypot(p[0]-pts[i-1][0],p[1]-pts[i-1][1])>1e-3);
+  if(P.length<2) P.push([P[0][0]+.01,P[0][1]]);
+  const out=[P[0]];
+  for(let i=1;i<P.length-1;i++){
+    const A=P[i-1],B=P[i],C=P[i+1];
+    const l1=Math.hypot(B[0]-A[0],B[1]-A[1]), l2=Math.hypot(C[0]-B[0],C[1]-B[1]);
+    const d1=[(B[0]-A[0])/l1,(B[1]-A[1])/l1], d2=[(C[0]-B[0])/l2,(C[1]-B[1])/l2];
+    const cr=d1[0]*d2[1]-d1[1]*d2[0], dt=d1[0]*d2[0]+d1[1]*d2[1];
+    if(Math.abs(cr)<1e-3&&dt>0){ out.push(B); continue; }
+    const r=Math.min(R,l1*.5,l2*.5);
+    const p0=[B[0]-d1[0]*r,B[1]-d1[1]*r], p2=[B[0]+d2[0]*r,B[1]+d2[1]*r];
+    for(let k=0;k<=8;k++){ const t=k/8, a=(1-t)*(1-t), b=2*(1-t)*t, c=t*t; out.push([a*p0[0]+b*B[0]+c*p2[0],a*p0[1]+b*B[1]+c*p2[1]]); }
+  }
+  out.push(P[P.length-1]);
+  const cum=[0]; for(let i=1;i<out.length;i++) cum.push(cum[i-1]+Math.hypot(out[i][0]-out[i-1][0],out[i][1]-out[i-1][1]));
+  const len=Math.max(cum[cum.length-1],.5), Nn=Math.max(2,Math.ceil(len/2)+1);
+  const xs=new Float32Array(Nn), ys=new Float32Array(Nn); let j=0;
+  for(let i=0;i<Nn;i++){ const s=len*i/(Nn-1); while(j<cum.length-2&&cum[j+1]<s) j++; const seg=cum[j+1]-cum[j]||1, t=clamp01((s-cum[j])/seg); xs[i]=out[j][0]+(out[j+1][0]-out[j][0])*t; ys[i]=out[j][1]+(out[j+1][1]-out[j][1])*t; }
+  let d="M"+out[0][0].toFixed(1)+" "+out[0][1].toFixed(1); for(let i=1;i<out.length;i++) d+="L"+out[i][0].toFixed(1)+" "+out[i][1].toFixed(1);
+  return {xs,ys,N:Nn,len,d};
+}
+function pathAt(p,s,o){ const f=Math.min(p.N-1.0001,Math.max(0,s/p.len*(p.N-1))), i=Math.floor(f), t=f-i; o.x=p.xs[i]+(p.xs[i+1]-p.xs[i])*t; o.y=p.ys[i]+(p.ys[i+1]-p.ys[i])*t; return o; }
+
+/* ============================================================
+   Map (SVG)
+   ============================================================ */
+const svg=$("map"), wrap=$("mapwrap");
+let NET=null, buildSeq=0;
+function fail(msg,pos,src){ $("rx").classList.add("bad"); $("rxErr").textContent=pos!==undefined&&src!==undefined?src+"\n"+" ".repeat(Math.max(0,pos))+"^ "+msg:msg; $("rxStat").textContent=""; }
+function viewSize(){ return {w:Math.max(200,wrap.clientWidth),h:Math.max(200,wrap.clientHeight)}; }
+function buildNetwork(src,{animate=true,keep=false}={}){
+  const seq=++buildSeq;
+  $("rx").classList.remove("bad"); $("rxErr").textContent="";
+  let parsed,nfa;
+  if(keep&&NET&&NET.src===src){ parsed=NET.parsed; nfa=NET.nfa; }
+  else {
+    try{ parsed=RX.parse(src); nfa=RX.compile(parsed.ast); }
+    catch(e){ if(e.rx){ fail(e.message,e.pos,src); return false; } throw e; }
+    if(nfa.n>90||nfa.edges.length>200){ fail("大きすぎます（駅 "+nfa.n+"）。もう少し短い式にしてください"); return false; }
+    try{ RX.nativeRe(parsed,false); }catch(e){ fail("ブラウザの RegExp がこの式を受け付けません: "+e.message); return false; }
+  }
+  const vs=viewSize();
+  const LY=layoutMap(nfa,vs.w,vs.h);
+  const E=nfa.edges;
+  // a line colour per distinct letter label, in the order the tracks were built
+  const labelColor=new Map();
+  E.slice().sort((a,b)=>a.order-b.order).forEach(e=>{ if(e.cs&&!labelColor.has(e.label)) labelColor.set(e.label,LINE_PAL[labelColor.size%LINE_PAL.length]); });
+  svg.textContent="";
+  const G={}; for(const k of ["halo","walk","lines","badges","stations","labels","fx","trains","top"]) G[k]=mk("g",{class:"g-"+k},svg);
+  const order=E.map(e=>e.id).sort((a,b)=>E[a].order-E[b].order);
+  const anim=animate&&!reduceMotion;
+  const span=anim?Math.min(.22,4.4/Math.max(1,E.length)):0;
+  const bStart=new Float32Array(E.length+1), bDur=new Float32Array(E.length+1);
+  order.forEach((id,i)=>{ bStart[id]=.35+i*span; bDur[id]=anim?.22+LY.paths[id].len/700:0; });
+  bStart[E.length]=0; bDur[E.length]=anim?.3:0;
+  let buildEnd=0; for(let i=0;i<=E.length;i++) buildEnd=Math.max(buildEnd,bStart[i]+bDur[i]);
+  // legend, like the corner of a printed map
+  const lg=$("legend"); lg.textContent="";
+  for(const [lab,c] of labelColor){ const d=document.createElement("div"); d.className="lg"; const b=document.createElement("span"); b.className="lg-b"; b.style.borderColor=c; b.textContent=lab; d.appendChild(b); const t=document.createElement("span"); t.textContent=lab.length>1?"の文字で進む線":"線"; d.appendChild(t); lg.appendChild(d); }
+  { const d=document.createElement("div"); d.className="lg"; d.innerHTML='<span class="lg-w"></span><span>乗換通路（ε、文字を使わない）</span>'; lg.appendChild(d); }
+  // depot siding
+  const dp=mk("path",{d:LY.depot.d,class:"stub"},G.lines);
+  // tracks
+  const edgeEls=E.map((e,i)=>{
+    const p=LY.paths[i];
+    if(!e.cs){ const base=mk("path",{d:p.d,class:"walk-base"},G.walk); const w=mk("path",{d:p.d,class:"walk"},G.walk); return {kind:"walk",els:[base,w],p}; }
+    const c=labelColor.get(e.label);
+    const cas=mk("path",{d:p.d,class:"casing"},G.lines), ln=mk("path",{d:p.d,class:"tline",stroke:c},G.lines);
+    for(const x of [cas,ln]){ x.style.strokeDasharray=p.len+" "+(p.len+20); x.style.strokeDashoffset=anim?p.len:0; }
+    return {kind:"line",els:[cas,ln],p,color:c};
+  });
+  // badges (line letters)
+  const badgeEls=E.map((e,i)=>{
+    if(!e.cs) return null; const p=LY.paths[i], c=labelColor.get(e.label), [x,y]=p.badge;
+    const g=mk("g",{class:"badge",transform:`translate(${x} ${y})`},G.badges); g.style.setProperty("--bc",c);
+    const t=e.label, wide=t.length>1;
+    const w=Math.max(24,t.length*9+12);
+    if(wide) mk("rect",{x:-w/2,y:-12,width:w,height:24,rx:12,stroke:c},g); else mk("circle",{r:12,stroke:c},g);
+    const tx=mk("text",{y:1,fill:"#1C1C1E"},g); tx.textContent=t;
+    return {g,x,y,cs:e.cs,shown:!anim};
+  });
+  // stations
+  const stEls=LY.N.map(v=>{
+    const g=mk("g",{transform:`translate(${v.x} ${v.y})`},G.stations);
+    const halo=mk("circle",{r:v.sig?20:13,class:"halo",fill:"none"},G.halo); halo.setAttribute("cx",v.x); halo.setAttribute("cy",v.y);
+    if(v.start){
+      mk("rect",{x:-13,y:-13,width:26,height:26,rx:5,fill:"#1C1C1E"},g);
+      mk("path",{d:"M-7 6V-1L0-7L7-1V6Z",fill:"none",stroke:"#fff","stroke-width":2.4,"stroke-linejoin":"round"},g);
+      mk("path",{d:"M-2.5 6V1.5H2.5V6",fill:"none",stroke:"#fff","stroke-width":2},g);
+    } else if(v.acc){
+      mk("circle",{r:14,class:"st-circ"},g); mk("circle",{r:7.5,class:"st-circ"},g);
+    } else if(v.sig&&v.indeg>=2){
+      mk("rect",{x:-10,y:-17,width:20,height:34,rx:10,class:"st-circ"},g);
+    } else if(v.sig){
+      mk("circle",{r:9.5,class:"st-circ"},g);
+    } else mk("circle",{r:4.5,class:"st-junc"},g);
+    // label
+    if(v.sig){
+      const outs=nfa.out[v.id].filter(ei=>E[ei].cs).map(ei=>E[ei].label);
+      const ly=v.indeg>=2&&!v.acc&&!v.start?33:30;
+      const nm=mk("text",{x:0,y:ly,"text-anchor":"middle",class:"st-name"},G.labels);
+      nm.textContent=(v.start?"車庫 ":v.acc?"終点 ":"")+"q"+v.id;
+      nm.setAttribute("transform",`translate(${v.x} ${v.y})`);
+      const ds=mk("text",{x:0,y:ly+14,"text-anchor":"middle",class:"st-desc"},G.labels);
+      let desc=v.acc?"受理":outs.length?(outs[0].length>3?"クラス線のりば":"「"+outs[0]+"」線のりば"):"始発";
+      if(v.start) desc="始発";
+      ds.textContent=desc; ds.setAttribute("transform",`translate(${v.x} ${v.y})`);
+      return {g,halo,lbl:[nm,ds],v};
+    }
+    const jn=mk("text",{x:7,y:-7,class:"st-jnum"},G.labels); jn.textContent=v.id; jn.setAttribute("transform",`translate(${v.x} ${v.y})`);
+    return {g,halo,lbl:[jn],v};
+  });
+  // accept badge (hidden until a match)
+  const av=LY.N[nfa.accept];
+  const ab=mk("g",{class:"accept-badge",transform:`translate(${av.x} ${av.y-34})`,opacity:0},G.top);
+  mk("rect",{x:-30,y:-14,width:60,height:28,rx:14},ab); const abt=mk("text",{y:1,"text-anchor":"middle","dominant-baseline":"central"},ab); abt.textContent="受理";
+  // station birth times
+  const birth=new Float32Array(nfa.n).fill(99);
+  E.forEach(e=>{ birth[e.from]=Math.min(birth[e.from],bStart[e.id]-.1); birth[e.to]=Math.min(birth[e.to],bStart[e.id]+bDur[e.id]*.85); });
+  birth[nfa.start]=0;
+  const old=NET;
+  NET={src,parsed,nfa,LY,E,edgeEls,badgeEls,stEls,G,dp,ab,abt,bStart,bDur,buildEnd,buildT:anim?0:buildEnd+5,anim,birth,labelColor,mapBox:LY.bbox};
+  if(!anim) finishBuild();
+  const nE=E.filter(e=>!e.cs).length;
+  $("rxStat").innerHTML=`駅 <b>${nfa.n}</b>　路線 <b>${E.length-nE}</b>　乗換通路（ε） <b>${nE}</b>　折り返し <b>${LY.rows}</b> 段`;
+  if(!keep||!old) camSnap=true;
+  return true;
+}
+function finishBuild(){
+  if(!NET) return;
+  NET.edgeEls.forEach(x=>{ if(x.kind==="line") x.els.forEach(e=>e.style.strokeDashoffset=0); else x.els.forEach(e=>e.style.opacity=1); });
+  NET.stEls.forEach(s=>{ s.g.setAttribute("transform",`translate(${s.v.x} ${s.v.y})`); s.lbl.forEach(l=>l.style.opacity=1); });
+  NET.badgeEls.forEach(b=>{ if(b){ b.g.setAttribute("transform",`translate(${b.x} ${b.y})`); b.g.style.opacity=1; } });
+  NET.dp.style.opacity=1;
+}
+function updateBuild(dt){
+  const N=NET; if(N.buildT>N.buildEnd+3) return;
+  N.buildT+=dt; const t=N.buildT;
+  if(!N.anim) return;
+  N.edgeEls.forEach((x,i)=>{ const k=N.bDur[i]>0?ease((t-N.bStart[i])/N.bDur[i]):1;
+    if(x.kind==="line") x.els.forEach(e=>e.style.strokeDashoffset=x.p.len*(1-k)); else x.els.forEach(e=>e.style.opacity=k); });
+  N.dp.style.opacity=clamp01(t/.3);
+  N.stEls.forEach((s,i)=>{ const a=(t-N.birth[i])/.35; const k=a<=0?0:a>=1?1:1+2.2*Math.pow(a-1,3)+1.2*Math.pow(a-1,2);
+    s.g.setAttribute("transform",`translate(${s.v.x} ${s.v.y}) scale(${Math.max(0,k).toFixed(3)})`); s.lbl.forEach(l=>l.style.opacity=clamp01(a-.3)); });
+  N.badgeEls.forEach((b,i)=>{ if(!b) return; const a=(t-N.bStart[i]-N.bDur[i]*.7)/.3; const k=a<=0?0:a>=1?1:1+2.2*Math.pow(a-1,3)+1.2*Math.pow(a-1,2);
+    b.g.setAttribute("transform",`translate(${b.x} ${b.y}) scale(${Math.max(0,k).toFixed(3)})`); });
+  const laid=[...N.bStart].filter((s,i)=>i<N.E.length&&t>=s+N.bDur[i]).length;
+  if(t<N.buildEnd) showBuildMsg(`路線図を印刷中… ${laid} / ${N.E.length}`);
+  else if(t<N.buildEnd+2) showBuildMsg(`開業：駅 ${N.nfa.n}、路線 ${N.E.filter(e=>e.cs).length}、乗換通路 ${N.E.filter(e=>!e.cs).length}`);
+  else hideBuildMsg();
+}
+
+/* ============================================================
+   Camera: a viewBox that eases toward its target
+   ============================================================ */
+let camMode="auto", camSnap=true, focusUntil=0, focusBox=null;
+const vb={x:0,y:0,w:100,h:100}, vbT={x:0,y:0,w:100,h:100};
+function fitBox(b,pad=0){
+  const vs=viewSize(), a=vs.w/vs.h;
+  let w=b.w+pad*2, h=b.h+pad*2;
+  if(w/h>a) h=w/a; else w=h*a;
+  return {x:b.x+b.w/2-w/2,y:b.y+b.h/2-h/2,w,h};
+}
+function activeBox(){
+  const live=services.filter(s=>!s.done&&simT>=s.t0);
+  if(!live.length) return null;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9, n=0;
+  for(const p of livePos){ x0=Math.min(x0,p.x); y0=Math.min(y0,p.y); x1=Math.max(x1,p.x); y1=Math.max(y1,p.y); n++; }
+  if(!n) return null;
+  const M=NET.mapBox, mw=Math.max(460,M.w*.55), mh=Math.max(320,M.h*.55);
+  let b={x:x0,y:y0,w:x1-x0,h:y1-y0};
+  if(b.w<mw){ b.x-= (mw-b.w)/2; b.w=mw; } if(b.h<mh){ b.y-=(mh-b.h)/2; b.h=mh; }
+  if(b.w>=M.w*.8&&b.h>=M.h*.8) return null;
+  return b;
+}
+function updateCamera(dt){
+  if(!NET) return;
+  const vs=viewSize();
+  if(camMode!=="free"){
+    let b=NET.mapBox, pad=12;
+    if(performance.now()<focusUntil&&focusBox){ b=focusBox; pad=40; }
+    else if(camMode==="auto"&&NET.buildT>NET.buildEnd){ const a=activeBox(); if(a){ b=a; pad=50; } }
+    const f=fitBox(b,pad);
+    // never wider than the whole map (keeps the frame steady at the edges)
+    const all=fitBox(NET.mapBox,12);
+    if(f.w>all.w){ Object.assign(f,all); }
+    Object.assign(vbT,f);
+  }
+  if(camSnap){ Object.assign(vb,vbT); camSnap=false; }
+  const k=camMode==="free"?1:1-Math.exp(-dt*2.4);
+  vb.x+=(vbT.x-vb.x)*k; vb.y+=(vbT.y-vb.y)*k; vb.w+=(vbT.w-vb.w)*k; vb.h+=(vbT.h-vb.h)*k;
+  // keep aspect with the element
+  const a=vs.w/vs.h, cx=vb.x+vb.w/2, cy=vb.y+vb.h/2; let w=vb.w, h=vb.h; if(w/h>a) h=w/a; else w=h*a;
+  svg.setAttribute("viewBox",`${(cx-w/2).toFixed(1)} ${(cy-h/2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+}
+function setCam(m){ camMode=m; document.querySelectorAll("[data-cam]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.cam===m))); }
+document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>setCam(b.dataset.cam)));
+// drag to pan, wheel / pinch to zoom
+{
+  const pts=new Map(); let last=null, pinch=null;
+  const toMap=(cx,cy)=>{ const r=svg.getBoundingClientRect(), vs=viewSize(); const sc=Math.max(vb.w/vs.w,vb.h/vs.h); return {sc,r}; };
+  svg.addEventListener("pointerdown",e=>{ svg.setPointerCapture(e.pointerId); pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); svg.classList.add("dragging"); if(camMode!=="free") setCam("free"); Object.assign(vbT,vb); });
+  svg.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId)) return; const p=pts.get(e.pointerId); const {sc}=toMap();
+    if(pts.size===1){ vbT.x-=(e.clientX-p.x)*sc; vbT.y-=(e.clientY-p.y)*sc; Object.assign(vb,vbT); }
+    p.x=e.clientX; p.y=e.clientY;
+    if(pts.size===2){ const [a,b]=[...pts.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y); if(pinch){ zoomAt((a.x+b.x)/2,(a.y+b.y)/2,pinch/d); } pinch=d; }
+  });
+  const up=e=>{ pts.delete(e.pointerId); pinch=null; if(!pts.size) svg.classList.remove("dragging"); };
+  svg.addEventListener("pointerup",up); svg.addEventListener("pointercancel",up);
+  svg.addEventListener("wheel",e=>{ e.preventDefault(); if(camMode!=="free") setCam("free"); Object.assign(vbT,vb); zoomAt(e.clientX,e.clientY,Math.exp(e.deltaY*.0015)); },{passive:false});
+  function zoomAt(cx,cy,f){ const r=svg.getBoundingClientRect(); const vs=viewSize(); const sc=Math.max(vb.w/vs.w,vb.h/vs.h);
+    const w=vs.w*sc, h=vs.h*sc, x=vb.x+vb.w/2-w/2, y=vb.y+vb.h/2-h/2;
+    const mx=x+(cx-r.left)*sc, my=y+(cy-r.top)*sc; const nw=Math.min(Math.max(w*f,120),NET?NET.mapBox.w*3:4000), k=nw/w;
+    vbT.w=nw; vbT.h=h*k; vbT.x=mx-(mx-x)*k; vbT.y=my-(my-y)*k; Object.assign(vb,vbT); }
+}
+
+/* ============================================================
+   Trains and timetable
+   ============================================================ */
+let services=[], history=[], simT=0, playing=true, speed=1, stepUntil=null, svcSeq=0;
+let massOn=false, massQueue=[], massNext=0, massStartReal=0, massDone=[];
+let searchMode=false, curSample=0, pendingRun=null, hudFor=null, hudK=-1;
+const livePos=[];
+function makeService(str,{single=false}={}){
+  const p=NET.parsed, nfa=NET.nfa, opt={search:searchMode,aS:p.aS,aE:p.aE};
+  const pl=RX.plan(nfa,str,opt), sim=RX.simulate(nfa,str,opt);
+  let nat=null; try{ nat=RX.nativeRe(p,searchMode).test(str); }catch(e){}
+  const idx=svcSeq++;
+  const col=single?"#1C1C1E":TRAIN_PAL[idx%TRAIN_PAL.length];
+  pl.trains.forEach(tr=>{ tr.legs.forEach((l,i)=>{ if(l.kind!=="move") return; const pv=tr.legs[i-1], nx=tr.legs[i+1]; l.ei=!pv?(tr.parent<0):pv.kind==="park"; l.eo=!nx?(tr.fate!=="merge"):nx.kind==="park"; }); });
+  const consumeT=pl.steps.filter(s=>s.rides>0).map(s=>s.t+pl.TM.RIDE*.5);
+  const svc={id:idx,str,plan:pl,t0:simT,col,single,consumeT,evI:0,search:searchMode,
+    verified:nat===pl.result.matched&&sim.matched===pl.result.matched,native:nat,matched:pl.result.matched,
+    tEnd:pl.result.t+2.6,done:false,code:String.fromCharCode(65+idx%26)+(1+Math.floor(idx/26)),maxTrains:Math.max(...pl.steps.map(s=>s.trains)),depart:clockLabel(idx),els:new Map()};
+  services.push(svc); return svc;
+}
+function clockLabel(i){ const m=6*60+i*3; return String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
+const hermite=(u,v0,v1)=>{ const u2=u*u,u3=u2*u; return (u3-2*u2+u)*v0+(-2*u3+3*u2)+(u3-u2)*v1; };
+function pathOf(ei){ return ei<0?NET.LY.depot:NET.LY.paths[ei]; }
+const _o={x:0,y:0}, _o2={x:0,y:0}, _o3={x:0,y:0};
+function headPos(tr,t){
+  const legs=tr.legs; let li=0; for(let i=0;i<legs.length;i++){ if(legs[i].t0<=t+1e-9) li=i; else break; }
+  const L=legs[li];
+  if(L.kind==="park"){ const v=NET.LY.N[L.state]; _o.x=v.x; _o.y=v.y; return {o:_o,L}; }
+  const p=pathOf(L.edge), u=clamp01((t-L.t0)/(L.t1-L.t0));
+  pathAt(p,p.len*clamp01(hermite(u,L.ei?0:1,L.eo?0:1)),_o); return {o:_o,L};
+}
+// train dots (pooled SVG groups)
+const pool=[];
+function trainEl(){ let e=pool.pop(); if(!e){ e=mk("g",{class:"train"}); mk("rect",{class:"body",x:-14,y:-7.5,width:28,height:15,rx:7.5},e); mk("circle",{class:"lamp",cx:8,cy:0,r:2.6,fill:"#FFD24A"},e); } e.userData={}; NET.G.trains.appendChild(e); return e; }
+function updateTrains(){
+  livePos.length=0;
+  const used=new Set();
+  const halo=new Map();
+  for(const svc of services){
+    const t=simT-svc.t0; if(t<0||svc.done) continue;
+    for(const tr of svc.plan.trains){
+      if(t<tr.born) continue;
+      const a=t-tr.end;
+      let sc=1, op=1;
+      if(tr.parent>=0&&t-tr.born<.35) sc=1+.7*(1-easeOut((t-tr.born)/.35));
+      if(a>0){
+        if(tr.fate==="merge"){ sc*=1-easeOut(a/.3); }
+        else if(tr.fate==="derail"){ sc*=1-easeOut(a/.45); }
+        else if(tr.fate==="accept"){ sc*=1+.25*Math.sin(a*7)*Math.exp(-a*.8); op=1-clamp01((a-2)/.5); }
+        else { op=1-clamp01((a-.3)/.7); }
+        if(sc<=.01||op<=.01) continue;
+      }
+      const {o,L}=headPos(tr,t);
+      const ox=o.x, oy=o.y;
+      let ang=null; if(L.kind==="move"){ const p=pathOf(L.edge), u=clamp01((t-L.t0)/(L.t1-L.t0)), s1=p.len*clamp01(hermite(u,L.ei?0:1,L.eo?0:1)); pathAt(p,Math.max(0,s1-3),_o2); pathAt(p,Math.min(p.len,s1+3),_o3); if(Math.hypot(_o3.x-_o2.x,_o3.y-_o2.y)>.5) ang=Math.atan2(_o3.y-_o2.y,_o3.x-_o2.x)*180/Math.PI; }
+      let el=svc.els.get(tr.id); if(!el){ el=trainEl(); svc.els.set(tr.id,el); const c=el.firstChild; c.setAttribute("fill",svc.col); c.setAttribute("stroke","#fff"); const par=tr.parent>=0?svc.els.get(tr.parent):null; el.userData.ang=par&&par.userData.ang!=null?par.userData.ang:0; }
+      if(ang!==null) el.userData.ang=ang;
+      el.setAttribute("transform",`translate(${ox.toFixed(1)} ${oy.toFixed(1)}) rotate(${(el.userData.ang||0).toFixed(1)}) scale(${sc.toFixed(3)})`);
+      el.style.opacity=op; used.add(el);
+      if(t<tr.end){ livePos.push({x:ox,y:oy}); if(L.kind==="park"&&L.edge===undefined) halo.set(L.state,svc.col); }
+    }
+    if(t>svc.tEnd) svc.done=true;
+  }
+  // retire unused dots
+  for(const svc of services){ for(const [id,el] of svc.els){ if(!used.has(el)){ el.remove(); pool.push(el); svc.els.delete(id); } } }
+  NET.stEls.forEach((s,i)=>{ const c=halo.get(i); if(c){ s.halo.setAttribute("fill",c); s.halo.style.display=""; } else s.halo.style.display="none"; });
+  services=services.filter(s=>{ if(s.done){ for(const el of s.els.values()){ el.remove(); pool.push(el); } s.els.clear(); return false; } return true; });
+}
+/* effects: rings and ✕ marks */
+const fx=[];
+function ring(x,y,color,{r0=10,r1=34,dur=.6,w=3,delay=0}={}){ if(!NET) return; const c=mk("circle",{cx:x,cy:y,r:r0,class:"ring",stroke:color,"stroke-width":w,opacity:0},NET.G.fx); fx.push({el:c,t:-delay,dur,r0,r1,w,kind:"ring"}); }
+function xmark(x,y){ if(!NET) return; const g=mk("g",{transform:`translate(${x} ${y})`},NET.G.fx); mk("line",{x1:-7,y1:-7,x2:7,y2:7,class:"xmark"},g); mk("line",{x1:7,y1:-7,x2:-7,y2:7,class:"xmark"},g); fx.push({el:g,t:0,dur:1.3,kind:"x",x,y}); }
+function updateFx(dt){
+  for(let i=fx.length-1;i>=0;i--){ const f=fx[i]; f.t+=dt; const k=f.t/f.dur;
+    if(k>=1){ f.el.remove(); fx.splice(i,1); continue; }
+    if(f.t<0) continue;
+    if(f.kind==="ring"){ f.el.setAttribute("r",f.r0+(f.r1-f.r0)*easeOut(k)); f.el.setAttribute("opacity",(1-k).toFixed(3)); f.el.setAttribute("stroke-width",(f.w*(1-k*.6)).toFixed(2)); }
+    else { const s=k<.15?easeOut(k/.15)*1.2:1; f.el.setAttribute("transform",`translate(${f.x} ${f.y-14-k*6}) scale(${s.toFixed(3)})`); f.el.setAttribute("opacity",(1-clamp01((k-.6)/.4)).toFixed(3)); } }
+}
+function processEvents(){
+  for(const svc of services){
+    const t=simT-svc.t0, ev=svc.plan.events;
+    while(svc.evI<ev.length&&ev[svc.evI].t<=t){
+      const e=ev[svc.evI++]; const v=e.state>=0?NET.LY.N[e.state]:null;
+      const loud=svc.single||services.length<=2;
+      if(e.type==="split"&&v&&loud){ ring(v.x,v.y,svc.single?"#1C1C1E":svc.col,{r0:8,r1:24,dur:.45,w:2.5}); }
+      else if(e.type==="merge"&&v){ ring(v.x,v.y,"#7B3F98",{r0:8,r1:30,dur:.55,w:3.5}); }
+      else if(e.type==="derail"&&v){ xmark(v.x,v.y); }
+      else if(e.type==="accept"){ finished(svc,true); if(v){ const k=svc.single?3:1; for(let i=0;i<k;i++) ring(v.x,v.y,"#00A651",{r0:14,r1:svc.single?90:44,dur:1.3,w:svc.single?5:3,delay:i*.28});
+          if(svc.single){ showAccept(true); focusBox={x:v.x-120,y:v.y-90,w:240,h:180}; focusUntil=performance.now()+2600; } } }
+      else if(e.type==="reject"){ finished(svc,false); }
+    }
+  }
+}
+function showAccept(on){ if(!NET) return; NET.ab.setAttribute("opacity",on?1:0); NET.abt.textContent=searchMode?"一致":"受理"; }
+function finished(svc,ok){
+  svc.result=ok;
+  if(massOn&&!svc.single) massDone.push({svc});
+  renderBoard(true);
+  if(svc===hudFor) hudFinal(svc);
+}
+
+/* ============================================================
+   HUD, LCD, badges
+   ============================================================ */
+let lcdKey="";
+function buildLcd(svc){
+  const box=$("lcdChars"); box.textContent="";
+  if(!svc){ return; }
+  [...svc.str].forEach(ch=>{ const d=document.createElement("span"); d.className="ch"; d.textContent=showCh(ch); box.appendChild(d); });
+  const e=document.createElement("span"); e.className="ch end"; e.textContent=svc.str.length?"終":"空文字列"; box.appendChild(e);
+  $("lcdDestS").textContent="行先"; const d=$("lcdDest"); d.className=""; d.textContent=searchMode?"一致":"受理";
+}
+let hotKey=null;
+function setHot(ch){
+  const key=ch===null?null:ch; if(key===hotKey) return; hotKey=key;
+  NET.badgeEls.forEach(b=>{ if(b) b.g.classList.toggle("hot",ch!==null&&RX.csTest(b.cs,ch)); });
+}
+function updateHud(){
+  const svc=hudFor;
+  if(!svc||!NET){ setHot(null); return; }
+  const t=simT-svc.t0, pl=svc.plan;
+  const consumed=svc.consumeT.filter(c=>c<=t).length;
+  const chs=$("lcdChars").children;
+  const key=consumed+":"+(svc.result===undefined);
+  if(key!==lcdKey){ lcdKey=key; for(let i=0;i<chs.length-1;i++) chs[i].className="ch"+(i<consumed?" done":"")+(i===consumed&&svc.result===undefined?" now":""); const now=chs[consumed]; if(now&&now.scrollIntoView&&svc.str.length>12) now.parentElement.scrollLeft=Math.max(0,now.offsetLeft-80); }
+  setHot(svc.result===undefined&&consumed<svc.str.length&&t>0?svc.str[consumed]:null);
+  let k=0; for(let i=0;i<pl.steps.length;i++) if(pl.steps[i].t0<=t+1e-6) k=i;
+  const S=pl.steps[k];
+  let live=0; for(const tr of pl.trains) if(t>=tr.born&&t<tr.end) live++;
+  $("mTrains").textContent=live;
+  $("mSet").textContent="{"+(t>=S.tClose?S.set:[]).join(", ")+"}";
+  if(k!==hudK&&t>=S.tClose&&svc.result===undefined){
+    hudK=k;
+    const ev=pl.events.filter(e=>e.k===k);
+    const sp=ev.filter(e=>e.type==="split").length, mg=ev.filter(e=>e.type==="merge").length, dr=ev.filter(e=>e.type==="derail").length;
+    let msg=k===0?"車庫を出て、乗換通路で "+S.set.length+" 駅に広がりました":"「"+showCh(pl.str[k-1])+"」線を走ったあと、乗換通路で "+S.set.length+" 駅に広がりました";
+    msg+=`（分岐 ${sp}、合流 ${mg}）。`;
+    if(S.ch!=null) msg+=`次は「${showCh(S.ch)}」線：${S.trains}本が待機`;
+    if(dr) msg+=`、脱線 ${dr}`;
+    $("stepLog").textContent=msg;
+  }
+}
+function hudFinal(svc){
+  const ok=svc.result, pl=svc.plan;
+  const d=$("lcdDest"); d.textContent=ok?(searchMode?"一致 ✓":"受理 ✓"):(searchMode?"一致なし":"不受理"); d.className=ok?"ok":"ng"; $("lcdDestS").textContent=ok?"到着":"運転終了";
+  const why=ok?(searchMode?"一致する部分が見つかりました。":"終点（受理状態）に列車が着きました。"):(pl.result.dead?`${pl.result.k+1}文字目「${showCh(pl.str[pl.result.k])}」の線路がなく、全列車が脱線しました。`:"最後の文字のあと、終点にいる列車がありません。");
+  const log=$("stepLog"); log.textContent=(ok?"受理: ":"不受理: ")+why;
+  const c=document.createElement("span"); c.className="chipv"+(svc.verified?"":" bad"); c.textContent=svc.verified?"RegExp と一致":"RegExp と不一致"; log.appendChild(c);
+  setHot(null);
+  for(const ch of $("lcdChars").children) ch.classList.remove("now");
+  if(!searchMode) showVersus(svc,true);
+}
+/* the backtracking comparison infographic */
+let vsAnim=null;
+function versusMarkup(){ return `<p class="vs-title">同じ答えを出すまでの手数</p>
+  <div class="vs-row bt"><div class="nm">素朴な<br>バックトラック</div><div><div class="vs-num" data-k="bt">0</div></div><div class="vs-bar"><i data-k="btb"></i></div></div>
+  <div class="vs-row nfa"><div class="nm">この路線図</div><div><div class="vs-num" data-k="nfa">0</div></div><div class="vs-bar"><i data-k="nfab"></i></div></div>
+  <p class="vs-note" data-k="note"></p>`; }
+$("vsCard").innerHTML=versusMarkup(); $("versus").innerHTML=versusMarkup();
+function showVersus(svc,overlay){
+  const bt=RX.btCount(NET.parsed.ast,svc.str);
+  const nSteps=svc.str.length, maxT=svc.maxTrains, nfaWork=Math.max(1,nSteps)*Math.max(1,maxT);
+  const big=bt.capped?3e6:bt.steps;
+  const ratio=big/nfaWork;
+  const card=$("vsCard"); card.hidden=false;
+  const show=ratio>200&&overlay&&!reduceMotion;
+  if(show){ $("versus").classList.add("show"); clearTimeout(showVersus.to); showVersus.to=setTimeout(()=>$("versus").classList.remove("show"),8000); }
+  vsAnim={t0:performance.now(),bt:big,capped:bt.capped,nfa:nfaWork,nSteps,maxT};
+  for(const root of [card,$("versus")]) root.querySelector('[data-k="note"]').textContent=`${nSteps} 文字 × 同時 ${maxT} 本まで。合流で本数が増えないので、手数は文字数に比例します。${bt.capped?"バックトラックは 300 万手で打ち切り。":""}`;
+}
+function updateVersus(){
+  if(!vsAnim) return;
+  const k=easeOut((performance.now()-vsAnim.t0)/2400);
+  const max=Math.log10(vsAnim.bt+1);
+  for(const root of [$("vsCard"),$("versus")]){
+    root.querySelector('[data-k="bt"]').textContent=Math.round(vsAnim.bt*k).toLocaleString()+(vsAnim.capped&&k>=1?"+ 手":" 手");
+    root.querySelector('[data-k="btb"]').style.width=(100*Math.log10(vsAnim.bt*k+1)/max).toFixed(1)+"%";
+    root.querySelector('[data-k="nfa"]').textContent=Math.round(vsAnim.nfa*Math.min(1,k*3)).toLocaleString()+" 手";
+    root.querySelector('[data-k="nfab"]').style.width=(100*Math.log10(vsAnim.nfa*Math.min(1,k*3)+1)/max).toFixed(1)+"%";
+  }
+  if(k>=1) vsAnim=null;
+}
+
+/* ============================================================
+   Departure board
+   ============================================================ */
+let boardT=0;
+function renderBoard(force){
+  const now=performance.now(); if(!force&&now-boardT<250) return; boardT=now;
+  for(const s of services) if(!history.includes(s)) history.push(s);
+  if(history.length>60) history=history.slice(-60);
+  const q=massOn?massQueue.slice(0,3).map((str,i)=>({str,depart:clockLabel(svcSeq+i),code:"—",col:"#555",waiting:true})):[];
+  const all=history.concat(q);
+  const box=$("boardRows"); box.textContent="";
+  for(const s of all.slice(-9)){
+    const st=s.waiting?"wait":s.result===undefined?"run":(s.result?"ok":"ng");
+    const d=document.createElement("div"); d.className="brow "+st;
+    const label=st==="wait"?"待機":st==="run"?"運行中":(s.result?(s.search?"✓ 発見":"✓ 終点"):(s.search?"✗ なし":s.plan.result.dead?"✗ 脱線":"✗ 不受理"));
+    d.innerHTML=`<span>${s.depart}</span><span><span class="code"></span></span><span class="dest"></span><span class="st">${label}${st==="ok"||st==="ng"?(s.verified?'<span class="vf">一致</span>':'<span class="vf bad">不一致</span>'):""}</span>`;
+    const c=d.querySelector(".code"); c.textContent=s.code; c.style.setProperty("--c",s.single?"#FFFFFF":s.col==="#1C1C1E"?"#C8C8C8":s.col);
+    d.querySelector(".dest").textContent=s.str===""?"（空文字列）":s.str;
+    box.appendChild(d);
+  }
+  if(!all.length){ const d=document.createElement("div"); d.className="brow wait"; d.innerHTML="<span></span><span></span><span class='dest'>列車はまだありません</span><span></span>"; box.appendChild(d); }
+  const done=history.filter(s=>s.result!==undefined), ver=done.filter(s=>s.verified).length;
+  $("bfDone").textContent="運行 "+done.length+"本";
+  if(massOn&&massDone.length){ const mins=Math.max((now-massStartReal)/60000,1/60); const chars=massDone.reduce((a,x)=>a+x.svc.str.length,0); $("bfRate").textContent=`毎分 ${(massDone.length/mins).toFixed(0)}本 / ${(chars/mins).toFixed(0)}字`; }
+  else $("bfRate").textContent="毎分 —";
+  $("bfVerify").textContent=`RegExp照合 ${ver}/${done.length}`;
+}
+
+/* ============================================================
+   Controls
+   ============================================================ */
+const sampleBox=$("samples");
+SAMPLES.forEach((s,i)=>{ const b=document.createElement("button"); b.className="chip"; b.style.setProperty("--c",s.color);
+  b.innerHTML="<i></i><code></code><span></span>"; b.querySelector("code").textContent=s.re; b.querySelector("span").textContent=s.name;
+  b.addEventListener("click",()=>loadSample(i)); sampleBox.appendChild(b); });
+function markSample(){ [...sampleBox.children].forEach((b,i)=>b.setAttribute("aria-current",String(i===curSample))); }
+function setLineColor(c){ document.documentElement.style.setProperty("--line",c); }
+function loadSample(i,{autorun=true}={}){
+  curSample=i; const s=SAMPLES[i]; markSample(); setLineColor(s.color);
+  $("signNo").textContent=String(i+1).padStart(2,"0"); $("lcdLine").textContent=s.name;
+  $("rx").value=s.re; $("str").value=s.str; $("list").value=s.list.join("\n");
+  setSpeed(s.speed||1); stopAll();
+  const ok=buildNetwork(s.re);
+  if(ok&&autorun) pendingRun=s.str;
+  return ok;
+}
+function stopAll(){ history=history.filter(h=>h.result!==undefined); for(const s of services){ for(const el of s.els.values()) el.remove(); } services=[]; massOn=false; massQueue=[]; pendingRun=null; hudFor=null; buildLcd(null); $("stepLog").textContent=""; $("mTrains").textContent="0"; $("mSet").textContent="{}"; $("versus").classList.remove("show"); if(NET) showAccept(false); renderBoard(true); }
+function rebuildFromInput(){
+  const src=$("rx").value; curSample=SAMPLES.findIndex(s=>s.re===src); markSample();
+  if(curSample<0){ setLineColor("#1C1C1E"); $("lcdLine").textContent="自由路線"; }
+  stopAll(); return buildNetwork(src);
+}
+$("bBuild").addEventListener("click",rebuildFromInput);
+$("rx").addEventListener("keydown",e=>{ if(e.key==="Enter") rebuildFromInput(); });
+$("bRun").addEventListener("click",()=>startSingle($("str").value));
+$("str").addEventListener("keydown",e=>{ if(e.key==="Enter") startSingle($("str").value); });
+function startSingle(str){
+  if(!NET||NET.src!==$("rx").value){ if(rebuildFromInput()) pendingRun=str; return; }
+  if(NET.buildT<NET.buildEnd){ pendingRun=str; return; }
+  for(const s of services.filter(s=>s.single)){ for(const el of s.els.values()){ el.remove(); } s.els.clear(); }
+  services=services.filter(s=>!s.single);
+  showAccept(false); $("versus").classList.remove("show");
+  const svc=makeService(str,{single:true});
+  hudFor=svc; hudK=-1; lcdKey=""; buildLcd(svc); $("mMax").textContent=svc.maxTrains; $("stepLog").textContent="";
+  stepUntil=null; playing=true; syncPause(); renderBoard(true);
+  if(camMode==="free") setCam("auto");
+}
+function setSpeed(s){ speed=s; $("bSpeed").textContent="速さ ×"+(s<1?"½":s); }
+$("bSpeed").addEventListener("click",()=>{ const L=[.5,1,2,4]; setSpeed(L[(L.indexOf(speed)+1)%L.length]); });
+function syncPause(){ $("bPause").textContent=playing?"一時停止":"再開"; }
+$("bPause").addEventListener("click",()=>{ playing=!playing; stepUntil=null; syncPause(); });
+$("bStep").addEventListener("click",()=>{ const svc=hudFor; if(!svc) return; const t=simT-svc.t0; const nx=svc.plan.steps.find(s=>s.rides>0&&s.t+svc.plan.TM.RIDE+.02>t+.05); stepUntil=nx?svc.t0+nx.t+svc.plan.TM.RIDE+.02:null; playing=true; syncPause(); });
+$("mFull").addEventListener("click",()=>setSearch(false)); $("mSearch").addEventListener("click",()=>setSearch(true));
+function setSearch(v){ searchMode=v; $("mFull").setAttribute("aria-pressed",String(!v)); $("mSearch").setAttribute("aria-pressed",String(v)); stopAll(); }
+$("bMass").addEventListener("click",()=>startMass());
+$("bStop").addEventListener("click",()=>stopAll());
+function startMass(){
+  if(!NET) return;
+  const list=$("list").value.split("\n").map(s=>s.replace(/\r/g,"")).filter((s,i,a)=>s.length||a.length===1);
+  stopAll(); massQueue=list.slice(); massOn=true; massNext=simT; massStartReal=performance.now(); massDone=[];
+  $("lcdDestS").textContent="ダイヤ運行"; $("lcdDest").textContent=list.length+"本"; $("lcdDest").className="";
+  if(speed<2) setSpeed(2);
+  if(camMode==="free") setCam("auto");
+  renderBoard(true);
+}
+function massTick(){
+  if(!massOn||!NET||NET.buildT<NET.buildEnd) return;
+  if(massQueue.length&&simT>=massNext&&services.filter(s=>!s.done).length<8){ makeService(massQueue.shift()); massNext=simT+2.4; renderBoard(true); }
+  if(massOn){ const live=services.length; $("mTrains").textContent=services.reduce((a,s)=>{ const t=simT-s.t0; return a+s.plan.trains.filter(tr=>t>=tr.born&&t<tr.end).length; },0); $("mMax").textContent=live; }
+}
+let buildTO=0;
+function showBuildMsg(t){ const m=$("buildMsg"); m.textContent=t; m.classList.add("show"); }
+function hideBuildMsg(){ $("buildMsg").classList.remove("show"); }
+function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast.to); toast.to=setTimeout(()=>el.classList.remove("show"),2400); }
+
+/* ============================================================
+   Loop
+   ============================================================ */
+let lastT=performance.now(), fps={acc:0,n:0,avg:60};
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.1,(now-lastT)/1000); lastT=now;
+  fps.acc+=dt; fps.n++; if(fps.acc>1){ fps.avg=fps.n/fps.acc; fps.acc=0; fps.n=0; }
+  if(NET){
+    updateBuild(dt);
+    if(pendingRun!==null&&NET.buildT>=NET.buildEnd+.2){ const s=pendingRun; pendingRun=null; startSingle(s); }
+    if(playing){ simT+=dt*speed; if(stepUntil!==null&&simT>=stepUntil){ simT=stepUntil; stepUntil=null; playing=false; syncPause(); } }
+    massTick(); processEvents(); updateTrains(); updateHud(); renderBoard(false);
+  }
+  updateFx(dt); updateVersus(); updateCamera(dt);
+}
+// re-lay the map when the frame changes shape (trains keep running: the timetable is topological)
+let relayTO=0, lastAspect=0;
+new ResizeObserver(()=>{ const vs=viewSize(), a=vs.w/vs.h; if(!NET){ lastAspect=a; return; } if(Math.abs(Math.log(a/(lastAspect||a)))>.2){ clearTimeout(relayTO); relayTO=setTimeout(()=>{ lastAspect=viewSize().w/viewSize().h; for(const s of services){ for(const el of s.els.values()) el.remove(); s.els.clear(); } buildNetwork(NET.src,{animate:false,keep:true}); camSnap=true; },350); } else camSnap=camSnap||camMode!=="free"&&false; }).observe(wrap);
+
+window.addEventListener("error",e=>{ (window.__rrErrors=window.__rrErrors||[]).push(String(e.message)); });
+window.__rr={ready:false,
+  load:(i,o)=>loadSample(i,o), build:src=>{ $("rx").value=src; return rebuildFromInput(); },
+  run:str=>{ $("str").value=str; startSingle(str); }, mass:list=>{ if(list) $("list").value=list.join("\n"); startMass(); },
+  cam:m=>setCam(m), speed:s=>setSpeed(s), search:v=>setSearch(v),
+  skipBuild:()=>{ if(NET){ NET.buildT=NET.buildEnd+.1; finishBuild(); } },
+  state:()=>({built:!!NET&&NET.buildT>=NET.buildEnd,nfa:NET&&{n:NET.nfa.n,e:NET.nfa.edges.length,rows:NET.LY.rows},services:services.length,live:livePos.length,
+    history:history.map(s=>({str:s.str,result:s.result,verified:s.verified,native:s.native,matched:s.matched})),fps:Math.round(fps.avg),simT}),
+};
+async function boot(){
+  try{ await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,2500))]); }catch(e){}
+  lastAspect=viewSize().w/viewSize().h;
+  renderBoard(true);
+  requestAnimationFrame(frame);
+  loadSample(0);
+  window.__rr.ready=true;
+}
+boot();
+})();
+</script>
+</body>
+</html>
