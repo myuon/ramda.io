@@ -172,7 +172,7 @@ canvas{display:block;width:100%}
   <p class="defs" id="defs" data-i18n="defs"><b>数え方</b>：行き止まり ＝ どの色も塗れない国（または同じ色の隣り合い）が出た回数。試した手数 ＝ 自分で選んで色を置いた回数（ほかの色が使えず自動で決まったものは数えない）。どちらも同じ順番（名前順の国に、赤→青→黄の順）で試します。違いは行き止まりでの振る舞いだけです。下の木は「試した選択」の枝分かれで、× が行き止まりです。</p>
 <section class="rv" id="video" aria-labelledby="rv-h">
   <h2 class="rv-h" id="rv-h" data-i18n="videoH">解説動画（60〜110秒）</h2>
-  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/LlKH7xG8lr8" title="付箋の探索 の解説動画" data-i18n-title="videoTitle" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/LlKH7xG8lr8" title="付箋の探索 の解説動画" data-i18n-title="videoTitle" data-i18n-src="videoSrc" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
   <p class="rv-ch" data-i18n="videoCh">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
 </section>
 </div>
@@ -521,7 +521,7 @@ if (typeof module !== 'undefined') module.exports = Core;
       deadPre: '行き止まり', deadSuf: '回', decPre: '試した手数', decSuf: '手',
       notesEmpty: '付箋はまだありません。行き止まりのたびに1枚増えます。',
       defs: '<b>数え方</b>：行き止まり ＝ どの色も塗れない国（または同じ色の隣り合い）が出た回数。試した手数 ＝ 自分で選んで色を置いた回数（ほかの色が使えず自動で決まったものは数えない）。どちらも同じ順番（名前順の国に、赤→青→黄の順）で試します。違いは行き止まりでの振る舞いだけです。下の木は「試した選択」の枝分かれで、× が行き止まりです。',
-      videoH: '解説動画（60〜110秒）', videoTitle: '付箋の探索 の解説動画',
+      videoH: '解説動画（60〜110秒）', videoTitle: '付箋の探索 の解説動画', videoSrc: 'https://www.youtube-nocookie.com/embed/LlKH7xG8lr8',
       videoCh: 'ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。',
       ctlAria: '操作', play: '▶ 再生', pause: '❚❚ 停止',
       step: '1手<span class="lg">すすめる</span>',
@@ -572,7 +572,7 @@ if (typeof module !== 'undefined') module.exports = Core;
       deadPre: 'Dead ends', deadSuf: '', decPre: 'Choices', decSuf: '',
       notesEmpty: 'No sticky notes yet. One is added at every dead end.',
       defs: '<b>How we count</b>: Dead ends = times a region had no color left (or two neighbors ended up the same color). Choices = times a search picked a color itself (colors forced because nothing else was possible are not counted). Both try in the same order (regions by name; red, then blue, then yellow). The only difference is what they do at a dead end. The tree below shows how the choices branch; × marks a dead end.',
-      videoH: 'Explainer video (60–110 s)', videoTitle: 'Sticky-Note Search explainer video',
+      videoH: 'Explainer video (77 s)', videoTitle: 'Sticky-Note Search explainer video', videoSrc: 'https://www.youtube-nocookie.com/embed/a4IitH9zBBc',
       videoCh: 'More explainer videos on the YouTube channel <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a>.',
       ctlAria: 'Controls', play: '▶ Play', pause: '❚❚ Pause',
       step: 'Step<span class="lg"> once</span>',
@@ -648,6 +648,8 @@ if (typeof module !== 'undefined') module.exports = Core;
       b.innerHTML = '<span class="lg">' + s[0] + '</span><span class="sm">' + s[1] + '</span>';
     });
     Array.prototype.forEach.call($('tabs').children, function (b, i) { b.textContent = mapLabel(i); });
+    // explainer video: Japanese or English version (only touch src when it changes)
+    Array.prototype.forEach.call(document.querySelectorAll('iframe[data-i18n-src]'), function (el) { var u = t(el.getAttribute('data-i18n-src')); if (el.getAttribute('src') !== u) el.setAttribute('src', u); });
     Array.prototype.forEach.call($('langsw').querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', b.dataset.lang === L ? 'true' : 'false'); });
   }
   // switch language without touching the solvers: re-apply text and redraw from the current state

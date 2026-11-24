@@ -354,7 +354,7 @@ html[lang=en] .sign h1{font-size:24px;letter-spacing:.04em}
 </div>
 <section class="rv" id="video" aria-labelledby="rv-h">
   <h2 class="rv-h" id="rv-h" data-i18n="videoH">解説動画（60〜110秒）</h2>
-  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/SrLe9GswqY4" title="正規表現線 の解説動画" data-i18n-attr="title:videoTitle" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/SrLe9GswqY4" title="正規表現線 の解説動画" data-i18n-attr="title:videoTitle" data-i18n-src="videoSrc" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
   <p class="rv-ch" data-i18n-html="videoMore">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
 </section>
 <script>
@@ -611,7 +611,7 @@ ja:{
   fList:"ダイヤ（1行に1本）", bMass:"ダイヤ運行を始める", bStop:"運行をやめる",
   massHint:"何本もの列車を時刻表どおりに走らせ、結果を発車標に出します。どの結果もブラウザの RegExp と照合します。",
   bhDep:"発車", bhTrain:"列車", bhStr:"文字列", bhSt:"状況",
-  videoLink:"▶ 解説動画（60〜110秒）はページの下にあります", videoH:"解説動画（60〜110秒）", videoTitle:"正規表現線 の解説動画",
+  videoLink:"▶ 解説動画（60〜110秒）はページの下にあります", videoH:"解説動画（60〜110秒）", videoTitle:"正規表現線 の解説動画", videoSrc:"https://www.youtube-nocookie.com/embed/SrLe9GswqY4",
   videoMore:'ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。',
   s0:"abb で終わる", s1:"米英どちらの綴りも", s2:"メールアドレス風", s3:"分岐が多い", s4:"バックトラック泣かせ", s5:"3の倍数（2進数）",
   freeLine:"自由路線",
@@ -648,7 +648,7 @@ en:{
   fList:"Timetable (one string per line)", bMass:"Run timetable", bStop:"Stop service",
   massHint:"Runs many trains on a timetable and posts the results on the departure board. Every result is checked against the browser's RegExp.",
   bhDep:"Dep", bhTrain:"Train", bhStr:"String", bhSt:"Status",
-  videoLink:"▶ Explainer video (60–110 s) at the bottom of the page", videoH:"Explainer video (60–110 s)", videoTitle:"Regex Railway explainer video",
+  videoLink:"▶ Explainer video (83 s) at the bottom of the page", videoH:"Explainer video (83 s)", videoTitle:"Regex Railway explainer video", videoSrc:"https://www.youtube-nocookie.com/embed/Bft-8qudj4g",
   videoMore:'More explainer videos on the YouTube channel <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a>.',
   s0:"ends in abb", s1:"US or UK spelling", s2:"email-like", s3:"many forks", s4:"backtracker's nightmare", s5:"multiples of 3 (binary)",
   freeLine:"Custom line",
@@ -707,6 +707,8 @@ function applyStatic(){
   document.querySelectorAll("[data-i18n]").forEach(el=>{ el.textContent=L_(el.dataset.i18n); });
   document.querySelectorAll("[data-i18n-html]").forEach(el=>{ el.innerHTML=L_(el.dataset.i18nHtml); });
   document.querySelectorAll("[data-i18n-attr]").forEach(el=>{ el.dataset.i18nAttr.split(",").forEach(pair=>{ const [a,k]=pair.split(":"); el.setAttribute(a,L_(k)); }); });
+  // explainer video: Japanese or English version (only touch src when it changes, so a playing video isn't reloaded needlessly)
+  document.querySelectorAll("iframe[data-i18n-src]").forEach(el=>{ const u=L_(el.dataset.i18nSrc); if(el.getAttribute("src")!==u) el.setAttribute("src",u); });
   document.querySelectorAll("button[data-lang]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)));
 }
 applyStatic();
