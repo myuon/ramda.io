@@ -10,6 +10,7 @@ export const staticWorks: Item[] = [
       "同じ弾幕ゲームを2つの GC で同時に動かす。マップを広げると、片方だけが止まる。",
     publishedAt: "2026-11-24",
     image: "/works/gc-bullets/thumbnail.jpg",
+    hasVideo: true,
   },
   {
     id: "works/sat-sticky-notes",
