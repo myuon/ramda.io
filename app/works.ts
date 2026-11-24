@@ -3,6 +3,15 @@ import type { Item } from "./notion";
 // Notion を経由せず、このリポジトリの public/works/ に置いた作品
 export const staticWorks: Item[] = [
   {
+    id: "works/sat-sticky-notes",
+    title: "付箋の探索",
+    link: "/works/sat-sticky-notes",
+    summary:
+      "失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる",
+    publishedAt: "2026-11-24",
+    image: "/works/sat-sticky-notes/thumbnail.jpg",
+  },
+  {
     id: "works/regex-railway",
     title: "正規表現線",
     link: "/works/regex-railway",
