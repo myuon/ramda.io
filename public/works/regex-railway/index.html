@@ -225,6 +225,15 @@ button{cursor:pointer}
 }
 @media (prefers-reduced-motion:reduce){ .brow.run .st{animation:none} }
 </style>
+<style>
+/* ramda.io: 解説動画の埋め込み */
+.rv{box-sizing:border-box;width:100%;max-width:360px;margin:32px auto 28px;padding:0 4px}
+.rv-h{font-size:17px;line-height:1.4;margin:0 0 10px;font-weight:700}
+.rv-frame{position:relative;width:100%;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#000}
+.rv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.rv-ch{font-size:13px;line-height:1.6;margin:10px 0 0}
+.rv-ch a{color:inherit}
+</style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -327,8 +336,14 @@ button{cursor:pointer}
         <div class="board-foot"><span id="bfDone">運行 0本</span><span id="bfRate">毎分 —</span><span id="bfVerify">RegExp照合 0/0</span></div>
       </div>
     </section>
+    <p class="hint"><a href="#video" style="color:inherit">▶ 解説動画（60〜110秒）はページの下にあります</a></p>
   </aside>
 </div>
+<section class="rv" id="video" aria-labelledby="rv-h">
+  <h2 class="rv-h" id="rv-h">解説動画（60〜110秒）</h2>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/SrLe9GswqY4" title="正規表現線 の解説動画" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <p class="rv-ch">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
+</section>
 <script>
 /*ENGINE-BEGIN*/
 var RX=(function(){

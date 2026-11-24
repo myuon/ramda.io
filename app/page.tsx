@@ -112,6 +112,7 @@ export default async function Page() {
               href={item.link}
               date={item.publishedAt}
               image={item.image}
+              hasVideo={item.hasVideo}
             />
           ))}
         </div>

@@ -13,6 +13,7 @@ export interface CardProps {
   href?: string;
   date?: string;
   image?: string;
+  hasVideo?: boolean;
 }
 
 const LinkWrapper = ({
@@ -35,7 +36,14 @@ const LinkWrapper = ({
   );
 };
 
-export const Card = ({ title, summary, href, date, image }: CardProps) => {
+export const Card = ({
+  title,
+  summary,
+  href,
+  date,
+  image,
+  hasVideo,
+}: CardProps) => {
   return (
     <LinkWrapper href={href} external>
       <div
@@ -88,6 +96,21 @@ export const Card = ({ title, summary, href, date, image }: CardProps) => {
           >
             {title}
           </h3>
+          {hasVideo ? (
+            <span
+              className={css`
+                justify-self: start;
+                font-size: 12px;
+                line-height: 1;
+                color: #475569;
+                border: 1px solid #cbd5e1;
+                border-radius: 999px;
+                padding: 4px 8px;
+              `}
+            >
+              ▶ 動画あり
+            </span>
+          ) : null}
           <p
             className={css`
               font-size: 14px;

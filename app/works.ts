@@ -10,6 +10,7 @@ export const staticWorks: Item[] = [
       "失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる",
     publishedAt: "2026-11-24",
     image: "/works/sat-sticky-notes/thumbnail.jpg",
+    hasVideo: true,
   },
   {
     id: "works/regex-railway",
@@ -19,6 +20,7 @@ export const staticWorks: Item[] = [
       "正規表現を路線図にする。文字列は列車になって分岐し、合流し、終点を目指す",
     publishedAt: "2026-11-23",
     image: "/works/regex-railway/thumbnail.jpg",
+    hasVideo: true,
   },
   {
     id: "works/code-factory",

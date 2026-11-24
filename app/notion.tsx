@@ -12,6 +12,8 @@ export interface Item {
   summary?: string;
   publishedAt: string;
   image?: string;
+  // 解説動画があるか(作品ページに埋め込み済み)
+  hasVideo?: boolean;
 }
 
 export const fetchItems = cache(async () => {
