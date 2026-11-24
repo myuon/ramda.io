@@ -122,6 +122,15 @@ canvas{display:block;width:100%}
 }
 @media (prefers-reduced-motion:reduce){.note.slap{animation:none}}
 </style>
+<style>
+/* ramda.io: 解説動画の埋め込み */
+.rv{box-sizing:border-box;width:100%;max-width:360px;margin:32px auto 28px;padding:0 4px}
+.rv-h{font-size:17px;line-height:1.4;margin:0 0 10px;font-weight:700}
+.rv-frame{position:relative;width:100%;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#000}
+.rv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.rv-ch{font-size:13px;line-height:1.6;margin:10px 0 0}
+.rv-ch a{color:inherit}
+</style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -154,6 +163,11 @@ canvas{display:block;width:100%}
   </main>
   <section class="result" id="result" aria-live="polite"></section>
   <p class="defs" id="defs"><b>数え方</b>：行き止まり ＝ どの色も塗れない国（または同じ色の隣り合い）が出た回数。試した手数 ＝ 自分で選んで色を置いた回数（ほかの色が使えず自動で決まったものは数えない）。どちらも同じ順番（名前順の国に、赤→青→黄の順）で試します。違いは行き止まりでの振る舞いだけです。下の木は「試した選択」の枝分かれで、× が行き止まりです。</p>
+<section class="rv" id="video" aria-labelledby="rv-h">
+  <h2 class="rv-h" id="rv-h">解説動画（60〜110秒）</h2>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/LlKH7xG8lr8" title="付箋の探索 の解説動画" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <p class="rv-ch">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
+</section>
 </div>
 <div class="controls" role="toolbar" aria-label="操作">
   <div class="mini" id="mini" aria-hidden="true"></div>
