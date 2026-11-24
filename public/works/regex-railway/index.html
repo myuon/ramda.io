@@ -7,6 +7,8 @@
 <meta name="description" content="正規表現を路線図にする。文字列は列車になって分岐し、合流し、終点を目指す">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ramda.io">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
 <meta property="og:title" content="正規表現線">
 <meta property="og:description" content="正規表現を路線図にする。文字列は列車になって分岐し、合流し、終点を目指す">
 <meta property="og:url" content="https://www.ramda.io/works/regex-railway/">
@@ -224,6 +226,11 @@ button{cursor:pointer}
   .theme-m{display:inline-flex}
 }
 @media (prefers-reduced-motion:reduce){ .brow.run .st{animation:none} }
+/* language switch (日本語 / English) */
+.langrow{display:flex;justify-content:flex-end;margin-bottom:-10px}
+.langsw button{padding:2px 11px;font-size:12px}
+html[lang=en] .sign h1{font-size:24px;letter-spacing:.04em}
+@media (max-width:900px){ html[lang=en] .sign h1{font-size:21px} }
 </style>
 <style>
 /* ramda.io: 解説動画の埋め込み */
@@ -241,81 +248,87 @@ button{cursor:pointer}
 <div id="app">
   <main id="mapcol">
     <div id="lcd" aria-live="polite">
-      <div class="lcd-kind"><b>各停</b><small id="lcdLine">正規表現線</small></div>
-      <div class="lcd-dest"><small id="lcdDestS">行先</small><b id="lcdDest">受理</b></div>
+      <div class="lcd-kind"><b data-i18n="lcdKind">各停</b><small id="lcdLine" data-i18n="signTitle">正規表現線</small></div>
+      <div class="lcd-dest"><small id="lcdDestS" data-i18n="lcdDestS">行先</small><b id="lcdDest" data-i18n="accept">受理</b></div>
       <div id="lcdChars"></div>
     </div>
     <div id="mapwrap">
-      <svg id="map" role="img" aria-label="正規表現から作った路線図"></svg>
+      <svg id="map" role="img" aria-label="正規表現から作った路線図" data-i18n-attr="aria-label:mapAria"></svg>
       <div id="buildMsg"></div>
       <div id="toast"></div>
-      <div id="tour" role="dialog" aria-label="はじめての案内" aria-live="polite">
+      <div id="tour" role="dialog" aria-label="はじめての案内" data-i18n-attr="aria-label:tourAria" aria-live="polite">
         <div class="tour-step" id="tourStep"></div>
         <h3 id="tourTitle"></h3>
         <p id="tourText"></p>
-        <div class="tour-btns"><button class="btn" id="tourSkip">案内を閉じる</button><button class="btn go" id="tourNext">続ける</button></div>
+        <div class="tour-btns"><button class="btn" id="tourSkip" data-i18n="tourSkip">案内を閉じる</button><button class="btn go" id="tourNext">続ける</button></div>
       </div>
       <div id="versus" aria-hidden="true"></div>
-      <div id="legend" aria-label="凡例"></div>
+      <div id="legend" aria-label="凡例" data-i18n-attr="aria-label:legendAria"></div>
     </div>
     <div id="hudbar">
-      <div class="ctr"><b id="mTrains">0</b>本 走行中</div>
-      <div class="ctr"><b id="mMax">0</b>本 最大</div>
-      <div class="ctr">状態集合 <code id="mSet">{}</code></div>
+      <div class="ctr"><b id="mTrains">0</b><span data-i18n="ctrRunning">本 走行中</span></div>
+      <div class="ctr"><b id="mMax">0</b><span data-i18n="ctrMax">本 最大</span></div>
+      <div class="ctr"><span data-i18n="ctrSet">状態集合</span> <code id="mSet">{}</code></div>
       <div id="stepLog"></div>
-      <div class="seg" role="group" aria-label="地図の表示">
-        <button data-cam="auto" aria-pressed="true">追跡</button>
-        <button data-cam="all" aria-pressed="false">全体</button>
+      <div class="seg" role="group" aria-label="地図の表示" data-i18n-attr="aria-label:camAria">
+        <button data-cam="auto" aria-pressed="true" data-i18n="camAuto">追跡</button>
+        <button data-cam="all" aria-pressed="false" data-i18n="camAll">全体</button>
       </div>
-      <div class="seg theme-d" role="group" aria-label="配色">
-        <button data-theme="light" aria-pressed="true">昼</button>
-        <button data-theme="dark" aria-pressed="false">夜</button>
+      <div class="seg theme-d" role="group" aria-label="配色" data-i18n-attr="aria-label:themeAria">
+        <button data-theme="light" aria-pressed="true" data-i18n="themeDay">昼</button>
+        <button data-theme="dark" aria-pressed="false" data-i18n="themeNight">夜</button>
       </div>
     </div>
   </main>
 
   <aside id="panel">
+    <div class="langrow">
+      <div class="seg langsw" role="group" aria-label="言語" data-i18n-attr="aria-label:langAria">
+        <button data-lang="ja" lang="ja" aria-pressed="true">日本語</button>
+        <button data-lang="en" lang="en" aria-pressed="false">English</button>
+      </div>
+    </div>
     <div class="sign" aria-hidden="true">
       <div class="sign-top">
         <div class="sign-num"><small>RX</small><b id="signNo">01</b></div>
-        <div><h1>正規表現線</h1><p>Regular Expression Line</p></div>
+        <div><h1 data-i18n="signTitle">正規表現線</h1><p>Regular Expression Line</p></div>
       </div>
-      <div class="sign-band"><span>← 文字列</span><span>受理 →</span></div>
+      <div class="sign-band"><span data-i18n="bandFrom">← 文字列</span><span data-i18n="bandTo">受理 →</span></div>
     </div>
 
-    <div class="seg theme-m" role="group" aria-label="配色">
-      <button data-theme="light" aria-pressed="true">昼の路線図</button>
-      <button data-theme="dark" aria-pressed="false">夜の路線図</button>
+    <div class="seg theme-m" role="group" aria-label="配色" data-i18n-attr="aria-label:themeAria">
+      <button data-theme="light" aria-pressed="true" data-i18n="themeDayM">昼の路線図</button>
+      <button data-theme="dark" aria-pressed="false" data-i18n="themeNightM">夜の路線図</button>
     </div>
 
     <section>
-      <h2 class="field-name"><label for="rx">正規表現</label></h2>
+      <h2 class="field-name"><label for="rx" data-i18n="fRx">正規表現</label></h2>
       <div class="rxrow">
         <input id="rx" spellcheck="false" autocomplete="off" autocapitalize="off" value="(a|b)*abb">
-        <button class="btn" id="bBuild">路線図を作る</button>
+        <button class="btn" id="bBuild" data-i18n="bBuild">路線図を作る</button>
       </div>
       <div id="rxErr" role="status"></div>
       <div id="rxStat"></div>
-      <div class="seg modes" role="group" aria-label="照合の方法">
-        <button id="mFull" aria-pressed="true">全体一致</button>
-        <button id="mSearch" aria-pressed="false">部分一致（検索）</button>
+      <div class="seg modes" role="group" aria-label="照合の方法" data-i18n-attr="aria-label:modeAria">
+        <button id="mFull" aria-pressed="true" data-i18n="mFull">全体一致</button>
+        <button id="mSearch" aria-pressed="false" data-i18n="mSearch">部分一致（検索）</button>
       </div>
     </section>
 
     <section>
-      <h2 class="field-name">路線を選ぶ</h2>
+      <h2 class="field-name" data-i18n="fSamples">路線を選ぶ</h2>
       <div class="samples" id="samples"></div>
     </section>
 
     <section>
-      <h2 class="field-name"><label for="str">乗せる文字列</label></h2>
+      <h2 class="field-name"><label for="str" data-i18n="fStr">乗せる文字列</label></h2>
       <div class="ticket">
         <input id="str" spellcheck="false" autocomplete="off" autocapitalize="off" value="aababb">
-        <button class="btn go" id="bRun">発車</button>
+        <button class="btn go" id="bRun" data-i18n="bRun">発車</button>
       </div>
       <div class="runrow">
         <button class="btn" id="bPause">一時停止</button>
-        <button class="btn" id="bStep">1文字進める</button>
+        <button class="btn" id="bStep" data-i18n="bStep">1文字進める</button>
         <button class="btn" id="bSpeed">速さ ×1</button>
       </div>
     </section>
@@ -323,26 +336,26 @@ button{cursor:pointer}
     <section id="vsCard" hidden></section>
 
     <section>
-      <h2 class="field-name"><label for="list">ダイヤ（1行に1本）</label></h2>
+      <h2 class="field-name"><label for="list" data-i18n="fList">ダイヤ（1行に1本）</label></h2>
       <textarea id="list" spellcheck="false"></textarea>
-      <div class="runrow"><button class="btn go" id="bMass">ダイヤ運行を始める</button><button class="btn" id="bStop">運行をやめる</button></div>
-      <p class="hint">何本もの列車を時刻表どおりに走らせ、結果を発車標に出します。どの結果もブラウザの RegExp と照合します。</p>
+      <div class="runrow"><button class="btn go" id="bMass" data-i18n="bMass">ダイヤ運行を始める</button><button class="btn" id="bStop" data-i18n="bStop">運行をやめる</button></div>
+      <p class="hint" data-i18n="massHint">何本もの列車を時刻表どおりに走らせ、結果を発車標に出します。どの結果もブラウザの RegExp と照合します。</p>
     </section>
 
     <section>
       <div class="board" id="board">
-        <div class="board-head"><span>発車</span><span>列車</span><span>文字列</span><span style="text-align:right">状況</span></div>
+        <div class="board-head"><span data-i18n="bhDep">発車</span><span data-i18n="bhTrain">列車</span><span data-i18n="bhStr">文字列</span><span style="text-align:right" data-i18n="bhSt">状況</span></div>
         <div class="board-rows" id="boardRows"></div>
         <div class="board-foot"><span id="bfDone">運行 0本</span><span id="bfRate">毎分 —</span><span id="bfVerify">RegExp照合 0/0</span></div>
       </div>
     </section>
-    <p class="hint"><a href="#video" style="color:inherit">▶ 解説動画（60〜110秒）はページの下にあります</a></p>
+    <p class="hint"><a href="#video" style="color:inherit" data-i18n="videoLink">▶ 解説動画（60〜110秒）はページの下にあります</a></p>
   </aside>
 </div>
 <section class="rv" id="video" aria-labelledby="rv-h">
-  <h2 class="rv-h" id="rv-h">解説動画（60〜110秒）</h2>
-  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/SrLe9GswqY4" title="正規表現線 の解説動画" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
-  <p class="rv-ch">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
+  <h2 class="rv-h" id="rv-h" data-i18n="videoH">解説動画（60〜110秒）</h2>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/SrLe9GswqY4" title="正規表現線 の解説動画" data-i18n-attr="title:videoTitle" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <p class="rv-ch" data-i18n-html="videoMore">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
 </section>
 <script>
 /*ENGINE-BEGIN*/
@@ -584,20 +597,135 @@ const easeOut=x=>1-Math.pow(1-clamp01(x),3);
 const showCh=c=>c===" "?"␣":c;
 
 /* ============================================================
+   Language (日本語 / English): ?lang= wins, otherwise the browser language
+   ============================================================ */
+const pl_=(n,one,many)=>n+" "+(n===1?one:many);
+const I18N={
+ja:{
+  title:"正規表現線", desc:"正規表現を路線図にする。文字列は列車になって分岐し、合流し、終点を目指す",
+  lcdKind:"各停", mapAria:"正規表現から作った路線図", tourAria:"はじめての案内", tourSkip:"案内を閉じる", legendAria:"凡例",
+  ctrRunning:"本 走行中", ctrMax:"本 最大", ctrSet:"状態集合", camAria:"地図の表示", camAuto:"追跡", camAll:"全体",
+  themeAria:"配色", themeDay:"昼", themeNight:"夜", themeDayM:"昼の路線図", themeNightM:"夜の路線図", langAria:"言語",
+  signTitle:"正規表現線", bandFrom:"← 文字列", bandTo:"受理 →", fRx:"正規表現", bBuild:"路線図を作る", modeAria:"照合の方法",
+  mFull:"全体一致", mSearch:"部分一致（検索）", fSamples:"路線を選ぶ", fStr:"乗せる文字列", bRun:"発車", bStep:"1文字進める",
+  fList:"ダイヤ（1行に1本）", bMass:"ダイヤ運行を始める", bStop:"運行をやめる",
+  massHint:"何本もの列車を時刻表どおりに走らせ、結果を発車標に出します。どの結果もブラウザの RegExp と照合します。",
+  bhDep:"発車", bhTrain:"列車", bhStr:"文字列", bhSt:"状況",
+  videoLink:"▶ 解説動画（60〜110秒）はページの下にあります", videoH:"解説動画（60〜110秒）", videoTitle:"正規表現線 の解説動画",
+  videoMore:'ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。',
+  s0:"abb で終わる", s1:"米英どちらの綴りも", s2:"メールアドレス風", s3:"分岐が多い", s4:"バックトラック泣かせ", s5:"3の倍数（2進数）",
+  freeLine:"自由路線",
+  tooBig:p=>"大きすぎます（駅 "+p.n+"）。もう少し短い式にしてください", nativeRej:p=>"ブラウザの RegExp がこの式を受け付けません: "+p.m,
+  lgOne:"線", lgMany:"の文字で進む線", lgWalk:"乗換通路（ε、文字を使わない）",
+  stDepot:"車庫 ", stTerm:"終点 ", stStart:"始発", stAccept:"受理", stClass:"クラス線のりば", stLine:p=>"「"+p.l+"」線のりば",
+  rxStat:p=>`駅 <b>${p.n}</b>　路線 <b>${p.lines}</b>　乗換通路（ε） <b>${p.eps}</b>　折り返し <b>${p.rows}</b> 段`,
+  printing:p=>`路線図を印刷中… ${p.laid} / ${p.total}`, opened:p=>`開業：駅 ${p.n}、路線 ${p.lines}、乗換通路 ${p.eps}`,
+  tour:[{title:"分岐",text:"点線は乗換通路（ε）です。文字を使わずに通れるので、列車はここで分かれ、行ける駅すべてで次の文字を待ちます。"},
+        {title:"合流",text:"線路がここで合流します。2本の列車が同じ駅に着いたら1本にまとめるので、列車は駅の数より増えません。だから手数は文字数に比例します。"}],
+  tourStep:p=>`はじめての案内 ${p.i} / ${p.n}`, tourOk:"わかった", tourNext:"続ける",
+  accept:"受理", found:"一致", lcdEnd:"終", lcdEmpty:"空文字列", lcdDestS:"行先",
+  logStart:p=>"車庫を出て、乗換通路で "+p.n+" 駅に広がりました", logAfter:p=>"「"+p.c+"」線を走ったあと、乗換通路で "+p.n+" 駅に広がりました",
+  logCounts:p=>`（分岐 ${p.sp}、合流 ${p.mg}）。`, logNext:p=>`次は「${p.c}」線：${p.n}本が待機`, logDerail:p=>`、脱線 ${p.n}`,
+  dAcceptOk:"受理 ✓", dFoundOk:"一致 ✓", dNoMatch:"一致なし", dReject:"不受理", dsArrived:"到着", dsEnded:"運転終了",
+  whyFound:"一致する部分が見つかりました。", whyAccept:"終点（受理状態）に列車が着きました。",
+  whyDead:p=>`${p.k}文字目「${p.c}」の線路がなく、全列車が脱線しました。`, whyNone:"最後の文字のあと、終点にいる列車がありません。",
+  preOk:"受理: ", preNg:"不受理: ", vOk:"RegExp と一致", vNg:"RegExp と不一致",
+  vsTitle:"同じ答えを出すまでの手数", vsBt:"素朴な<br>バックトラック", vsNfa:"この路線図",
+  vsNote:p=>`${p.n} 文字 × 同時 ${p.m} 本まで。合流で本数が増えないので、手数は文字数に比例します。${p.capped?"バックトラックは 300 万手で打ち切り。":""}`,
+  steps:" 手", stepsCap:"+ 手",
+  bWait:"待機", bRunS:"運行中", bFound:"✓ 発見", bTerm:"✓ 終点", bNone:"✗ なし", bDerail:"✗ 脱線", bRej:"✗ 不受理", vfOk:"一致", vfNg:"不一致",
+  emptyStr:"（空文字列）", noTrains:"列車はまだありません", bfDone:p=>"運行 "+p.n+"本", bfRate:p=>`毎分 ${p.a}本 / ${p.b}字`, bfRateNone:"毎分 —",
+  bfVerify:p=>`RegExp照合 ${p.v}/${p.n}`, speed:p=>"速さ ×"+p.s, pause:"一時停止", resume:"再開", massS:"ダイヤ運行", massN:p=>p.n+"本",
+},
+en:{
+  title:"Regex Railway — a regular expression as a metro map",
+  desc:"Turn a regular expression into a metro map. Strings ride it as trains: they split at forks, merge, and head for the terminal.",
+  lcdKind:"Local", mapAria:"Metro map drawn from the regex", tourAria:"Quick guide", tourSkip:"Close guide", legendAria:"Legend",
+  ctrRunning:"running", ctrMax:"max", ctrSet:"State set", camAria:"Map view", camAuto:"Follow", camAll:"Whole",
+  themeAria:"Colors", themeDay:"Day", themeNight:"Night", themeDayM:"Day map", themeNightM:"Night map", langAria:"Language",
+  signTitle:"Regex Railway", bandFrom:"← string", bandTo:"accept →", fRx:"Regex", bBuild:"Draw map", modeAria:"Match mode",
+  mFull:"Full match", mSearch:"Search (partial)", fSamples:"Pick a line", fStr:"String to ride", bRun:"Depart", bStep:"Step 1 letter",
+  fList:"Timetable (one string per line)", bMass:"Run timetable", bStop:"Stop service",
+  massHint:"Runs many trains on a timetable and posts the results on the departure board. Every result is checked against the browser's RegExp.",
+  bhDep:"Dep", bhTrain:"Train", bhStr:"String", bhSt:"Status",
+  videoLink:"▶ Explainer video (60–110 s) at the bottom of the page", videoH:"Explainer video (60–110 s)", videoTitle:"Regex Railway explainer video",
+  videoMore:'More explainer videos on the YouTube channel <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a>.',
+  s0:"ends in abb", s1:"US or UK spelling", s2:"email-like", s3:"many forks", s4:"backtracker's nightmare", s5:"multiples of 3 (binary)",
+  freeLine:"Custom line",
+  tooBig:p=>"Too big ("+p.n+" stations). Try a shorter regex.", nativeRej:p=>"The browser's RegExp rejects this pattern: "+p.m,
+  lgOne:"line", lgMany:"line (any of these letters)", lgWalk:"free transfer (ε, uses no letter)",
+  stDepot:"depot ", stTerm:"terminal ", stStart:"start", stAccept:"accept", stClass:"class line", stLine:p=>p.l+" line",
+  rxStat:p=>`Stations <b>${p.n}</b> · Lines <b>${p.lines}</b> · Free transfers (ε) <b>${p.eps}</b> · Rows <b>${p.rows}</b>`,
+  printing:p=>`Printing the map… ${p.laid} / ${p.total}`, opened:p=>`Open: ${pl_(p.n,"station","stations")}, ${pl_(p.lines,"line","lines")}, ${pl_(p.eps,"free transfer","free transfers")}`,
+  tour:[{title:"Fork",text:"Dotted lines are free transfers (ε). They use no letter, so the train splits here and waits at every station it can reach for the next letter."},
+        {title:"Merge",text:"Tracks join here. Trains that reach the same station merge into one, so there are never more trains than stations. That is why the steps grow only with the length of the string."}],
+  tourStep:p=>`Quick guide ${p.i} / ${p.n}`, tourOk:"Got it", tourNext:"Next",
+  accept:"accept", found:"found", lcdEnd:"end", lcdEmpty:"empty string", lcdDestS:"Bound for",
+  logStart:p=>"Left the depot; free transfers spread it to "+pl_(p.n,"station","stations"), logAfter:p=>"After the \""+p.c+"\" line, free transfers spread it to "+pl_(p.n,"station","stations"),
+  logCounts:p=>` (${pl_(p.sp,"fork","forks")}, ${pl_(p.mg,"merge","merges")}). `, logNext:p=>`Next: "${p.c}" line, ${pl_(p.n,"train","trains")} waiting`, logDerail:p=>`, ${p.n} derailed`,
+  dAcceptOk:"Accept ✓", dFoundOk:"Found ✓", dNoMatch:"No match", dReject:"Reject", dsArrived:"Arrived", dsEnded:"Service ended",
+  whyFound:"A matching part was found.", whyAccept:"A train reached the terminal (the accept state).",
+  whyDead:p=>`No track for letter ${p.k} "${p.c}"; every train derailed.`, whyNone:"After the last letter, no train is at the terminal.",
+  preOk:"Accepted: ", preNg:"Rejected: ", vOk:"matches RegExp", vNg:"differs from RegExp",
+  vsTitle:"Steps to reach the same answer", vsBt:"Naive<br>backtracker", vsNfa:"This metro map",
+  vsNote:p=>`${pl_(p.n,"letter","letters")} × at most ${pl_(p.m,"train","trains")} at once. Merging keeps the train count from growing, so the steps grow only with the length.${p.capped?" The backtracker is cut off at 3 million steps.":""}`,
+  steps:" steps", stepsCap:"+ steps",
+  bWait:"wait", bRunS:"running", bFound:"✓ found", bTerm:"✓ accept", bNone:"✗ none", bDerail:"✗ derail", bRej:"✗ reject", vfOk:"OK", vfNg:"BAD",
+  emptyStr:"(empty)", noTrains:"No trains yet", bfDone:p=>"Ran "+p.n, bfRate:p=>`${p.a} trains / ${p.b} chars per min`, bfRateNone:"— per min",
+  bfVerify:p=>`RegExp check ${p.v}/${p.n}`, speed:p=>"Speed ×"+p.s, pause:"Pause", resume:"Resume", massS:"Timetable", massN:p=>pl_(p.n,"train","trains"),
+}};
+// parser messages come from the shared engine in Japanese; English renders them through this table
+const RX_ERR_EN=[
+  [/^繰り返し記号を重ねるときは \( \) で囲んでください$/,()=>"To stack repeats, wrap the inner one in ( )"],
+  [/^\{n,m\} の回数指定には未対応です$/,()=>"{n,m} counts are not supported"],
+  [/^「\\」のあとに文字がありません$/,()=>"Nothing follows \"\\\""],
+  [/^\[ \] の中の (\\.) には未対応です$/,m=>m[1]+" inside [ ] is not supported"],
+  [/^\[ \] の中で \\d などを範囲の端にはできません$/,()=>"\\d and the like cannot end a range inside [ ]"],
+  [/^範囲 ([\s\S]-[\s\S]) の順序が逆です$/,m=>"Range "+m[1]+" is out of order"],
+  [/^(\\[\s\S]) には未対応です$/,m=>m[1]+" is not supported"],
+  [/^「\[」に対応する「\]」がありません$/,()=>"\"[\" has no matching \"]\""],
+  [/^\(\?= など先読みには未対応です$/,()=>"Lookarounds such as (?= are not supported"],
+  [/^「\(」に対応する「\)」がありません$/,()=>"\"(\" has no matching \")\""],
+  [/^「\)」に対応する「\(」がありません$/,()=>"\")\" has no matching \"(\""],
+  [/^「([\s\S])」の前に繰り返す文字がありません$/,m=>"Nothing to repeat before \""+m[1]+"\""],
+  [/^\^ と \$ はパターンの先頭と末尾にだけ置けます$/,()=>"^ and $ may only appear at the very start and end"],
+  [/^\^ や \$ と \| を一緒に使うときは全体を \( \) で囲んでください$/,()=>"To use ^ or $ with |, wrap the whole pattern in ( )"],
+  [/^ここが読めません$/,()=>"Cannot read this part"],
+];
+function trRxErr(msg){ if(LANG!=="en") return msg; for(const [re,f] of RX_ERR_EN){ const m=re.exec(msg); if(m) return f(m); } return msg; }
+function detectLang(){
+  try{ const q=new URLSearchParams(location.search).get("lang"); if(q==="ja"||q==="en") return q; }catch(e){}
+  const nl=(navigator.languages&&navigator.languages[0])||navigator.language||"";
+  return String(nl).toLowerCase().startsWith("ja")?"ja":"en";
+}
+let LANG=detectLang();
+function L_(k,p){ let s=I18N[LANG][k]; if(s===undefined) s=I18N.ja[k]; return typeof s==="function"?s(p||{}):s; }
+function applyStatic(){
+  document.documentElement.lang=LANG;
+  document.title=L_("title");
+  const md=document.querySelector('meta[name="description"]'); if(md) md.setAttribute("content",L_("desc"));
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ el.textContent=L_(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-html]").forEach(el=>{ el.innerHTML=L_(el.dataset.i18nHtml); });
+  document.querySelectorAll("[data-i18n-attr]").forEach(el=>{ el.dataset.i18nAttr.split(",").forEach(pair=>{ const [a,k]=pair.split(":"); el.setAttribute(a,L_(k)); }); });
+  document.querySelectorAll("button[data-lang]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)));
+}
+applyStatic();
+
+/* ============================================================
    Samples (unchanged) and colours
    ============================================================ */
 const SAMPLES=[
-  {re:"(a|b)*abb", name:"abb で終わる", str:"aababb", color:"#F39700",
+  {re:"(a|b)*abb", name:"s0", str:"aababb", color:"#F39700",
    list:["abb","aababb","babb","ab","abab","bbabb","aaa","abba","ababb","b","aabb","bab"]},
-  {re:"colou?r", name:"米英どちらの綴りも", str:"colour", color:"#E60012",
+  {re:"colou?r", name:"s1", str:"colour", color:"#E60012",
    list:["color","colour","colouur","colr","colors","color","colour"]},
-  {re:"[a-z0-9._]+@[a-z0-9]+\\.[a-z]+", name:"メールアドレス風", str:"hana@eki.jp", color:"#00A7DB",
+  {re:"[a-z0-9._]+@[a-z0-9]+\\.[a-z]+", name:"s2", str:"hana@eki.jp", color:"#00A7DB",
    list:["hana@eki.jp","a.b@c.com","rail@yard","no.at.sign","@nobody.jp","yamada_t@line.co","x@y.z","eki@@ben.to"]},
-  {re:"(ab|a)*b", name:"分岐が多い", str:"abaab", color:"#9B7CB6",
+  {re:"(ab|a)*b", name:"s3", str:"abaab", color:"#9B7CB6",
    list:["b","ab","aab","abab","abaab","aba","abb","aaaab","ababa","aabab"]},
-  {re:"(a*)*b", name:"バックトラック泣かせ", str:"aaaaaaaaaaaaaaaa", color:"#009944", speed:2,
+  {re:"(a*)*b", name:"s4", str:"aaaaaaaaaaaaaaaa", color:"#009944", speed:2,
    list:["aaaab","aaaaaaaaaaaa","b","aaaaaaaaaaaaaab","ba","aaaaaaaaaaaaaaaa"]},
-  {re:"(0|1(01*0)*1)*", name:"3の倍数（2進数）", str:"1001", color:"#BB641D",
+  {re:"(0|1(01*0)*1)*", name:"s5", str:"1001", color:"#BB641D",
    list:["0","1","10","11","100","101","110","111","1000","1001","1010","1011","1100","1101","1110","1111"]},
 ];
 // one colour per distinct letter track, like the lines of a metro network
@@ -755,8 +883,8 @@ function textW(t,font){ _mctx.font=font; return _mctx.measureText(t).width; }
 const F_NAME='900 14px Overpass,"Zen Kaku Gothic New",sans-serif', F_DESC='700 10.5px "Zen Kaku Gothic New",sans-serif', F_JN='700 9px Overpass,sans-serif';
 function stationText(nfa,v,E){
   const outs=nfa.out[v.id].filter(ei=>E[ei].cs).map(ei=>E[ei].label);
-  const name=(v.start?"車庫 ":v.acc?"終点 ":"")+"q"+v.id;
-  const desc=v.start?"始発":v.acc?"受理":outs.length?(outs[0].length>3?"クラス線のりば":"「"+outs[0]+"」線のりば"):"始発";
+  const name=(v.start?L_("stDepot"):v.acc?L_("stTerm"):"")+"q"+v.id;
+  const desc=v.start?L_("stStart"):v.acc?L_("stAccept"):outs.length?(outs[0].length>3?L_("stClass"):L_("stLine",{l:outs[0]})):L_("stStart");
   return {name,desc};
 }
 function stationExtent(v){ return v.start?[13,13]:v.acc?[14,14]:v.sig&&v.indeg>=2?[10,17]:v.sig?[9.5,9.5]:[4.5,4.5]; }
@@ -832,18 +960,19 @@ function pathAt(p,s,o){ const f=Math.min(p.N-1.0001,Math.max(0,s/p.len*(p.N-1)))
    ============================================================ */
 const svg=$("map"), wrap=$("mapwrap");
 let NET=null, buildSeq=0;
-function fail(msg,pos,src){ $("rx").classList.add("bad"); $("rxErr").textContent=pos!==undefined&&src!==undefined?src+"\n"+" ".repeat(Math.max(0,pos))+"^ "+msg:msg; $("rxStat").textContent=""; }
+let lastFail=null;
+function fail(msg,pos,src){ lastFail={msg,pos,src}; msg=typeof msg==="function"?msg():trRxErr(msg); $("rx").classList.add("bad"); $("rxErr").textContent=pos!==undefined&&src!==undefined?src+"\n"+" ".repeat(Math.max(0,pos))+"^ "+msg:msg; $("rxStat").textContent=""; }
 function viewSize(){ return {w:Math.max(200,wrap.clientWidth),h:Math.max(200,wrap.clientHeight)}; }
 function buildNetwork(src,{animate=true,keep=false}={}){
   const seq=++buildSeq;
-  $("rx").classList.remove("bad"); $("rxErr").textContent="";
+  $("rx").classList.remove("bad"); $("rxErr").textContent=""; lastFail=null;
   let parsed,nfa;
   if(keep&&NET&&NET.src===src){ parsed=NET.parsed; nfa=NET.nfa; }
   else {
     try{ parsed=RX.parse(src); nfa=RX.compile(parsed.ast); }
     catch(e){ if(e.rx){ fail(e.message,e.pos,src); return false; } throw e; }
-    if(nfa.n>90||nfa.edges.length>200){ fail("大きすぎます（駅 "+nfa.n+"）。もう少し短い式にしてください"); return false; }
-    try{ RX.nativeRe(parsed,false); }catch(e){ fail("ブラウザの RegExp がこの式を受け付けません: "+e.message); return false; }
+    if(nfa.n>90||nfa.edges.length>200){ { const n=nfa.n; fail(()=>L_("tooBig",{n})); } return false; }
+    try{ RX.nativeRe(parsed,false); }catch(e){ const m=e.message; fail(()=>L_("nativeRej",{m})); return false; }
   }
   const vs=viewSize(), ins=insets();
   const LY=layoutMap(nfa,vs.w-ins.l-ins.r,vs.h-ins.t-ins.b);
@@ -862,8 +991,8 @@ function buildNetwork(src,{animate=true,keep=false}={}){
   let buildEnd=0; for(let i=0;i<=E.length;i++) buildEnd=Math.max(buildEnd,bStart[i]+bDur[i]);
   // legend, like the corner of a printed map
   const lg=$("legend"); lg.textContent="";
-  for(const [lab,c] of labelColor){ const d=document.createElement("div"); d.className="lg"; const b=document.createElement("span"); b.className="lg-b"; b.style.borderColor=c; b.textContent=lab; d.appendChild(b); const t=document.createElement("span"); t.textContent=lab.length>1?"の文字で進む線":"線"; d.appendChild(t); lg.appendChild(d); }
-  { const d=document.createElement("div"); d.className="lg"; d.innerHTML='<span class="lg-w"></span><span>乗換通路（ε、文字を使わない）</span>'; lg.appendChild(d); }
+  for(const [lab,c] of labelColor){ const d=document.createElement("div"); d.className="lg"; const b=document.createElement("span"); b.className="lg-b"; b.style.borderColor=c; b.textContent=lab; d.appendChild(b); const t=document.createElement("span"); t.textContent=lab.length>1?I18N[LANG].lgMany:I18N[LANG].lgOne; d.appendChild(t); lg.appendChild(d); }
+  { const d=document.createElement("div"); d.className="lg"; d.innerHTML='<span class="lg-w"></span><span></span>'; d.lastChild.textContent=L_("lgWalk"); lg.appendChild(d); }
   // depot siding
   const dp=mk("path",{d:LY.depot.d,class:"stub"},G.lines);
   // tracks
@@ -915,7 +1044,7 @@ function buildNetwork(src,{animate=true,keep=false}={}){
   // accept badge (hidden until a match)
   const av=LY.N[nfa.accept];
   const ab=mk("g",{class:"accept-badge",transform:`translate(${av.x} ${av.y-34})`,opacity:0},G.top);
-  mk("rect",{x:-30,y:-14,width:60,height:28,rx:14},ab); const abt=mk("text",{y:1,"text-anchor":"middle","dominant-baseline":"central"},ab); abt.textContent="受理";
+  mk("rect",{x:-30,y:-14,width:60,height:28,rx:14},ab); const abt=mk("text",{y:1,"text-anchor":"middle","dominant-baseline":"central"},ab); abt.textContent=searchMode?L_("found"):L_("accept");
   // station birth times
   const birth=new Float32Array(nfa.n).fill(99);
   E.forEach(e=>{ birth[e.from]=Math.min(birth[e.from],bStart[e.id]-.1); birth[e.to]=Math.min(birth[e.to],bStart[e.id]+bDur[e.id]*.85); });
@@ -924,7 +1053,7 @@ function buildNetwork(src,{animate=true,keep=false}={}){
   NET={src,parsed,nfa,LY,E,edgeEls,badgeEls,stEls,G,dp,ab,abt,bStart,bDur,buildEnd,buildT:anim?0:buildEnd+5,anim,birth,labelColor,mapBox:LY.bbox};
   if(!anim) finishBuild();
   const nE=E.filter(e=>!e.cs).length;
-  $("rxStat").innerHTML=`駅 <b>${nfa.n}</b>　路線 <b>${E.length-nE}</b>　乗換通路（ε） <b>${nE}</b>　折り返し <b>${LY.rows}</b> 段`;
+  $("rxStat").innerHTML=L_("rxStat",{n:nfa.n,lines:E.length-nE,eps:nE,rows:LY.rows});
   if(!keep||!old) camSnap=true;
   return true;
 }
@@ -947,8 +1076,8 @@ function updateBuild(dt){
   N.badgeEls.forEach((b,i)=>{ if(!b) return; const a=(t-N.bStart[i]-N.bDur[i]*.7)/.3; const k=a<=0?0:a>=1?1:1+2.2*Math.pow(a-1,3)+1.2*Math.pow(a-1,2);
     b.g.setAttribute("transform",`translate(${b.x} ${b.y}) scale(${Math.max(0,k).toFixed(3)})`); });
   const laid=[...N.bStart].filter((s,i)=>i<N.E.length&&t>=s+N.bDur[i]).length;
-  if(t<N.buildEnd) showBuildMsg(`路線図を印刷中… ${laid} / ${N.E.length}`);
-  else if(t<N.buildEnd+2) showBuildMsg(`開業：駅 ${N.nfa.n}、路線 ${N.E.filter(e=>e.cs).length}、乗換通路 ${N.E.filter(e=>!e.cs).length}`);
+  if(t<N.buildEnd) showBuildMsg(L_("printing",{laid,total:N.E.length}));
+  else if(t<N.buildEnd+2) showBuildMsg(L_("opened",{n:N.nfa.n,lines:N.E.filter(e=>e.cs).length,eps:N.E.filter(e=>!e.cs).length}));
   else hideBuildMsg();
 }
 
@@ -1139,10 +1268,7 @@ function processEvents(){
 /* ============================================================
    First-visit guide: stop at the first split and the first merge of (a|b)*abb
    ============================================================ */
-const TOUR=[
-  {title:"分岐",text:"点線は乗換通路（ε）です。文字を使わずに通れるので、列車はここで分かれ、行ける駅すべてで次の文字を待ちます。"},
-  {title:"合流",text:"線路がここで合流します。2本の列車が同じ駅に着いたら1本にまとめるので、列車は駅の数より増えません。だから手数は文字数に比例します。"},
-];
+const TOUR=I18N.ja.tour;
 const tour={stage:-1,pauseAt:null,at:-1,ring:null};
 function tourSeen(){ try{ return /[?&]notour/.test(location.search)||localStorage.getItem("rr-tour")==="done"; }catch(e){ return true; } }
 function tourArm(){ if(!tourSeen()) tour.stage=0; }
@@ -1151,12 +1277,16 @@ function tourHook(e,v){
   return false;
 }
 function tourShow(){
-  const i=tour.stage===1?0:1, T=TOUR[i];
-  $("tourStep").textContent=`はじめての案内 ${i+1} / ${TOUR.length}`; $("tourTitle").textContent=T.title; $("tourText").textContent=T.text;
-  $("tourNext").textContent=i===TOUR.length-1?"わかった":"続ける";
+  tourText();
+  const i=tour.stage===1?0:1;
   const v=NET.LY.N[tour.at]; focusBox={x:v.x-170,y:v.y-120,w:340,h:240}; focusUntil=Infinity;
   if(tour.ring) tour.ring.remove(); tour.ring=mk("circle",{cx:v.x,cy:v.y,r:26,class:"tour-ring"},NET.G.top);
   $("tour").classList.add("show"); tourPlace(); setTimeout(()=>$("tourNext").focus({preventScroll:true}),50);
+}
+function tourText(){
+  const i=tour.stage===1?0:1, T=L_("tour")[i];
+  $("tourStep").textContent=L_("tourStep",{i:i+1,n:TOUR.length}); $("tourTitle").textContent=T.title; $("tourText").textContent=T.text;
+  $("tourNext").textContent=i===TOUR.length-1?L_("tourOk"):L_("tourNext");
 }
 function tourPlace(){
   const el=$("tour"); if(!el.classList.contains("show")||!NET||tour.at<0) return;
@@ -1181,7 +1311,7 @@ function tourFindJoin(){
 function tourNext(){ if(tour.stage===1){ tourHide(); tourFindJoin(); } else tourEnd(true); playing=true; syncPause(); }
 $("tourNext").addEventListener("click",tourNext);
 $("tourSkip").addEventListener("click",()=>{ tourEnd(true); playing=true; syncPause(); });
-function showAccept(on){ if(!NET) return; NET.ab.setAttribute("opacity",on?1:0); NET.abt.textContent=searchMode?"一致":"受理"; }
+function showAccept(on){ if(!NET) return; NET.ab.setAttribute("opacity",on?1:0); NET.abt.textContent=searchMode?L_("found"):L_("accept"); }
 function finished(svc,ok){
   svc.result=ok;
   if(massOn&&!svc.single) massDone.push({svc});
@@ -1192,13 +1322,18 @@ function finished(svc,ok){
 /* ============================================================
    HUD, LCD, badges
    ============================================================ */
-let lcdKey="";
+let lcdKey="", lcdEnd=null, destFn=null, logFn=null;
+// texts that depend on the language keep a little closure, so a language switch can redraw them from the current state
+function setDest(fn){ destFn=fn; if(fn) fn(); }
+function setLog(fn){ logFn=fn; if(fn) fn(); else $("stepLog").textContent=""; }
 function buildLcd(svc){
   const box=$("lcdChars"); box.textContent="";
+  lcdEnd=null;
   if(!svc){ return; }
   [...svc.str].forEach(ch=>{ const d=document.createElement("span"); d.className="ch"; d.textContent=showCh(ch); box.appendChild(d); });
-  const e=document.createElement("span"); e.className="ch end"; e.textContent=svc.str.length?"終":"空文字列"; box.appendChild(e);
-  $("lcdDestS").textContent="行先"; const d=$("lcdDest"); d.className=""; d.textContent=searchMode?"一致":"受理";
+  const e=document.createElement("span"); e.className="ch end"; box.appendChild(e);
+  lcdEnd=()=>{ e.textContent=svc.str.length?L_("lcdEnd"):L_("lcdEmpty"); }; lcdEnd();
+  setDest(()=>{ $("lcdDestS").textContent=L_("lcdDestS"); const d=$("lcdDest"); d.className=""; d.textContent=searchMode?L_("found"):L_("accept"); });
 }
 let hotKey=null;
 function setHot(ch){
@@ -1223,29 +1358,34 @@ function updateHud(){
     hudK=k;
     const ev=pl.events.filter(e=>e.k===k);
     const sp=ev.filter(e=>e.type==="split").length, mg=ev.filter(e=>e.type==="merge").length, dr=ev.filter(e=>e.type==="derail").length;
-    let msg=k===0?"車庫を出て、乗換通路で "+S.set.length+" 駅に広がりました":"「"+showCh(pl.str[k-1])+"」線を走ったあと、乗換通路で "+S.set.length+" 駅に広がりました";
-    msg+=`（分岐 ${sp}、合流 ${mg}）。`;
-    if(S.ch!=null) msg+=`次は「${showCh(S.ch)}」線：${S.trains}本が待機`;
-    if(dr) msg+=`、脱線 ${dr}`;
-    $("stepLog").textContent=msg;
+    setLog(()=>{
+    let msg=k===0?L_("logStart",{n:S.set.length}):L_("logAfter",{c:showCh(pl.str[k-1]),n:S.set.length});
+    msg+=L_("logCounts",{sp,mg});
+    if(S.ch!=null) msg+=L_("logNext",{c:showCh(S.ch),n:S.trains});
+    if(dr) msg+=L_("logDerail",{n:dr});
+    $("stepLog").textContent=LANG==="en"?msg.trim():msg;
+    });
   }
 }
 function hudFinal(svc){
   const ok=svc.result, pl=svc.plan;
-  const d=$("lcdDest"); d.textContent=ok?(searchMode?"一致 ✓":"受理 ✓"):(searchMode?"一致なし":"不受理"); d.className=ok?"ok":"ng"; $("lcdDestS").textContent=ok?"到着":"運転終了";
-  const why=ok?(searchMode?"一致する部分が見つかりました。":"終点（受理状態）に列車が着きました。"):(pl.result.dead?`${pl.result.k+1}文字目「${showCh(pl.str[pl.result.k])}」の線路がなく、全列車が脱線しました。`:"最後の文字のあと、終点にいる列車がありません。");
-  const log=$("stepLog"); log.textContent=(ok?"受理: ":"不受理: ")+why;
-  const c=document.createElement("span"); c.className="chipv"+(svc.verified?"":" bad"); c.textContent=svc.verified?"RegExp と一致":"RegExp と不一致"; log.appendChild(c);
+  const sm=searchMode;
+  setDest(()=>{ const d=$("lcdDest"); d.textContent=ok?(sm?L_("dFoundOk"):L_("dAcceptOk")):(sm?L_("dNoMatch"):L_("dReject")); d.className=ok?"ok":"ng"; $("lcdDestS").textContent=ok?L_("dsArrived"):L_("dsEnded"); });
+  setLog(()=>{
+  const why=ok?(sm?L_("whyFound"):L_("whyAccept")):(pl.result.dead?L_("whyDead",{k:pl.result.k+1,c:showCh(pl.str[pl.result.k])}):L_("whyNone"));
+  const log=$("stepLog"); log.textContent=(ok?L_("preOk"):L_("preNg"))+why;
+  const c=document.createElement("span"); c.className="chipv"+(svc.verified?"":" bad"); c.textContent=svc.verified?L_("vOk"):L_("vNg"); log.appendChild(c);
+  });
   setHot(null);
   for(const ch of $("lcdChars").children) ch.classList.remove("now");
   if(!searchMode) showVersus(svc,true);
   if(tour.stage>=0) tourEnd(true);
 }
 /* the backtracking comparison infographic */
-let vsAnim=null;
-function versusMarkup(){ return `<p class="vs-title">同じ答えを出すまでの手数</p>
-  <div class="vs-row bt"><div class="nm">素朴な<br>バックトラック</div><div><div class="vs-num" data-k="bt">0</div></div><div class="vs-bar"><i data-k="btb"></i></div></div>
-  <div class="vs-row nfa"><div class="nm">この路線図</div><div><div class="vs-num" data-k="nfa">0</div></div><div class="vs-bar"><i data-k="nfab"></i></div></div>
+let vsAnim=null, vsLast=null, vsNote=null;
+function versusMarkup(){ return `<p class="vs-title" data-i18n="vsTitle">${L_("vsTitle")}</p>
+  <div class="vs-row bt"><div class="nm" data-i18n-html="vsBt">${L_("vsBt")}</div><div><div class="vs-num" data-k="bt">0</div></div><div class="vs-bar"><i data-k="btb"></i></div></div>
+  <div class="vs-row nfa"><div class="nm" data-i18n="vsNfa">${L_("vsNfa")}</div><div><div class="vs-num" data-k="nfa">0</div></div><div class="vs-bar"><i data-k="nfab"></i></div></div>
   <p class="vs-note" data-k="note"></p>`; }
 $("vsCard").innerHTML=versusMarkup(); $("versus").innerHTML=versusMarkup();
 function showVersus(svc,overlay){
@@ -1257,19 +1397,23 @@ function showVersus(svc,overlay){
   const show=ratio>200&&overlay&&!reduceMotion;
   if(show){ $("versus").classList.add("show"); clearTimeout(showVersus.to); showVersus.to=setTimeout(()=>$("versus").classList.remove("show"),8000); }
   vsAnim={t0:performance.now(),bt:big,capped:bt.capped,nfa:nfaWork,nSteps,maxT};
-  for(const root of [card,$("versus")]) root.querySelector('[data-k="note"]').textContent=`${nSteps} 文字 × 同時 ${maxT} 本まで。合流で本数が増えないので、手数は文字数に比例します。${bt.capped?"バックトラックは 300 万手で打ち切り。":""}`;
+  vsNote=()=>{ for(const root of [card,$("versus")]) root.querySelector('[data-k="note"]').textContent=L_("vsNote",{n:nSteps,m:maxT,capped:bt.capped}); }; vsNote();
+  vsLast=vsAnim;
 }
 function updateVersus(){
   if(!vsAnim) return;
   const k=easeOut((performance.now()-vsAnim.t0)/2400);
+  drawVersus(vsAnim,k);
+  if(k>=1) vsAnim=null;
+}
+function drawVersus(vsAnim,k){
   const max=Math.log10(vsAnim.bt+1);
   for(const root of [$("vsCard"),$("versus")]){
-    root.querySelector('[data-k="bt"]').textContent=Math.round(vsAnim.bt*k).toLocaleString()+(vsAnim.capped&&k>=1?"+ 手":" 手");
+    root.querySelector('[data-k="bt"]').textContent=Math.round(vsAnim.bt*k).toLocaleString()+(vsAnim.capped&&k>=1?L_("stepsCap"):L_("steps"));
     root.querySelector('[data-k="btb"]').style.width=(100*Math.log10(vsAnim.bt*k+1)/max).toFixed(1)+"%";
-    root.querySelector('[data-k="nfa"]').textContent=Math.round(vsAnim.nfa*Math.min(1,k*3)).toLocaleString()+" 手";
+    root.querySelector('[data-k="nfa"]').textContent=Math.round(vsAnim.nfa*Math.min(1,k*3)).toLocaleString()+L_("steps");
     root.querySelector('[data-k="nfab"]').style.width=(100*Math.log10(vsAnim.nfa*Math.min(1,k*3)+1)/max).toFixed(1)+"%";
   }
-  if(k>=1) vsAnim=null;
 }
 
 /* ============================================================
@@ -1286,18 +1430,18 @@ function renderBoard(force){
   for(const s of all.slice(-9)){
     const st=s.waiting?"wait":s.result===undefined?"run":(s.result?"ok":"ng");
     const d=document.createElement("div"); d.className="brow "+st;
-    const label=st==="wait"?"待機":st==="run"?"運行中":(s.result?(s.search?"✓ 発見":"✓ 終点"):(s.search?"✗ なし":s.plan.result.dead?"✗ 脱線":"✗ 不受理"));
-    d.innerHTML=`<span>${s.depart}</span><span><span class="code"></span></span><span class="dest"></span><span class="st">${label}${st==="ok"||st==="ng"?(s.verified?'<span class="vf">一致</span>':'<span class="vf bad">不一致</span>'):""}</span>`;
+    const label=st==="wait"?L_("bWait"):st==="run"?L_("bRunS"):(s.result?(s.search?L_("bFound"):L_("bTerm")):(s.search?L_("bNone"):s.plan.result.dead?L_("bDerail"):L_("bRej")));
+    d.innerHTML=`<span>${s.depart}</span><span><span class="code"></span></span><span class="dest"></span><span class="st">${label}${st==="ok"||st==="ng"?(s.verified?'<span class="vf">'+L_("vfOk")+'</span>':'<span class="vf bad">'+L_("vfNg")+'</span>'):""}</span>`;
     const c=d.querySelector(".code"); c.textContent=s.code; c.style.setProperty("--c",s.single?"#FFFFFF":s.col.startsWith("var")?"#C8C8C8":s.col);
-    d.querySelector(".dest").textContent=s.str===""?"（空文字列）":s.str;
+    d.querySelector(".dest").textContent=s.str===""?L_("emptyStr"):s.str;
     box.appendChild(d);
   }
-  if(!all.length){ const d=document.createElement("div"); d.className="brow wait"; d.innerHTML="<span></span><span></span><span class='dest'>列車はまだありません</span><span></span>"; box.appendChild(d); }
+  if(!all.length){ const d=document.createElement("div"); d.className="brow wait"; d.innerHTML="<span></span><span></span><span class='dest'></span><span></span>"; d.querySelector(".dest").textContent=L_("noTrains"); box.appendChild(d); }
   const done=history.filter(s=>s.result!==undefined), ver=done.filter(s=>s.verified).length;
-  $("bfDone").textContent="運行 "+done.length+"本";
-  if(massOn&&massDone.length){ const mins=Math.max((now-massStartReal)/60000,1/60); const chars=massDone.reduce((a,x)=>a+x.svc.str.length,0); $("bfRate").textContent=`毎分 ${(massDone.length/mins).toFixed(0)}本 / ${(chars/mins).toFixed(0)}字`; }
-  else $("bfRate").textContent="毎分 —";
-  $("bfVerify").textContent=`RegExp照合 ${ver}/${done.length}`;
+  $("bfDone").textContent=L_("bfDone",{n:done.length});
+  if(massOn&&massDone.length){ const mins=Math.max((now-massStartReal)/60000,1/60); const chars=massDone.reduce((a,x)=>a+x.svc.str.length,0); $("bfRate").textContent=L_("bfRate",{a:(massDone.length/mins).toFixed(0),b:(chars/mins).toFixed(0)}); }
+  else $("bfRate").textContent=L_("bfRateNone");
+  $("bfVerify").textContent=L_("bfVerify",{v:ver,n:done.length});
 }
 
 /* ============================================================
@@ -1305,23 +1449,23 @@ function renderBoard(force){
    ============================================================ */
 const sampleBox=$("samples");
 SAMPLES.forEach((s,i)=>{ const b=document.createElement("button"); b.className="chip"; b.style.setProperty("--c",s.color);
-  b.innerHTML="<i></i><code></code><span></span>"; b.querySelector("code").textContent=s.re; b.querySelector("span").textContent=s.name;
+  b.innerHTML="<i></i><code></code><span></span>"; b.querySelector("code").textContent=s.re; b.querySelector("span").textContent=L_(s.name);
   b.addEventListener("click",()=>loadSample(i)); sampleBox.appendChild(b); });
 function markSample(){ [...sampleBox.children].forEach((b,i)=>b.setAttribute("aria-current",String(i===curSample))); }
 function setLineColor(c){ document.documentElement.style.setProperty("--line",c); }
 function loadSample(i,{autorun=true}={}){
   curSample=i; const s=SAMPLES[i]; markSample(); setLineColor(s.color);
-  $("signNo").textContent=String(i+1).padStart(2,"0"); $("lcdLine").textContent=s.name;
+  $("signNo").textContent=String(i+1).padStart(2,"0"); $("lcdLine").textContent=L_(s.name);
   $("rx").value=s.re; $("str").value=s.str; $("list").value=s.list.join("\n");
   setSpeed(s.speed||1); stopAll();
   const ok=buildNetwork(s.re);
   if(ok&&autorun) pendingRun=s.str;
   return ok;
 }
-function stopAll(){ tourEnd(false); history=history.filter(h=>h.result!==undefined); for(const s of services){ for(const el of s.els.values()) el.remove(); } services=[]; massOn=false; massQueue=[]; pendingRun=null; hudFor=null; buildLcd(null); $("stepLog").textContent=""; $("mTrains").textContent="0"; $("mSet").textContent="{}"; $("versus").classList.remove("show"); if(NET) showAccept(false); renderBoard(true); }
+function stopAll(){ tourEnd(false); history=history.filter(h=>h.result!==undefined); for(const s of services){ for(const el of s.els.values()) el.remove(); } services=[]; massOn=false; massQueue=[]; pendingRun=null; hudFor=null; buildLcd(null); setLog(null); $("mTrains").textContent="0"; $("mSet").textContent="{}"; $("versus").classList.remove("show"); if(NET) showAccept(false); renderBoard(true); }
 function rebuildFromInput(){
   const src=$("rx").value; curSample=SAMPLES.findIndex(s=>s.re===src); markSample();
-  if(curSample<0){ setLineColor("var(--free)"); $("lcdLine").textContent="自由路線"; }
+  if(curSample<0){ setLineColor("var(--free)"); $("lcdLine").textContent=L_("freeLine"); }
   stopAll(); return buildNetwork(src);
 }
 $("bBuild").addEventListener("click",rebuildFromInput);
@@ -1336,13 +1480,13 @@ function startSingle(str){
   services=services.filter(s=>!s.single);
   showAccept(false); $("versus").classList.remove("show");
   const svc=makeService(str,{single:true});
-  hudFor=svc; hudK=-1; lcdKey=""; buildLcd(svc); $("mMax").textContent=svc.maxTrains; $("stepLog").textContent="";
+  hudFor=svc; hudK=-1; lcdKey=""; buildLcd(svc); $("mMax").textContent=svc.maxTrains; setLog(null);
   stepUntil=null; playing=true; syncPause(); renderBoard(true);
   if(camMode==="free") setCam("auto");
 }
-function setSpeed(s){ speed=s; $("bSpeed").textContent="速さ ×"+(s<1?"½":s); }
+function setSpeed(s){ speed=s; $("bSpeed").textContent=L_("speed",{s:s<1?"½":s}); }
 $("bSpeed").addEventListener("click",()=>{ const L=[.5,1,2,4]; setSpeed(L[(L.indexOf(speed)+1)%L.length]); });
-function syncPause(){ $("bPause").textContent=playing?"一時停止":"再開"; }
+function syncPause(){ $("bPause").textContent=playing?L_("pause"):L_("resume"); }
 $("bPause").addEventListener("click",()=>{ if($("tour").classList.contains("show")){ tourNext(); return; } playing=!playing; stepUntil=null; syncPause(); });
 $("bStep").addEventListener("click",()=>{ if($("tour").classList.contains("show")) tourNext(); const svc=hudFor; if(!svc) return; const t=simT-svc.t0; const nx=svc.plan.steps.find(s=>s.rides>0&&s.t+svc.plan.TM.RIDE+.02>t+.05); stepUntil=nx?svc.t0+nx.t+svc.plan.TM.RIDE+.02:null; playing=true; syncPause(); });
 $("mFull").addEventListener("click",()=>setSearch(false)); $("mSearch").addEventListener("click",()=>setSearch(true));
@@ -1353,7 +1497,7 @@ function startMass(){
   if(!NET) return;
   const list=$("list").value.split("\n").map(s=>s.replace(/\r/g,"")).filter((s,i,a)=>s.length||a.length===1);
   stopAll(); massQueue=list.slice(); massOn=true; massNext=simT; massStartReal=performance.now(); massDone=[];
-  $("lcdDestS").textContent="ダイヤ運行"; $("lcdDest").textContent=list.length+"本"; $("lcdDest").className="";
+  const nl=list.length; setDest(()=>{ $("lcdDestS").textContent=L_("massS"); $("lcdDest").textContent=L_("massN",{n:nl}); $("lcdDest").className=""; });
   if(speed<2) setSpeed(2);
   if(camMode==="free") setCam("auto");
   renderBoard(true);
@@ -1389,11 +1533,42 @@ function frame(now){
 let relayTO=0, lastAspect=0;
 new ResizeObserver(()=>{ const vs=viewSize(), a=vs.w/vs.h; if(!NET){ lastAspect=a; return; } if(Math.abs(Math.log(a/(lastAspect||a)))>.2){ clearTimeout(relayTO); relayTO=setTimeout(()=>{ lastAspect=viewSize().w/viewSize().h; for(const s of services){ for(const el of s.els.values()) el.remove(); s.els.clear(); } buildNetwork(NET.src,{animate:false,keep:true}); camSnap=true; },350); } else camSnap=camSnap||camMode!=="free"&&false; }).observe(wrap);
 
+/* language switch: only texts change — the timetable, history, camera and clock keep going */
+function relayNet(){
+  if(!NET) return;
+  const accOn=NET.ab.getAttribute("opacity")==="1", lf=lastFail;
+  for(const s of services){ for(const el of s.els.values()) el.remove(); s.els.clear(); }
+  buildNetwork(NET.src,{animate:false,keep:true});
+  if(accOn) NET.ab.setAttribute("opacity",1);
+  hotKey=undefined; hideBuildMsg();
+  if(tour.ring&&tour.at>=0){ const v=NET.LY.N[tour.at]; tour.ring=mk("circle",{cx:v.x,cy:v.y,r:26,class:"tour-ring"},NET.G.top); }
+  if(lf) fail(lf.msg,lf.pos,lf.src);
+}
+function refreshLangText(){
+  [...sampleBox.children].forEach((b,i)=>{ b.querySelector("span").textContent=L_(SAMPLES[i].name); });
+  $("lcdLine").textContent=curSample>=0?L_(SAMPLES[curSample].name):L_("freeLine");
+  syncPause(); setSpeed(speed);
+  if(lcdEnd) lcdEnd(); if(destFn) destFn(); if(logFn) logFn();
+  if(vsNote) vsNote(); if(vsLast&&!vsAnim) drawVersus(vsLast,easeOut((performance.now()-vsLast.t0)/2400));
+  if($("tour").classList.contains("show")) tourText();
+  renderBoard(true);
+}
+function setLang(l){
+  if(l!=="ja"&&l!=="en") return;
+  if(l!==LANG){
+    LANG=l; applyStatic(); refreshLangText();
+    if(NET){ relayNet(); } else { const lf=lastFail; if(lf) fail(lf.msg,lf.pos,lf.src); }
+  }
+  try{ const u=new URL(location.href); u.searchParams.set("lang",l); window.history.replaceState(window.history.state,"",u.toString()); }catch(e){}
+}
+document.querySelectorAll("button[data-lang]").forEach(b=>b.addEventListener("click",()=>setLang(b.dataset.lang)));
+refreshLangText();
+
 window.addEventListener("error",e=>{ (window.__rrErrors=window.__rrErrors||[]).push(String(e.message)); });
 window.__rr={ready:false,
   load:(i,o)=>loadSample(i,o), build:src=>{ $("rx").value=src; return rebuildFromInput(); },
   run:str=>{ $("str").value=str; startSingle(str); }, mass:list=>{ if(list) $("list").value=list.join("\n"); startMass(); },
-  cam:m=>setCam(m), speed:s=>setSpeed(s), search:v=>setSearch(v),
+  cam:m=>setCam(m), speed:s=>setSpeed(s), search:v=>setSearch(v), lang:()=>LANG, setLang:l=>setLang(l),
   skipBuild:()=>{ if(NET){ NET.buildT=NET.buildEnd+.1; finishBuild(); } },
   state:()=>({built:!!NET&&NET.buildT>=NET.buildEnd,nfa:NET&&{n:NET.nfa.n,e:NET.nfa.edges.length,rows:NET.LY.rows},services:services.length,live:livePos.length,
     history:history.map(s=>({str:s.str,result:s.result,verified:s.verified,native:s.native,matched:s.matched})),fps:Math.round(fps.avg),simT}),
