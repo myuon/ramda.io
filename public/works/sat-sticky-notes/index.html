@@ -7,6 +7,8 @@
 <meta name="description" content="失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ramda.io">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
 <meta property="og:title" content="付箋の探索 ― 失敗から学ぶ、ということ">
 <meta property="og:description" content="失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる">
 <meta property="og:url" content="https://www.ramda.io/works/sat-sticky-notes/">
@@ -95,6 +97,10 @@ canvas{display:block;width:100%}
 .seg .ctl{padding:6px 10px;font-size:14px}
 .mini{display:none}
 .sm{display:none}
+.langsw{display:flex;justify-content:flex-end;align-items:center;gap:4px;padding:0 6px 6px;font-size:13px;color:var(--ink2)}
+.langsw button{border:1.4px solid #9aa;background:#f3f1e4;border-radius:10px;padding:2px 10px;cursor:pointer;font-size:13px;line-height:1.5}
+.langsw button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:600}
+.langsw button:focus-visible{outline:2px dashed var(--blue);outline-offset:2px}
 .defs{max-width:1260px;margin:10px auto 0;font-size:12.5px;line-height:1.7;color:#66666f;padding:0 8px}
 @media (max-width:760px){
   body{padding:10px 6px 150px}
@@ -136,25 +142,26 @@ canvas{display:block;width:100%}
 </head>
 <body>
 <div class="book">
+  <div class="langsw" id="langsw" role="group" aria-label="言語" data-i18n-aria="langAria"><button type="button" data-lang="ja" lang="ja" aria-pressed="true">日本語</button><span aria-hidden="true">/</span><button type="button" data-lang="en" lang="en" aria-pressed="false">English</button></div>
   <header>
-    <h1>付箋の探索<small>失敗から学ぶ、ということ</small></h1>
-    <p class="lead">隣り合う国は別の色。3色で、A から名前順に塗っていきます。塗れない国が出たら<strong>行き止まり</strong>。ふたりの探索者は同じ順番で試しますが、行き止まりでの振る舞いだけが違います。</p>
+    <h1 data-i18n="h1">付箋の探索<small>失敗から学ぶ、ということ</small></h1>
+    <p class="lead" data-i18n="lead">隣り合う国は別の色。3色で、A から名前順に塗っていきます。塗れない国が出たら<strong>行き止まり</strong>。ふたりの探索者は同じ順番で試しますが、行き止まりでの振る舞いだけが違います。</p>
   </header>
-  <nav class="tabs" id="tabs" aria-label="地図をえらぶ"></nav>
+  <nav class="tabs" id="tabs" aria-label="地図をえらぶ" data-i18n-aria="tabsAria"></nav>
   <main class="spread">
-    <section class="page" id="pg-naive" aria-label="素朴な探索">
-      <h2>素朴な探索 <span class="ff" id="ff-naive">早送り中</span></h2>
-      <p class="how">行き止まったら、ひとつ前に戻って次の色を試す。なぜ詰んだかは考えない。</p>
-      <div class="counts"><span class="cnt dead">行き止まり<b id="dead-naive">0</b>回</span><span class="cnt">試した手数<b id="dec-naive">0</b>手</span></div>
+    <section class="page" id="pg-naive" aria-label="素朴な探索" data-i18n-aria="naiveTitle">
+      <h2><span data-i18n="naiveTitle">素朴な探索</span> <span class="ff" id="ff-naive" data-i18n="ffOn">早送り中</span></h2>
+      <p class="how" data-i18n="howNaive">行き止まったら、ひとつ前に戻って次の色を試す。なぜ詰んだかは考えない。</p>
+      <div class="counts"><span class="cnt dead"><span data-i18n="deadPre">行き止まり</span><b id="dead-naive">0</b><span data-i18n="deadSuf">回</span></span><span class="cnt"><span data-i18n="decPre">試した手数</span><b id="dec-naive">0</b><span data-i18n="decSuf">手</span></span></div>
       <canvas class="board" id="board-naive"></canvas>
       <canvas class="tree" id="tree-naive"></canvas>
       <p class="narr" id="narr-naive">まだ何も塗っていません。</p>
     </section>
     <div class="rings" aria-hidden="true"></div>
-    <section class="page" id="pg-learn" aria-label="失敗から学ぶ探索">
-      <h2>失敗から学ぶ探索 <span class="ff" id="ff-learn"></span></h2>
-      <p class="how">行き止まったら、どの選択の組み合わせが原因かを調べて付箋に書く。その組み合わせには二度と入らず、関係ない所は飛ばして一気に戻る。</p>
-      <div class="counts"><span class="cnt dead">行き止まり<b id="dead-learn">0</b>回</span><span class="cnt">試した手数<b id="dec-learn">0</b>手</span></div>
+    <section class="page" id="pg-learn" aria-label="失敗から学ぶ探索" data-i18n-aria="learnTitle">
+      <h2><span data-i18n="learnTitle">失敗から学ぶ探索</span> <span class="ff" id="ff-learn"></span></h2>
+      <p class="how" data-i18n="howLearn">行き止まったら、どの選択の組み合わせが原因かを調べて付箋に書く。その組み合わせには二度と入らず、関係ない所は飛ばして一気に戻る。</p>
+      <div class="counts"><span class="cnt dead"><span data-i18n="deadPre">行き止まり</span><b id="dead-learn">0</b><span data-i18n="deadSuf">回</span></span><span class="cnt"><span data-i18n="decPre">試した手数</span><b id="dec-learn">0</b><span data-i18n="decSuf">手</span></span></div>
       <canvas class="board" id="board-learn"></canvas>
       <div class="tw"><canvas class="tree" id="tree-learn"></canvas>
       <div class="notes" id="notes"><div class="empty">付箋はまだありません。行き止まりのたびに1枚増えます。</div></div></div>
@@ -162,22 +169,22 @@ canvas{display:block;width:100%}
     </section>
   </main>
   <section class="result" id="result" aria-live="polite"></section>
-  <p class="defs" id="defs"><b>数え方</b>：行き止まり ＝ どの色も塗れない国（または同じ色の隣り合い）が出た回数。試した手数 ＝ 自分で選んで色を置いた回数（ほかの色が使えず自動で決まったものは数えない）。どちらも同じ順番（名前順の国に、赤→青→黄の順）で試します。違いは行き止まりでの振る舞いだけです。下の木は「試した選択」の枝分かれで、× が行き止まりです。</p>
+  <p class="defs" id="defs" data-i18n="defs"><b>数え方</b>：行き止まり ＝ どの色も塗れない国（または同じ色の隣り合い）が出た回数。試した手数 ＝ 自分で選んで色を置いた回数（ほかの色が使えず自動で決まったものは数えない）。どちらも同じ順番（名前順の国に、赤→青→黄の順）で試します。違いは行き止まりでの振る舞いだけです。下の木は「試した選択」の枝分かれで、× が行き止まりです。</p>
 <section class="rv" id="video" aria-labelledby="rv-h">
-  <h2 class="rv-h" id="rv-h">解説動画（60〜110秒）</h2>
-  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/LlKH7xG8lr8" title="付箋の探索 の解説動画" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
-  <p class="rv-ch">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
+  <h2 class="rv-h" id="rv-h" data-i18n="videoH">解説動画（60〜110秒）</h2>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/LlKH7xG8lr8" title="付箋の探索 の解説動画" data-i18n-title="videoTitle" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <p class="rv-ch" data-i18n="videoCh">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
 </section>
 </div>
-<div class="controls" role="toolbar" aria-label="操作">
+<div class="controls" role="toolbar" aria-label="操作" data-i18n-aria="ctlAria">
   <div class="mini" id="mini" aria-hidden="true"></div>
   <button class="ctl main" id="play">▶ 再生</button>
-  <button class="ctl" id="step">1手<span class="lg">すすめる</span></button>
+  <button class="ctl" id="step" data-i18n="step">1手<span class="lg">すすめる</span></button>
   <div class="seg" id="speeds">
     <button class="ctl" data-s="0" aria-label="ゆっくり"><span class="lg">ゆっくり</span><span class="sm">遅</span></button><button class="ctl" data-s="1" aria-label="ふつう"><span class="lg">ふつう</span><span class="sm">中</span></button><button class="ctl" data-s="2" aria-label="はやい"><span class="lg">はやい</span><span class="sm">速</span></button><button class="ctl" data-s="3" aria-label="一気に"><span class="lg">一気に</span><span class="sm">一気</span></button>
   </div>
   <button class="ctl" id="race" aria-pressed="true">同時に走らせる</button>
-  <button class="ctl" id="reset" aria-label="最初から">↺<span class="lg"> 最初から</span></button>
+  <button class="ctl" id="reset" aria-label="最初から" data-i18n-aria="resetAria" data-i18n="resetHTML">↺<span class="lg"> 最初から</span></button>
 </div>
 <script>
 // CORE-BEGIN
@@ -498,6 +505,165 @@ if (typeof module !== 'undefined') module.exports = Core;
   function hsh(a, b) { var h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; h = h ^ (h >>> 16); return ((h >>> 0) % 10000) / 10000; }
   function fmt(n) { return n.toLocaleString('ja-JP'); }
 
+  // ---------------- i18n ----------------
+  // all user-visible text; numbers are formatted by fmt() identically in both languages
+  var I18N = {
+    ja: {
+      title: '付箋の探索 ― 失敗から学ぶ、ということ',
+      desc: '失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる',
+      langAria: '言語',
+      h1: '付箋の探索<small>失敗から学ぶ、ということ</small>',
+      lead: '隣り合う国は別の色。3色で、A から名前順に塗っていきます。塗れない国が出たら<strong>行き止まり</strong>。ふたりの探索者は同じ順番で試しますが、行き止まりでの振る舞いだけが違います。',
+      tabsAria: '地図をえらぶ',
+      naiveTitle: '素朴な探索', learnTitle: '失敗から学ぶ探索', ffOn: '早送り中',
+      howNaive: '行き止まったら、ひとつ前に戻って次の色を試す。なぜ詰んだかは考えない。',
+      howLearn: '行き止まったら、どの選択の組み合わせが原因かを調べて付箋に書く。その組み合わせには二度と入らず、関係ない所は飛ばして一気に戻る。',
+      deadPre: '行き止まり', deadSuf: '回', decPre: '試した手数', decSuf: '手',
+      notesEmpty: '付箋はまだありません。行き止まりのたびに1枚増えます。',
+      defs: '<b>数え方</b>：行き止まり ＝ どの色も塗れない国（または同じ色の隣り合い）が出た回数。試した手数 ＝ 自分で選んで色を置いた回数（ほかの色が使えず自動で決まったものは数えない）。どちらも同じ順番（名前順の国に、赤→青→黄の順）で試します。違いは行き止まりでの振る舞いだけです。下の木は「試した選択」の枝分かれで、× が行き止まりです。',
+      videoH: '解説動画（60〜110秒）', videoTitle: '付箋の探索 の解説動画',
+      videoCh: 'ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。',
+      ctlAria: '操作', play: '▶ 再生', pause: '❚❚ 停止',
+      step: '1手<span class="lg">すすめる</span>',
+      speeds: [['ゆっくり', '遅'], ['ふつう', '中'], ['はやい', '速'], ['一気に', '一気']],
+      raceL: '同時に走らせる', raceS: '同時', seqL: '順番に（学習→素朴）', seqS: '順番',
+      resetAria: '最初から', resetHTML: '↺<span class="lg"> 最初から</span>',
+      maps: null, // MAPS[i].label / .blurb
+      learnIntro: '<em>▶ 再生</em> を押すと、ふたりが同じ地図を同時に塗り始めます。右側に付箋が貼られる瞬間を見てください。',
+      col: ['赤', '青', '黄'],
+      decide: function (p) { return '<em>' + p.n + 'を' + col(p.c) + 'で</em>塗ってみる。'; },
+      backtrack: function (p) { return 'ひとつ前に戻る。' + p.n + 'の' + col(p.c) + 'はやめて、' + (p.fc >= 0 ? p.n + 'は残りの<em>' + col(p.fc) + '</em>しかない。' : p.n + 'の次の色を試す。'); },
+      learn: function (p) {
+        return '原因は <em>' + p.cul.map(function (c) { return c.n + 'の' + col(c.c); }).join(' ＋ ') + '</em>。付箋' + p.id + 'に書いて、' +
+          (p.j >= 2 ? '<em>' + p.j + '段</em>一気に戻る（間の選択は関係なかった）。' : 'ひとつ戻る。');
+      },
+      sat: function (p) { return p.ok ? '<em>全部塗れた。</em>検算：隣どうしの同じ色 0 か所。' : '<em>検算に失敗</em>'; },
+      unsat: 'この地図は3色では塗れない。',
+      conflict: function (p) { return ' → <em>' + p.ns.join('と') + '</em>' + (p.ns.length > 1 ? 'が同じ色になる。' : 'に塗れる色がない。') + '<em>行き止まり。</em>'; },
+      sameNote: function (p) { return '（付箋' + p.id + 'と同じ理由）'; },
+      noteNo: function (p) { return '付箋 ' + p.id + '　立入禁止'; },
+      noteJoin: ' ＋ ', noteSuf: ' は詰む',
+      noteRule: function (p) { return '書いた規則：' + p.words.text; },
+      noteUsed: function (p) { return '素朴な方が同じ理由で詰んだ <b>' + p.m + '</b>回'; },
+      mini: function (p) { return '行き止まり　素朴 <b>' + p.nd + '</b>回　／　学習 <b>' + p.ld + '</b>回　付箋 ' + p.notes + '枚'; },
+      ff: function (p) { return '早送り ×' + p.x; },
+      culprit: '犯人',
+      jump: function (p) { return p.n + '段もどる'; },
+      reasons: '行き止まりの理由（色＝同じ理由の付箋）',
+      treeEmpty: 'ここから枝分かれが伸びていきます',
+      result: function (r) {
+        return '<div class="vs"><span class="lbl">行き止まりの数</span><span>素朴 <span class="a">' + fmt(r.nd) + '</span>回</span><span class="x">対</span><span>学習 <span class="a">' + fmt(r.ld) + '</span>回</span>' +
+          (r.ratio && r.ratio > 1 ? '<span class="x">（約' + fmt(r.ratio) + '分の1）</span>' : '') + '</div>' +
+          '<p>試した手数は 素朴 ' + fmt(r.decN) + '手 ／ 学習 ' + fmt(r.decL) + '手。付箋は ' + r.notes + '枚。' +
+          (r.matched ? '素朴な探索の行き止まり ' + fmt(r.nd) + '回のうち <b>' + fmt(r.matched) + '回</b>は、付箋にもう書いてある組み合わせに、もう一度入って詰んだものでした。' : '') + '</p>' +
+          '<p><span class="chk">' + (r.ok ? '検算 ✓' : '検算 ✗') + '</span>どちらの塗り方も、隣どうし同じ色の所はありません。<span class="chk" style="margin-left:8px">' + (r.notesOk ? '付箋 ✓' : '付箋 ✗') + '</span>付箋の規則は、見つかった塗り方をどれも禁じていません。</p>';
+      }
+    },
+    en: {
+      title: 'Sticky-Note Search — learning from failure',
+      desc: 'Learning from failure. Two searches race to 3-color a map: one writes the reason for every dead end on a sticky note, the other doesn\'t.',
+      langAria: 'Language',
+      h1: 'Sticky-Note Search<small>learning from failure</small>',
+      lead: 'Color the map with three colors: neighbors must differ. Regions are colored in name order, starting from A. When a region has no color left, that is a <strong>dead end</strong>. Both searches try things in the same order; they differ only in what they do at a dead end.',
+      tabsAria: 'Choose a map',
+      naiveTitle: 'Naive search', learnTitle: 'Learning search', ffOn: 'Fast-forwarding',
+      howNaive: 'At a dead end, step back one region and try the next color. It never asks why it got stuck.',
+      howLearn: 'At a dead end, it asks why: which combination of choices caused it? It writes that on a sticky note, never enters that combination again, and jumps back past the choices that had nothing to do with it.',
+      deadPre: 'Dead ends', deadSuf: '', decPre: 'Choices', decSuf: '',
+      notesEmpty: 'No sticky notes yet. One is added at every dead end.',
+      defs: '<b>How we count</b>: Dead ends = times a region had no color left (or two neighbors ended up the same color). Choices = times a search picked a color itself (colors forced because nothing else was possible are not counted). Both try in the same order (regions by name; red, then blue, then yellow). The only difference is what they do at a dead end. The tree below shows how the choices branch; × marks a dead end.',
+      videoH: 'Explainer video (60–110 s)', videoTitle: 'Sticky-Note Search explainer video',
+      videoCh: 'More explainer videos on the YouTube channel <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a>.',
+      ctlAria: 'Controls', play: '▶ Play', pause: '❚❚ Pause',
+      step: 'Step<span class="lg"> once</span>',
+      speeds: [['Slow', 'Slow'], ['Normal', 'Mid'], ['Fast', 'Fast'], ['All at once', 'All']],
+      raceL: 'Race side by side', raceS: 'Race', seqL: 'One at a time (learning → naive)', seqS: 'In turn',
+      resetAria: 'Start over', resetHTML: '↺<span class="lg"> Start over</span>',
+      maps: [
+        { label: 'Small island', blurb: 'Tiny regions U, V and W sit between A and B. The lower island (E–H) does not touch the upper one.' },
+        { label: 'Nasty island', blurb: 'A map built to be nasty: small regions with late names sit between the big regions A–D. The lower island (E–L) does not touch the upper one.' },
+        { label: 'Ordinary map', blurb: 'A randomly drawn map with randomly drawn names. No traps planted.' }
+      ],
+      learnIntro: 'Press <em>▶ Play</em> and both start coloring the same map at once. Watch for the moment a sticky note gets slapped on.',
+      col: ['red', 'blue', 'yellow'],
+      decide: function (p) { return 'Try <em>' + p.n + ' in ' + col(p.c) + '</em>.'; },
+      backtrack: function (p) { return 'Step back one region. Drop ' + p.n + ' ' + col(p.c) + '; ' + (p.fc >= 0 ? p.n + ' can only be <em>' + col(p.fc) + '</em>.' : 'try the next color for ' + p.n + '.'); },
+      learn: function (p) {
+        return (p.cul.length > 1 ? 'The culprits: <em>' : 'The culprit: <em>') + p.cul.map(function (c) { return c.n + ' ' + col(c.c); }).join(' + ') + '</em>. Written on sticky note ' + p.id + '; ' +
+          (p.j >= 2 ? '<em>jumps back ' + p.j + ' levels</em> at once (the choices in between had nothing to do with it).' : 'steps back one.');
+      },
+      sat: function (p) { return p.ok ? '<em>All colored.</em> Check: 0 neighbors share a color.' : '<em>Check failed</em>'; },
+      unsat: 'This map cannot be colored with 3 colors.',
+      conflict: function (p) { return ' → <em>' + andList(p.ns) + '</em>' + (p.ns.length > 1 ? ' end up the same color.' : ' has no color left.') + ' <em>Dead end.</em>'; },
+      sameNote: function (p) { return ' (same reason as sticky note ' + p.id + ')'; },
+      noteNo: function (p) { return 'Note ' + p.id + ' · No entry'; },
+      noteJoin: ' + ', noteSuf: ' → stuck',
+      noteRule: function (p) {
+        var w = p.words;
+        return 'Rule written: ' + w.groups.map(function (g) {
+          var pt = null; for (var i = 0; i < w.parts.length; i++) if (w.parts[i].cond === g.cond) { pt = w.parts[i]; break; }
+          var cond = pt.is >= 0 ? col(pt.is) : 'not ' + pt.not.map(col).join('/');
+          return g.rs.map(function (r) { return st.p.names[r]; }).join(' & ') + ' ' + cond;
+        }).join(', ') + ' → dead end';
+      },
+      noteUsed: function (p) { return 'Naive search got stuck here too: <b>' + p.m + '</b>×'; },
+      mini: function (p) { return 'Dead ends: naive <b>' + p.nd + '</b> / learning <b>' + p.ld + '</b> · notes ' + p.notes; },
+      ff: function (p) { return 'Fast-forward ×' + p.x; },
+      culprit: 'culprit',
+      jump: function (p) { return 'back ' + p.n + ' levels'; },
+      reasons: 'Why each dead end (color = sticky note with the same reason)',
+      treeEmpty: 'The tree of choices grows from here',
+      result: function (r) {
+        return '<div class="vs"><span class="lbl">Dead ends</span><span>naive <span class="a">' + fmt(r.nd) + '</span></span><span class="x">vs</span><span>learning <span class="a">' + fmt(r.ld) + '</span></span>' +
+          (r.ratio && r.ratio > 1 ? '<span class="x">(about 1/' + fmt(r.ratio) + ')</span>' : '') + '</div>' +
+          '<p>Choices tried: naive ' + fmt(r.decN) + ' / learning ' + fmt(r.decL) + '. Sticky notes: ' + r.notes + '.' +
+          (r.matched ? ' Of the naive search\'s ' + fmt(r.nd) + ' dead ends, <b>' + fmt(r.matched) + '</b> came from walking back into a combination already written on a sticky note.' : '') + '</p>' +
+          '<p><span class="chk">' + (r.ok ? 'Check ✓' : 'Check ✗') + '</span>Neither coloring has two neighbors in the same color.<span class="chk" style="margin-left:8px">' + (r.notesOk ? 'Notes ✓' : 'Notes ✗') + '</span>No sticky-note rule forbids the colorings that were found.</p>';
+      }
+    }
+  };
+  function detectLang() {
+    var q = null; try { q = new URLSearchParams(location.search).get('lang'); } catch (e) {}
+    if (q === 'en' || q === 'ja') return q;
+    var nl = (navigator.language || (navigator.languages && navigator.languages[0]) || '').toLowerCase();
+    return nl.indexOf('ja') === 0 ? 'ja' : 'en';
+  }
+  st.lang = detectLang();
+  function t(k, p) { var s = I18N[st.lang][k]; return typeof s === 'function' ? s(p || {}) : s; }
+  function col(c) { return I18N[st.lang].col[c]; }
+  function andList(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function mapLabel(i) { var m = I18N[st.lang].maps; return m ? m[i].label : MAPS[i].label; }
+  function mapBlurb(i) { var m = I18N[st.lang].maps; return m ? m[i].blurb : MAPS[i].blurb; }
+  function applyStatic() {
+    var L = st.lang;
+    document.documentElement.lang = L;
+    document.title = t('title');
+    var md = document.querySelector('meta[name="description"]'); if (md) md.setAttribute('content', t('desc'));
+    Array.prototype.forEach.call(document.querySelectorAll('[data-i18n]'), function (el) { el.innerHTML = t(el.getAttribute('data-i18n')); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-i18n-aria]'), function (el) { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-i18n-title]'), function (el) { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
+    var sp = t('speeds');
+    Array.prototype.forEach.call($('speeds').children, function (b) {
+      var s = sp[+b.dataset.s]; b.setAttribute('aria-label', s[0]);
+      b.innerHTML = '<span class="lg">' + s[0] + '</span><span class="sm">' + s[1] + '</span>';
+    });
+    Array.prototype.forEach.call($('tabs').children, function (b, i) { b.textContent = mapLabel(i); });
+    Array.prototype.forEach.call($('langsw').querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', b.dataset.lang === L ? 'true' : 'false'); });
+  }
+  // switch language without touching the solvers: re-apply text and redraw from the current state
+  function setLang(L) {
+    if (L !== 'ja' && L !== 'en') return;
+    st.lang = L;
+    applyStatic();
+    if (!st.side.naive) return;
+    if (st.noteEls.length) st.noteEls.forEach(function (el, i) { renderNote(el, st.side.learn.s.notes[i]); });
+    else $('notes').innerHTML = '<div class="empty">' + t('notesEmpty') + '</div>';
+    if (st.res) $('result').innerHTML = t('result', st.res);
+    ['naive', 'learn'].forEach(function (k) { st.side[k].dirty = true; });
+    syncButtons(); updateCounts();
+    var now = performance.now(); ['naive', 'learn'].forEach(function (k) { drawBoard(k, now); drawTree(k, now); });
+  }
+
   // ---------------- model ----------------
   function load(mi, opt) {
     opt = opt || {};
@@ -507,17 +673,16 @@ if (typeof module !== 'undefined') module.exports = Core;
     ['naive', 'learn'].forEach(function (k) {
       st.side[k] = { s: new Core.Solver(st.p, k === 'learn'), last: null, flash: [], jumps: [], matched: 0, doneAt: 0, steps: 0, dirty: true, culprits: null, irrelevant: null, flags: {} };
     });
-    st.noteEls = [];
-    $('notes').innerHTML = '<div class="empty">付箋はまだありません。行き止まりのたびに1枚増えます。</div>';
+    st.noteEls = []; st.res = null;
+    $('notes').innerHTML = '<div class="empty">' + t('notesEmpty') + '</div>';
     $('result').className = 'result'; $('result').innerHTML = '';
-    $('narr-naive').innerHTML = spec.blurb;
-    $('narr-learn').innerHTML = '<em>▶ 再生</em> を押すと、ふたりが同じ地図を同時に塗り始めます。右側に付箋が貼られる瞬間を見てください。';
+    st.side.naive.narr = function () { return mapBlurb(mi); };
+    st.side.learn.narr = function () { return t('learnIntro'); };
     Array.prototype.forEach.call($('tabs').children, function (b, i) { b.setAttribute('aria-pressed', i === mi ? 'true' : 'false'); });
     layout(); updateCounts(); syncButtons();
     if (opt.autoplay) setPlaying(true);
   }
 
-  function regionText(r, c) { return st.p.names[r] + 'を' + Core.COLORS[c] + 'で'; }
   function conflictRegion(sv, ci) {
     var cl = sv.clauses[ci];
     if (cl.kind === 'alo' || cl.kind === 'amo' || cl.kind === 'given') return [cl.r];
@@ -541,49 +706,45 @@ if (typeof module !== 'undefined') module.exports = Core;
         markNoteHot(n.id);
       }
     });
-    var txt = '';
+    var parts = [], tx = function (key, p) { parts.push(function () { return t(key, p); }); };
     if (ev.type === 'decide') {
-      txt = '<em>' + regionText(ev.r, ev.c) + '</em>塗ってみる。';
+      tx('decide', { n: st.p.names[ev.r], c: ev.c });
       S.flash.push({ r: ev.r, t: now, kind: 'put' });
     } else if (ev.type === 'backtrack') {
-      var fr = st.p.names[ev.flipR];
-      txt = 'ひとつ前に戻る。' + fr + 'の' + Core.COLORS[ev.flipC] + 'はやめて、';
-      var fc = sv.regionColor(ev.flipR);
-      txt += fc >= 0 ? fr + 'は残りの<em>' + Core.COLORS[fc] + '</em>しかない。' : fr + 'の次の色を試す。';
+      tx('backtrack', { n: st.p.names[ev.flipR], c: ev.flipC, fc: sv.regionColor(ev.flipR) });
       S.culprits = null;
     } else if (ev.type === 'learn') {
       var nt = ev.note;
-      txt = '原因は <em>' + nt.culprits.map(function (c) { return st.p.names[c.r] + 'の' + Core.COLORS[c.c]; }).join(' ＋ ') + '</em>。付箋' + (nt.id + 1) + 'に書いて、' +
-        (ev.from - ev.to >= 2 ? '<em>' + (ev.from - ev.to) + '段</em>一気に戻る（間の選択は関係なかった）。' : 'ひとつ戻る。');
+      tx('learn', { cul: nt.culprits.map(function (c) { return { n: st.p.names[c.r], c: c.c }; }), id: nt.id + 1, j: ev.from - ev.to });
       S.culprits = { list: nt.culprits, t: now, note: nt.id };
       S.irrelevant = { regions: ev.skipped.map(function (id) { return sv.tree.nodes[id].r; }), t: now };
       S.jumps.push({ from: ev.deadNode, to: sv.anchor[ev.to], n: ev.from - ev.to, note: nt.id });
       addNote(nt);
       if (st.speed <= 1) st.hold = now + (st.speed === 0 ? 2600 : 1700);
     } else if (ev.type === 'sat') {
-      txt = ev.ok ? '<em>全部塗れた。</em>検算：隣どうしの同じ色 0 か所。' : '<em>検算に失敗</em>';
+      tx('sat', { ok: ev.ok });
       if (!ev.ok) st.errors.push(k + ' solution failed verification');
       S.flash = []; S.irrelevant = null;
       S.doneAt = now;
     } else if (ev.type === 'unsat') {
-      txt = 'この地図は3色では塗れない。'; S.doneAt = now;
+      tx('unsat'); S.doneAt = now;
     }
     if (ev.conflict) {
       var rs = conflictRegion(sv, ev.conflict.clause);
       S.flash.push({ rs: rs, t: now, kind: 'dead' });
-      txt += ' → <em>' + rs.map(function (r) { return st.p.names[r]; }).join('と') + '</em>' + (rs.length > 1 ? 'が同じ色になる。' : 'に塗れる色がない。') + '<em>行き止まり。</em>';
+      tx('conflict', { ns: rs.map(function (r) { return st.p.names[r]; }) });
       if (k === 'naive') {
         // does the naive searcher hit a combination already written on a note?
         var ln = st.side.learn.s.notes;
         for (var i = 0; i < ln.length; i++) if (sv.falsifies(ln[i].lits)) {
           var nd = sv.tree.nodes[ev.conflict.node]; nd.match = ln[i].id; ln[i].matched = (ln[i].matched || 0) + 1; S.matched++;
-          txt += '（付箋' + (ln[i].id + 1) + 'と同じ理由）';
+          tx('sameNote', { id: ln[i].id + 1 });
           break;
         }
       }
     }
     if (S.flash.length > 40) S.flash.splice(0, S.flash.length - 40);
-    S.narr = txt;
+    S.narr = function () { return parts.map(function (f) { return f(); }).join(''); };
     return ev;
   }
 
@@ -613,11 +774,15 @@ if (typeof module !== 'undefined') module.exports = Core;
     var col = NOTE[nt.id % NOTE.length], rot = (hsh(nt.id, 7) * 5 - 2.5).toFixed(1) + 'deg';
     el.className = 'note' + (reduced ? '' : ' slap');
     el.style.background = col; el.style.setProperty('--rot', rot);
-    var big = nt.culprits.map(function (c) { return st.p.names[c.r] + sw(c.c) + '<small>' + Core.COLORS[c.c] + '</small>'; }).join(' ＋ ') + ' は詰む';
-    el.innerHTML = '<div class="no">付箋 ' + (nt.id + 1) + '　立入禁止</div><div class="big">' + big + '</div>' +
-      '<div class="exact">書いた規則：' + nt.words.text + '</div><div class="used" data-u></div>';
+    renderNote(el, nt);
     box.appendChild(el); st.noteEls.push(el);
     updateNoteUse();
+  }
+  function renderNote(el, nt) {
+    var big = nt.culprits.map(function (c) { return st.p.names[c.r] + sw(c.c) + '<small>' + col(c.c) + '</small>'; }).join(t('noteJoin')) + t('noteSuf');
+    el.innerHTML = '<div class="no">' + t('noteNo', { id: nt.id + 1 }) + '</div><div class="big">' + big + '</div>' +
+      '<div class="exact">' + t('noteRule', { words: nt.words }) + '</div><div class="used" data-u></div>';
+    var m = nt.matched || 0; el.querySelector('[data-u]').innerHTML = t('noteUsed', { m: fmt(m) });
   }
   function markNoteHot(id) {
     var el = st.noteEls && st.noteEls[id]; if (!el) return;
@@ -627,7 +792,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     var ln = st.side.learn.s.notes;
     st.noteEls.forEach(function (el, i) {
       var n = ln[i], m = n.matched || 0;
-      el.querySelector('[data-u]').innerHTML = '素朴な方が同じ理由で詰んだ <b>' + fmt(m) + '</b>回';
+      el.querySelector('[data-u]').innerHTML = t('noteUsed', { m: fmt(m) });
     });
   }
 
@@ -643,11 +808,8 @@ if (typeof module !== 'undefined') module.exports = Core;
     });
     var ratio = ld > 0 ? Math.round(nd / ld) : null;
     var el = $('result');
-    el.innerHTML = '<div class="vs"><span class="lbl">行き止まりの数</span><span>素朴 <span class="a">' + fmt(nd) + '</span>回</span><span class="x">対</span><span>学習 <span class="a">' + fmt(ld) + '</span>回</span>' +
-      (ratio && ratio > 1 ? '<span class="x">（約' + fmt(ratio) + '分の1）</span>' : '') + '</div>' +
-      '<p>試した手数は 素朴 ' + fmt(N.s.stats.decisions) + '手 ／ 学習 ' + fmt(L.s.stats.decisions) + '手。付箋は ' + L.s.notes.length + '枚。' +
-      (N.matched ? '素朴な探索の行き止まり ' + fmt(nd) + '回のうち <b>' + fmt(N.matched) + '回</b>は、付箋にもう書いてある組み合わせに、もう一度入って詰んだものでした。' : '') + '</p>' +
-      '<p><span class="chk">' + (okN && okL ? '検算 ✓' : '検算 ✗') + '</span>どちらの塗り方も、隣どうし同じ色の所はありません。<span class="chk" style="margin-left:8px">' + (notesOk ? '付箋 ✓' : '付箋 ✗') + '</span>付箋の規則は、見つかった塗り方をどれも禁じていません。</p>';
+    st.res = { nd: nd, ld: ld, ratio: ratio, decN: N.s.stats.decisions, decL: L.s.stats.decisions, notes: L.s.notes.length, matched: N.matched, ok: okN && okL, notesOk: notesOk };
+    el.innerHTML = t('result', st.res);
     el.className = 'result on';
     if (!(okN && okL && notesOk)) st.errors.push('verification failed');
   }
@@ -783,8 +945,8 @@ if (typeof module !== 'undefined') module.exports = Core;
         if (prog >= 1) {
           var c0 = B.centers[S.culprits.list[0].r];
           ctx.fillStyle = colr; ctx.font = '600 ' + Math.max(12, cell * 0.7) + 'px "Klee One",sans-serif'; ctx.textAlign = 'left';
-          var lx = Math.min(c0[0] + cell * 1.1, B.w - 80), ly = Math.max(c0[1] - cell * 0.9, 12);
-          ctx.fillText('犯人', lx, ly);
+          var cl = t('culprit'), lx = Math.min(c0[0] + cell * 1.1, B.w - Math.max(80, ctx.measureText(cl).width + 6)), ly = Math.max(c0[1] - cell * 0.9, 12);
+          ctx.fillText(cl, lx, ly);
         }
         ctx.globalAlpha = 1;
       }
@@ -863,8 +1025,8 @@ if (typeof module !== 'undefined') module.exports = Core;
       ctx.beginPath(); ctx.moveTo(x2 + 3, y2); ctx.lineTo(x2 + 11, y2 - 3); ctx.moveTo(x2 + 3, y2); ctx.lineTo(x2 + 10, y2 + 6); ctx.stroke();
       if (j.n >= 2) {
         ctx.fillStyle = colr; ctx.font = '600 12px "Klee One",sans-serif';
-        var lx = Math.min(x1 + bulge * 0.75 + 4, T.w - 64);
-        ctx.fillText(j.n + '段もどる', lx, (y1 + y2) / 2);
+        var jl = t('jump', { n: j.n }), lx = Math.min(x1 + bulge * 0.75 + 4, T.w - Math.max(64, ctx.measureText(jl).width + 4));
+        ctx.fillText(jl, lx, (y1 + y2) / 2);
       }
       ctx.globalAlpha = 1;
     });
@@ -872,7 +1034,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     if (k === 'naive' && sv.stats.conflicts > 0 && st.side.learn.s.notes.length) {
       var tot = sv.stats.conflicts, bx = padL, bw = T.w - padL - padR, by = T.h - 13;
       ctx.font = '11.5px "Klee One",sans-serif'; ctx.fillStyle = INK; ctx.textBaseline = 'alphabetic';
-      ctx.fillText('行き止まりの理由（色＝同じ理由の付箋）', bx, by - 4);
+      ctx.fillText(t('reasons'), bx, by - 4);
       var xx = bx;
       st.side.learn.s.notes.forEach(function (nt) {
         var w = bw * (nt.matched || 0) / tot; if (w <= 0) return;
@@ -883,19 +1045,19 @@ if (typeof module !== 'undefined') module.exports = Core;
       ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 10);
       ctx.textBaseline = 'middle';
     }
-    if (nodes.length === 1) { ctx.fillStyle = '#8a8a94'; ctx.font = '13px "Klee One",sans-serif'; ctx.fillText('ここから枝分かれが伸びていきます', padL + 10, padT + 2); }
+    if (nodes.length === 1) { ctx.fillStyle = '#8a8a94'; ctx.font = '13px "Klee One",sans-serif'; ctx.fillText(t('treeEmpty'), padL + 10, padT + 2); }
   }
 
   function updateCounts() {
     ['naive', 'learn'].forEach(function (k) {
       var s = st.side[k].s.stats;
       $('dead-' + k).textContent = fmt(s.conflicts); $('dec-' + k).textContent = fmt(s.decisions);
-      if (st.side[k].narr !== undefined) $('narr-' + k).innerHTML = st.side[k].narr;
+      if (st.side[k].narr) $('narr-' + k).innerHTML = st.side[k].narr();
     });
     if (st.noteEls.length) updateNoteUse();
-    $('mini').innerHTML = '行き止まり　素朴 <b>' + fmt(st.side.naive.s.stats.conflicts) + '</b>回　／　学習 <b>' + fmt(st.side.learn.s.stats.conflicts) + '</b>回　付箋 ' + st.side.learn.s.notes.length + '枚';
+    $('mini').innerHTML = t('mini', { nd: fmt(st.side.naive.s.stats.conflicts), ld: fmt(st.side.learn.s.stats.conflicts), notes: st.side.learn.s.notes.length });
     var ff = $('ff-naive');
-    if (st.accel > 1.5 && !st.side.naive.s.done) { ff.textContent = '早送り ×' + Math.round(st.accel); ff.className = 'ff on'; } else ff.className = 'ff';
+    if (st.accel > 1.5 && !st.side.naive.s.done) { ff.textContent = t('ff', { x: Math.round(st.accel) }); ff.className = 'ff on'; } else ff.className = 'ff';
   }
 
   // ---------------- loop ----------------
@@ -926,14 +1088,14 @@ if (typeof module !== 'undefined') module.exports = Core;
   function setPlaying(on) {
     if (on && st.finished) { load(st.mi); }
     st.playing = on; if (on) st.hold = 0;
-    $('play').textContent = on ? '❚❚ 停止' : '▶ 再生';
+    $('play').textContent = on ? t('pause') : t('play');
   }
   function syncButtons() {
     Array.prototype.forEach.call($('speeds').children, function (b) { b.setAttribute('aria-pressed', +b.dataset.s === st.speed ? 'true' : 'false'); });
     $('race').setAttribute('aria-pressed', st.race ? 'true' : 'false');
     var sm = window.innerWidth < 760;
-    $('race').textContent = st.race ? (sm ? '同時' : '同時に走らせる') : (sm ? '順番' : '順番に（学習→素朴）');
-    $('play').textContent = st.playing ? '❚❚ 停止' : '▶ 再生';
+    $('race').textContent = st.race ? (sm ? t('raceS') : t('raceL')) : (sm ? t('seqS') : t('seqL'));
+    $('play').textContent = st.playing ? t('pause') : t('play');
   }
 
   // ---------------- UI ----------------
@@ -950,7 +1112,15 @@ if (typeof module !== 'undefined') module.exports = Core;
     b.onclick = function () { st.speed = +b.dataset.s; syncButtons(); if (!st.playing && !st.finished) setPlaying(true); };
   });
   var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(layout, 120); });
+  Array.prototype.forEach.call($('langsw').querySelectorAll('button'), function (b) {
+    b.onclick = function () {
+      var L = b.dataset.lang; if (L === st.lang) return;
+      setLang(L);
+      try { var u = new URL(location.href); u.searchParams.set('lang', L); history.replaceState(history.state, '', u.toString()); } catch (e) {}
+    };
+  });
 
+  applyStatic();
   load(1);
   requestAnimationFrame(frame);
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () { layout(); st.ready = true; });
@@ -967,7 +1137,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     stepUntil: function (pred, max) { for (var i = 0; i < (max || 100000); i++) { if (pred(this.state())) return true; if (!advance()) return false; } return false; },
     state: function () {
       var f = function (k) { var S = st.side[k], s = S.s; return { dead: s.stats.conflicts, dec: s.stats.decisions, notes: s.notes.length, done: s.done && s.done.type, ok: s.done && s.done.ok, last: S.last && S.last.type, matched: S.matched, maxJump: s.stats.maxJump, nodes: s.tree.nodes.length }; };
-      return { map: MAPS[st.mi].key, naive: f('naive'), learn: f('learn'), finished: st.finished, errors: st.errors.slice() };
+      return { lang: st.lang, map: MAPS[st.mi].key, naive: f('naive'), learn: f('learn'), finished: st.finished, errors: st.errors.slice() };
     }
   };
 })();
