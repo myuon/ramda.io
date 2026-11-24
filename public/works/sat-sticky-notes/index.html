@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>付箋の探索 ― 失敗から学ぶ、ということ</title>
+<meta name="description" content="失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ramda.io">
+<meta property="og:title" content="付箋の探索 ― 失敗から学ぶ、ということ">
+<meta property="og:description" content="失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる">
+<meta property="og:url" content="https://www.ramda.io/works/sat-sticky-notes/">
+<meta property="og:image" content="https://www.ramda.io/works/sat-sticky-notes/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="付箋の探索 ― 失敗から学ぶ、ということ">
+<meta name="twitter:description" content="失敗から学ぶ、ということ。行き止まりの理由を付箋に書く探索と、書かない探索を、地図の塗り分けで競わせる">
+<meta name="twitter:image" content="https://www.ramda.io/works/sat-sticky-notes/ogp.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Zen+Kurenaido&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fcfcf7; --grid:#d9e6ec; --grid2:#c4d7e0; --ink:#43434c; --ink2:#7b7b86;
+  --red:#e2553a; --blue:#2f6fcf; --yellow:#efb40c; --marker:#e23a5a;
+  --n0:#ffe45c; --n1:#ff9fbd; --n2:#a5e8a0; --n3:#9fd8ff; --n4:#ffbe6b; --n5:#d6b8ff; --n6:#fff38a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#e9ebe6;color:var(--ink);font-family:"Klee One","Hiragino Maru Gothic ProN",sans-serif}
+body{min-height:100vh;padding:18px 14px 110px}
+button{font:inherit;color:inherit}
+.book{max-width:1260px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 26px;padding:0 6px 10px}
+h1{font-weight:600;font-size:30px;margin:0;letter-spacing:.04em;line-height:1.2}
+h1 small{display:block;font-size:14px;font-weight:400;color:var(--ink2);letter-spacing:.02em}
+.lead{margin:0;font-size:15px;line-height:1.7;max-width:46em;flex:1 1 420px}
+.tabs{display:flex;gap:4px;padding:0 10px;margin-top:6px}
+.tab{border:1.5px solid #9aa;border-bottom:none;border-radius:8px 8px 0 0;background:#f3f1e4;padding:6px 14px 5px;cursor:pointer;font-size:14px;transform:translateY(2px)}
+.tab[aria-pressed=true]{background:var(--paper);font-weight:600;transform:translateY(2px);box-shadow:0 -2px 0 var(--marker) inset}
+.tab:focus-visible,.ctl:focus-visible{outline:2px dashed var(--blue);outline-offset:2px}
+.spread{position:relative;display:grid;grid-template-columns:1fr 26px 1fr;background:var(--paper);border-radius:6px;
+  box-shadow:0 1px 0 #cfd2c8,0 10px 30px -12px rgba(60,60,40,.35);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:16px 16px;background-position:-1px -1px}
+.rings{background:linear-gradient(90deg,transparent,rgba(0,0,0,.07) 45%,rgba(0,0,0,.07) 55%,transparent);
+  background-image:radial-gradient(circle at 50% 50%,#fcfcf7 0 4px,#8d9096 4.5px 6px,transparent 6.5px);background-size:26px 34px;background-repeat:repeat-y}
+.page{position:relative;padding:16px 18px 14px;min-width:0}
+.page h2{margin:0;font-size:22px;font-weight:600;display:flex;align-items:baseline;gap:10px}
+.page h2 .tag{font-size:12px;font-weight:400;color:var(--ink2)}
+.how{margin:2px 0 8px;font-size:14px;line-height:1.6;color:#5a5a64}
+.counts{display:flex;gap:22px;align-items:baseline;margin:0 0 6px;flex-wrap:wrap}
+.cnt{font-size:13px;color:var(--ink2)}
+.cnt b{font-family:"Zen Kurenaido","Klee One",sans-serif;font-weight:400;font-size:34px;color:var(--ink);margin:0 3px 0 6px;font-variant-numeric:tabular-nums;line-height:1}
+.cnt.dead b{color:var(--marker)}
+.ff{font-size:13px;color:var(--marker);font-weight:600;visibility:hidden}
+.ff.on{visibility:visible}
+canvas{display:block;width:100%}
+.board{height:auto}
+.tree{height:260px;margin-top:4px}
+.narr{min-height:2.9em;font-size:14px;line-height:1.45;margin:6px 0 0;padding-left:8px;border-left:3px solid #c8ccd2}
+.narr em{font-style:normal;font-weight:600}
+.tw{display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:8px;align-items:start}
+.notes{display:flex;flex-wrap:wrap;gap:8px 10px;min-height:66px;margin:6px 0 2px;align-items:flex-start}
+.notes .empty{font-size:13px;color:var(--ink2);padding:18px 8px;border:1.5px dashed #c5c9cc;border-radius:3px;width:100%;text-align:center}
+.note{position:relative;width:160px;padding:8px 9px 7px;font-family:"Zen Kurenaido","Klee One",sans-serif;color:#3b3b40;
+  box-shadow:1px 2px 0 rgba(0,0,0,.08),2px 6px 10px -6px rgba(0,0,0,.35);transform:rotate(var(--rot));transition:transform .2s, box-shadow .2s}
+.note::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:rgba(0,0,0,.06)}
+.note .no{font-size:12px;opacity:.7}
+.note .big{font-size:18px;line-height:1.25;margin:2px 0 3px}
+.note .big small{font-size:.68em;margin-left:1px}
+.note .big .sw{display:inline-block;width:.75em;height:.75em;border-radius:50%;vertical-align:-1px;margin-left:1px}
+.note .exact{font-family:"Klee One",sans-serif;font-size:11px;line-height:1.4;opacity:.78}
+.note .used{font-family:"Klee One",sans-serif;font-size:11.5px;margin-top:4px;border-top:1px dashed rgba(0,0,0,.25);padding-top:3px}
+.note .used b{font-size:14px}
+.note.slap{animation:slap .55s cubic-bezier(.2,1.6,.4,1)}
+.note.hot{box-shadow:0 0 0 3px rgba(226,58,90,.55),2px 6px 10px -6px rgba(0,0,0,.35)}
+@keyframes slap{0%{transform:translate(40px,-60px) rotate(18deg) scale(1.5);opacity:0}60%{opacity:1}100%{transform:rotate(var(--rot))}}
+.result{max-width:1260px;margin:14px auto 0;background:var(--paper);border-radius:6px;padding:16px 22px;display:none;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:16px 16px;
+  box-shadow:0 10px 30px -12px rgba(60,60,40,.35)}
+.result.on{display:block}
+.result .vs{font-family:"Zen Kurenaido",sans-serif;font-size:40px;line-height:1.3;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 18px}
+.result .vs .lbl{font-family:"Klee One",sans-serif;font-size:16px}
+.result .vs .a{color:var(--marker)}
+.result .vs .x{font-size:22px;color:var(--ink2)}
+.result p{margin:6px 0 0;font-size:15px;line-height:1.7}
+.result .chk{display:inline-block;border:1.5px solid #4d9a5a;color:#3c7d47;border-radius:4px;padding:0 8px;font-size:13px;margin-right:8px}
+.controls{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(233,235,230,.94);backdrop-filter:blur(4px);border-top:1px solid #cfd2c8;z-index:5}
+.ctl{border:1.6px solid var(--ink);background:var(--paper);border-radius:14px 10px 13px 9px/10px 13px 9px 14px;padding:6px 14px;cursor:pointer;font-size:15px;min-height:38px}
+.ctl[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.ctl.main{font-weight:600;min-width:96px}
+.seg{display:flex;gap:3px}
+.seg .ctl{padding:6px 10px;font-size:14px}
+.mini{display:none}
+.sm{display:none}
+.defs{max-width:1260px;margin:10px auto 0;font-size:12.5px;line-height:1.7;color:#66666f;padding:0 8px}
+@media (max-width:760px){
+  body{padding:10px 6px 150px}
+  h1{font-size:24px}
+  .lead{font-size:14px;flex-basis:100%}
+  .spread{grid-template-columns:1fr}
+  .rings{height:18px;background-image:radial-gradient(circle at 50% 50%,#fcfcf7 0 4px,#8d9096 4.5px 6px,transparent 6.5px);background-size:34px 18px;background-repeat:repeat-x}
+  .page{padding:12px 10px}
+  .page h2{font-size:19px}
+  .cnt b{font-size:28px}
+  .tree{height:190px}
+  .tw{grid-template-columns:1fr}
+  .tw .notes{order:-1}
+  .note{width:calc(50% - 6px)}
+  .note .big{font-size:16px}
+  .tabs{padding:0 2px}.tab{padding:6px 9px 5px;font-size:13px}
+  .result .vs{font-size:30px}
+  .controls{gap:5px;padding:7px 4px calc(7px + env(safe-area-inset-bottom))}
+  .ctl{padding:4px 8px;font-size:13px;min-height:34px}
+  .ctl.main{min-width:0}
+  .seg{gap:2px}.seg .ctl{padding:4px 6px;font-size:12.5px}
+  .lg{display:none}.sm{display:inline}
+  .mini{display:block;width:100%;text-align:center;font-size:13px}
+  .mini b{color:var(--marker);font-size:16px;font-variant-numeric:tabular-nums}
+}
+@media (prefers-reduced-motion:reduce){.note.slap{animation:none}}
+</style>
+</head>
+<body>
+<div class="book">
+  <header>
+    <h1>付箋の探索<small>失敗から学ぶ、ということ</small></h1>
+    <p class="lead">隣り合う国は別の色。3色で、A から名前順に塗っていきます。塗れない国が出たら<strong>行き止まり</strong>。ふたりの探索者は同じ順番で試しますが、行き止まりでの振る舞いだけが違います。</p>
+  </header>
+  <nav class="tabs" id="tabs" aria-label="地図をえらぶ"></nav>
+  <main class="spread">
+    <section class="page" id="pg-naive" aria-label="素朴な探索">
+      <h2>素朴な探索 <span class="ff" id="ff-naive">早送り中</span></h2>
+      <p class="how">行き止まったら、ひとつ前に戻って次の色を試す。なぜ詰んだかは考えない。</p>
+      <div class="counts"><span class="cnt dead">行き止まり<b id="dead-naive">0</b>回</span><span class="cnt">試した手数<b id="dec-naive">0</b>手</span></div>
+      <canvas class="board" id="board-naive"></canvas>
+      <canvas class="tree" id="tree-naive"></canvas>
+      <p class="narr" id="narr-naive">まだ何も塗っていません。</p>
+    </section>
+    <div class="rings" aria-hidden="true"></div>
+    <section class="page" id="pg-learn" aria-label="失敗から学ぶ探索">
+      <h2>失敗から学ぶ探索 <span class="ff" id="ff-learn"></span></h2>
+      <p class="how">行き止まったら、どの選択の組み合わせが原因かを調べて付箋に書く。その組み合わせには二度と入らず、関係ない所は飛ばして一気に戻る。</p>
+      <div class="counts"><span class="cnt dead">行き止まり<b id="dead-learn">0</b>回</span><span class="cnt">試した手数<b id="dec-learn">0</b>手</span></div>
+      <canvas class="board" id="board-learn"></canvas>
+      <div class="tw"><canvas class="tree" id="tree-learn"></canvas>
+      <div class="notes" id="notes"><div class="empty">付箋はまだありません。行き止まりのたびに1枚増えます。</div></div></div>
+      <p class="narr" id="narr-learn">まだ何も塗っていません。</p>
+    </section>
+  </main>
+  <section class="result" id="result" aria-live="polite"></section>
+  <p class="defs" id="defs"><b>数え方</b>：行き止まり ＝ どの色も塗れない国（または同じ色の隣り合い）が出た回数。試した手数 ＝ 自分で選んで色を置いた回数（ほかの色が使えず自動で決まったものは数えない）。どちらも同じ順番（名前順の国に、赤→青→黄の順）で試します。違いは行き止まりでの振る舞いだけです。下の木は「試した選択」の枝分かれで、× が行き止まりです。</p>
+</div>
+<div class="controls" role="toolbar" aria-label="操作">
+  <div class="mini" id="mini" aria-hidden="true"></div>
+  <button class="ctl main" id="play">▶ 再生</button>
+  <button class="ctl" id="step">1手<span class="lg">すすめる</span></button>
+  <div class="seg" id="speeds">
+    <button class="ctl" data-s="0" aria-label="ゆっくり"><span class="lg">ゆっくり</span><span class="sm">遅</span></button><button class="ctl" data-s="1" aria-label="ふつう"><span class="lg">ふつう</span><span class="sm">中</span></button><button class="ctl" data-s="2" aria-label="はやい"><span class="lg">はやい</span><span class="sm">速</span></button><button class="ctl" data-s="3" aria-label="一気に"><span class="lg">一気に</span><span class="sm">一気</span></button>
+  </div>
+  <button class="ctl" id="race" aria-pressed="true">同時に走らせる</button>
+  <button class="ctl" id="reset" aria-label="最初から">↺<span class="lg"> 最初から</span></button>
+</div>
+<script>
+// CORE-BEGIN
+// 塗り分けパズル (map colouring) as CNF + two real solvers sharing one branching order:
+//   naive  : DPLL with unit propagation, chronological backtracking (flip the last unflipped decision), no learning
+//   learn  : CDCL with 1UIP clause learning and non-chronological backjump (no restarts, no VSIDS)
+// Variables: v(r,c) = "region r has colour c". literal = 2*var + (negative ? 1 : 0).
+var Core = (function () {
+  'use strict';
+  var COLORS = ['赤', '青', '黄'];
+
+  // ---------- puzzle ----------
+  // spec: { name, rows: [..strings..], order?: 'ABC..', given?: {X: colourIndex} }
+  // letters = regions, '.' = sea. Adjacent = share a cell edge.
+  function parseMap(spec) {
+    var rows = spec.rows, H = rows.length, W = rows[0].length, ids = {}, names = [];
+    var seen = '';
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var ch = rows[y][x]; if (ch !== '.' && seen.indexOf(ch) < 0) seen += ch; }
+    var order = spec.order || seen.split('').sort().join('');
+    for (var i = 0; i < order.length; i++) { ids[order[i]] = i; names.push(order[i]); }
+    if (order.length !== seen.length) throw new Error('order mismatch ' + order + ' vs ' + seen);
+    var n = names.length, adj = [], cells = [];
+    for (i = 0; i < n; i++) { adj.push([]); cells.push([]); }
+    var key = {};
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      var a = rows[y][x]; if (a === '.') continue;
+      cells[ids[a]].push([x, y]);
+      var nb = [[x + 1, y], [x, y + 1]];
+      for (var k = 0; k < 2; k++) {
+        var nx = nb[k][0], ny = nb[k][1]; if (nx >= W || ny >= H) continue;
+        var b = rows[ny][nx]; if (b === '.' || b === a) continue;
+        var p = ids[a], q = ids[b], kk = Math.min(p, q) + ',' + Math.max(p, q);
+        if (!key[kk]) { key[kk] = 1; adj[p].push(q); adj[q].push(p); }
+      }
+    }
+    var edges = Object.keys(key).map(function (s) { return s.split(',').map(Number); });
+    var given = {};
+    if (spec.given) for (var g in spec.given) given[ids[g]] = spec.given[g];
+    return { name: spec.name, rows: rows, W: W, H: H, n: n, names: names, adj: adj, edges: edges, cells: cells, given: given, k: COLORS.length };
+  }
+  // generic graph puzzle (used by fuzz): n regions, edge list, givens
+  function graphPuzzle(n, edges, given, k) {
+    var names = [], adj = [];
+    for (var i = 0; i < n; i++) { names.push(String.fromCharCode(65 + i)); adj.push([]); }
+    edges.forEach(function (e) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); });
+    return { n: n, names: names, adj: adj, edges: edges, given: given || {}, k: k || 3, cells: [] };
+  }
+
+  function V(p, r, c) { return r * p.k + c; }
+  function buildCNF(p) {
+    var cls = [], k = p.k, r, c, d;
+    for (r = 0; r < p.n; r++) {
+      var alo = []; for (c = 0; c < k; c++) alo.push(2 * V(p, r, c));
+      cls.push({ lits: alo, kind: 'alo', r: r });
+      for (c = 0; c < k; c++) for (d = c + 1; d < k; d++) cls.push({ lits: [2 * V(p, r, c) + 1, 2 * V(p, r, d) + 1], kind: 'amo', r: r });
+    }
+    p.edges.forEach(function (e) { for (c = 0; c < k; c++) cls.push({ lits: [2 * V(p, e[0], c) + 1, 2 * V(p, e[1], c) + 1], kind: 'edge', a: e[0], b: e[1], c: c }); });
+    for (var g in p.given) cls.push({ lits: [2 * V(p, +g, p.given[g])], kind: 'given', r: +g });
+    return { nVars: p.n * k, clauses: cls };
+  }
+
+  // ---------- solver ----------
+  // Events returned by step():
+  //  {type:'decide', r, c, level, node}                     -- tentative placement by choice (counted as 試した手数)
+  //  {type:'conflict', level, node, clause}                  -- 行き止まり (counted)
+  //  {type:'backtrack', from, to, flipR, flipC, forced}      -- naive: undo last choice, try the other side
+  //  {type:'learn', from, to, note, skipped, forced}         -- learn: note written, jump back `from-to` levels
+  //  {type:'sat', colors, ok} / {type:'unsat'}
+  function Solver(p, learn) {
+    this.p = p; this.learn = !!learn;
+    var cnf = buildCNF(p); this.nVars = cnf.nVars;
+    this.clauses = cnf.clauses;
+    var nl = 2 * this.nVars;
+    this.occ = []; for (var i = 0; i < nl; i++) this.occ.push([]);
+    for (i = 0; i < this.clauses.length; i++) this.attach(i);
+    this.val = new Int8Array(this.nVars).fill(-1); // -1 unassigned, 1 true, 0 false
+    this.lev = new Int32Array(this.nVars); this.rsn = new Int32Array(this.nVars).fill(-1);
+    this.trail = []; this.lim = []; this.qhead = 0;
+    this.stack = []; // per level: {lit, flipped, node}
+    this.stats = { decisions: 0, conflicts: 0, props: 0, learned: 0, maxJump: 0 };
+    this.notes = []; // learned clauses in puzzle words
+    this.tree = { nodes: [], cols: 0 };
+    this.root = this.mkNode(-1, -1, -1, 'root');
+    this.anchor = [this.root]; // tree anchor per level
+    this.pending = null; this.done = null;
+    this.firstConflict = -1;
+    for (i = 0; i < this.clauses.length && this.firstConflict < 0; i++) {
+      var u = this.clauses[i].lits; if (u.length !== 1) continue;
+      var tv = this.litVal(u[0]); if (tv === 0) this.firstConflict = i; else if (tv < 0) this.assign(u[0], i);
+    }
+    if (this.firstConflict < 0) this.firstConflict = this.propagate();
+    if (this.firstConflict >= 0) this.pending = this.firstConflict;
+  }
+  var S = Solver.prototype;
+  S.attach = function (ci) { var ls = this.clauses[ci].lits; for (var j = 0; j < ls.length; j++) this.occ[ls[j] ^ 1].push(ci); };
+  S.litVal = function (l) { var v = this.val[l >> 1]; return v < 0 ? -1 : (v ^ (l & 1)); };
+  S.level = function () { return this.lim.length; };
+  S.assign = function (l, reason) {
+    var v = l >> 1; this.val[v] = (l & 1) ? 0 : 1; this.lev[v] = this.level(); this.rsn[v] = reason; this.trail.push(l);
+    if (reason >= 0) { this.stats.props++; var c = this.clauses[reason]; if (c.note) c.note.fired++; }
+  };
+  S.propagate = function () {
+    while (this.qhead < this.trail.length) {
+      var l = this.trail[this.qhead++], ws = this.occ[l]; // clauses containing ¬l, which just became false
+      for (var i = 0; i < ws.length; i++) {
+        var ci = ws[i], ls = this.clauses[ci].lits, unk = -1, nunk = 0, sat = false;
+        for (var j = 0; j < ls.length; j++) { var t = this.litVal(ls[j]); if (t === 1) { sat = true; break; } if (t < 0) { nunk++; unk = ls[j]; } }
+        if (sat) continue;
+        if (nunk === 0) { this.qhead = this.trail.length; return ci; }
+        if (nunk === 1) this.assign(unk, ci);
+      }
+    }
+    return -1;
+  };
+  S.cancelUntil = function (L) {
+    if (this.level() <= L) return;
+    var t = this.lim[L];
+    for (var i = this.trail.length - 1; i >= t; i--) { var v = this.trail[i] >> 1; this.val[v] = -1; this.rsn[v] = -1; }
+    this.trail.length = t; this.lim.length = L; this.stack.length = L; this.anchor.length = L + 1; this.qhead = t;
+  };
+  S.regionColor = function (r) { for (var c = 0; c < this.p.k; c++) if (this.val[V(this.p, r, c)] === 1) return c; return -1; };
+  S.regionLevel = function (r) { var c = this.regionColor(r); return c < 0 ? -1 : this.lev[V(this.p, r, c)]; };
+  S.allowed = function (r) { var a = []; for (var c = 0; c < this.p.k; c++) if (this.val[V(this.p, r, c)] !== 0) a.push(c); return a; };
+  // fixed branching order shared by both solvers: first uncoloured region, lowest allowed colour
+  S.pickBranch = function () {
+    for (var r = 0; r < this.p.n; r++) {
+      if (this.regionColor(r) >= 0) continue;
+      for (var c = 0; c < this.p.k; c++) if (this.val[V(this.p, r, c)] < 0) return 2 * V(this.p, r, c);
+    }
+    return -1;
+  };
+  S.mkNode = function (parent, r, c, kind) {
+    var T = this.tree, pn = parent >= 0 ? T.nodes[parent] : null;
+    var node = { id: T.nodes.length, parent: parent, depth: pn ? pn.depth + 1 : 0, r: r, c: c, kind: kind, dead: 0, skipped: false, children: 0, x: 0, t: this.stats.decisions + this.stats.conflicts };
+    if (pn) { node.x = pn.children === 0 ? pn.x : ++T.cols; pn.children++; }
+    T.nodes.push(node); return node.id;
+  };
+  S.curAnchor = function () { return this.anchor[this.anchor.length - 1]; };
+  // after a backtrack/backjump, if the branching region got its colour by inference, draw it as an inferred node
+  S.markForced = function (r) {
+    var c = this.regionColor(r); if (c < 0) return -1;
+    var id = this.mkNode(this.curAnchor(), r, c, 'forced');
+    this.anchor[this.anchor.length - 1] = id; return id;
+  };
+  S.step = function () {
+    if (this.done) return null;
+    var ev;
+    if (this.pending !== null) {
+      var confl = this.pending; this.pending = null;
+      if (this.level() === 0) { this.done = { type: 'unsat' }; return this.done; }
+      ev = this.learn ? this.resolveLearn(confl) : this.resolveNaive();
+      if (!ev) { this.done = { type: 'unsat' }; return this.done; }
+      var c2 = this.propagate();
+      if (ev.forcedR >= 0) ev.forced = this.markForced(ev.forcedR);
+      if (c2 >= 0) this.onConflict(c2, ev);
+      return ev;
+    }
+    var lit = this.pickBranch();
+    if (lit < 0) {
+      var cols = []; for (var r = 0; r < this.p.n; r++) cols.push(this.regionColor(r));
+      this.done = { type: 'sat', colors: cols, ok: verify(this.p, cols) }; return this.done;
+    }
+    this.stats.decisions++;
+    var v = lit >> 1, rr = Math.floor(v / this.p.k), cc = v % this.p.k;
+    var node = this.mkNode(this.curAnchor(), rr, cc, 'decide');
+    this.lim.push(this.trail.length); this.stack.push({ lit: lit, flipped: false, node: node }); this.anchor.push(node);
+    this.assign(lit, -1);
+    ev = { type: 'decide', r: rr, c: cc, level: this.level(), node: node };
+    var cf = this.propagate();
+    if (cf >= 0) this.onConflict(cf, ev);
+    return ev;
+  };
+  S.onConflict = function (ci, ev) {
+    this.stats.conflicts++; this.pending = ci;
+    var nd = this.tree.nodes[this.curAnchor()]; nd.dead++;
+    ev.conflict = { clause: ci, node: nd.id, level: this.level() };
+  };
+  S.resolveNaive = function () {
+    // chronological: drop levels whose decision was already flipped, then flip the newest unflipped one
+    var from = this.level();
+    while (this.stack.length && this.stack[this.stack.length - 1].flipped) this.cancelUntil(this.level() - 1);
+    if (!this.stack.length) return null;
+    var d = this.level(), top = this.stack[d - 1];
+    this.cancelUntil(d - 1);
+    var parentAnchor = this.curAnchor();
+    this.lim.push(this.trail.length); this.stack.push({ lit: top.lit ^ 1, flipped: true, node: -1 }); this.anchor.push(parentAnchor);
+    this.assign(top.lit ^ 1, -1);
+    var v = top.lit >> 1;
+    return { type: 'backtrack', from: from, to: d, flipR: Math.floor(v / this.p.k), flipC: v % this.p.k, forcedR: Math.floor(v / this.p.k) };
+  };
+  S.resolveLearn = function (confl) {
+    var from = this.level(), seen = new Uint8Array(this.nVars), out = [], cnt = 0, p = -1, idx = this.trail.length - 1, ci = confl;
+    do {
+      var ls = this.clauses[ci].lits;
+      for (var j = 0; j < ls.length; j++) {
+        var q = ls[j], v = q >> 1;
+        if (p >= 0 && v === (p >> 1)) continue;
+        if (seen[v] || this.lev[v] === 0) continue;
+        seen[v] = 1;
+        if (this.lev[v] === from) cnt++; else out.push(q);
+      }
+      while (!seen[this.trail[idx] >> 1]) idx--;
+      p = this.trail[idx]; idx--; seen[p >> 1] = 0; cnt--;
+      ci = this.rsn[p >> 1];
+    } while (cnt > 0);
+    var lits = [p ^ 1].concat(out);
+    var bt = 0; for (j = 1; j < lits.length; j++) bt = Math.max(bt, this.lev[lits[j] >> 1]);
+    // the abandoned path (levels bt+1 .. from-1 are skipped without trying their other options)
+    var skipped = [];
+    for (var L = bt + 1; L < from; L++) { var nid = this.stack[L - 1].node; if (nid >= 0) { this.tree.nodes[nid].skipped = true; skipped.push(nid); } }
+    var deadNode = this.curAnchor();
+    // culprits: the earlier choices (decisions) whose consequences make up this clause
+    var cone = new Uint8Array(this.nVars), st = lits.map(function (l) { return l >> 1; }), dec = [];
+    while (st.length) {
+      var cv = st.pop(); if (cone[cv]) continue; cone[cv] = 1;
+      if (this.lev[cv] === 0) continue;
+      var rr = this.rsn[cv];
+      if (rr < 0) { dec.push(cv); continue; }
+      var rl = this.clauses[rr].lits; for (var q2 = 0; q2 < rl.length; q2++) if ((rl[q2] >> 1) !== cv) st.push(rl[q2] >> 1);
+    }
+    var self = this;
+    dec.sort(function (a, b) { return self.lev[a] - self.lev[b]; });
+    var culprits = dec.map(function (cv2) { return { r: Math.floor(cv2 / self.p.k), c: cv2 % self.p.k, level: self.lev[cv2] }; });
+    var lvls = lits.map(function (l) { return this.lev[l >> 1]; }, this);
+    this.cancelUntil(bt);
+    var note = { id: this.notes.length, lits: lits.slice(), culprits: culprits, fired: 0, born: this.stats.conflicts, jump: from - bt, levels: lvls };
+    note.words = describe(this.p, lits);
+    var cl = { lits: lits, kind: 'learnt', note: note };
+    this.clauses.push(cl); this.attach(this.clauses.length - 1); note.ci = this.clauses.length - 1;
+    this.notes.push(note); this.stats.learned++;
+    this.stats.maxJump = Math.max(this.stats.maxJump, from - bt);
+    this.assign(lits[0], this.clauses.length - 1);
+    var av = lits[0] >> 1;
+    return { type: 'learn', from: from, to: bt, note: note, skipped: skipped, deadNode: deadNode, forcedR: Math.floor(av / this.p.k) };
+  };
+  // does an assignment (solver's current partial one) falsify this clause?
+  S.falsifies = function (lits) { for (var i = 0; i < lits.length; i++) if (this.litVal(lits[i]) !== 0) return false; return true; };
+  S.run = function (limit) { var e; limit = limit || 1e7; while (limit-- > 0 && (e = this.step())) if (e.type === 'sat' || e.type === 'unsat') return e; return this.done; };
+
+  // learned clause -> puzzle words. Clause (l1 ∨ l2 ∨ ...) forbids the conjunction of the negations.
+  //   ¬v(r,c) in clause  => condition "r が c"
+  //   v(r,c)  in clause  => condition "r が c ではない"
+  function describe(p, lits) {
+    var conds = lits.map(function (l) {
+      var v = l >> 1, r = Math.floor(v / p.k), c = v % p.k;
+      return { r: r, c: c, is: (l & 1) === 1 };
+    });
+    // per region: either "r が c" (from ¬v(r,c)) or "r が c1・c2 以外" (from v(r,c1) ∨ v(r,c2))
+    var byR = {};
+    conds.forEach(function (d) { (byR[d.r] = byR[d.r] || []).push(d); });
+    var parts = [];
+    Object.keys(byR).map(Number).sort(function (a, b) { return a - b; }).forEach(function (r) {
+      var ds = byR[r], pos = ds.filter(function (d) { return d.is; }), neg = ds.filter(function (d) { return !d.is; });
+      pos.forEach(function (d) { parts.push({ r: r, cond: 'が' + COLORS[d.c], is: d.c, not: null }); });
+      if (neg.length) parts.push({ r: r, cond: 'が' + neg.map(function (d) { return COLORS[d.c]; }).join('・') + '以外', is: -1, not: neg.map(function (d) { return d.c; }) });
+    });
+    // merge regions that share the same condition: "V・Wが赤以外"
+    var groups = [];
+    parts.forEach(function (pt) {
+      var g = null; for (var i = 0; i < groups.length; i++) if (groups[i].cond === pt.cond) g = groups[i];
+      if (!g) { g = { cond: pt.cond, rs: [] }; groups.push(g); }
+      g.rs.push(pt.r);
+    });
+    var text = groups.map(function (g) { return g.rs.map(function (r) { return p.names[r]; }).join('・') + g.cond; }).join('、');
+    return { conds: conds, parts: parts, groups: groups, text: text + ' なら 詰む' };
+  }
+
+  function verify(p, cols) {
+    for (var r = 0; r < p.n; r++) if (!(cols[r] >= 0 && cols[r] < p.k)) return false;
+    for (var i = 0; i < p.edges.length; i++) if (cols[p.edges[i][0]] === cols[p.edges[i][1]]) return false;
+    for (var g in p.given) if (cols[g] !== p.given[g]) return false;
+    return true;
+  }
+  function brute(p) {
+    var cols = new Array(p.n).fill(-1), count = 0, first = null;
+    (function rec(r) {
+      if (r === p.n) { count++; if (!first) first = cols.slice(); return; }
+      for (var c = 0; c < p.k; c++) {
+        if (p.given[r] !== undefined && p.given[r] !== c) continue;
+        var ok = true; for (var j = 0; j < p.adj[r].length; j++) { var q = p.adj[r][j]; if (q < r && cols[q] === c) { ok = false; break; } }
+        if (!ok) continue; cols[r] = c; rec(r + 1); cols[r] = -1;
+      }
+    })(0);
+    return { count: count, first: first };
+  }
+  return { COLORS: COLORS, parseMap: parseMap, graphPuzzle: graphPuzzle, buildCNF: buildCNF, Solver: Solver, verify: verify, brute: brute, describe: describe, V: V };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+// CORE-END
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var MAPS = [
+    { key: 'small', label: '小さな島',
+      blurb: 'A と B の間に、小さな国 U・V・W が挟まっています。下の島（E〜H）は上の島と陸続きではありません。',
+      rows: ['AAAAWWWBBBB', 'AAAAUUVBBBB', 'AAAAUUVBBBB', 'AAAAUVVBBBB', '...........', 'EEEEEEFFFFF', 'EEEEEEFFFFF', 'GGGGGGHHHHH', 'GGGGGGHHHHH'] },
+    { key: 'trap', label: '意地悪な島',
+      blurb: '大きな国 A〜D の間に、名前が後ろの方の小国が挟まっています。下の島（E〜L）は上の島と陸続きではありません。',
+      rows: ['AAAAWWWBBBBZZZCCCCSSSDDDD', 'AAAAUUVBBBBXXYCCCCQQRDDDD', 'AAAAUUVBBBBXXYCCCCQQRDDDD', 'AAAAUVVBBBBXYYCCCCQRRDDDD', '.........................',
+        'EEEEEEEFFFFFFGGGGGGHHHHHH', 'EEEEEEEFFFFFFGGGGGGHHHHHH', 'IIIIIIIJJJJJJKKKKKKLLLLLL', 'IIIIIIIJJJJJJKKKKKKLLLLLL'] },
+    { key: 'plain', label: 'ふつうの地図',
+      blurb: 'くじ引きで作った地図で、国の名前もくじ引きです。罠は仕込んでいません。',
+      rows: ['NDDWPPFFFKKJHEEERR', 'NNWWPPFFSKKJJHEERR', 'NNWWWPFSSKKJJJHMRR', 'NTTTTPSSSSKKJJMMMR', 'QTTTTTSSSLOOJMMMXX', 'QQTTTTSSLOOOOMMXXX',
+        'QQQVVVIIIIIIIGGXBB', 'CQVVVVAAAIIIIGGGBB', 'CCVVVVAAAAUUUGGGGB', 'CCVVVVAAAAUUUGGGGG', 'CCVVVVAAAUUUUUGGGG'] }
+  ];
+  var COLS = ['#e2553a', '#2f6fcf', '#efb40c'];
+  var NOTE = ['#ffe45c', '#ff9fbd', '#a5e8a0', '#9fd8ff', '#ffbe6b', '#d6b8ff', '#fff38a'];
+  var NOTE_INK = ['#c99a00', '#e0557f', '#3f9f48', '#2d8fd0', '#e07f12', '#8a5bd6', '#b8a200'];
+  var INK = '#43434c', MARK = '#e23a5a';
+  var RATES = [1.3, 4, 45, Infinity]; // steps per second
+  var $ = function (id) { return document.getElementById(id); };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var st = { mi: 1, speed: 1, playing: false, race: true, side: {}, budget: 0, hold: 0, accel: 1, accelT: 0, finished: false, ready: false, errors: [] };
+
+  function hsh(a, b) { var h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; h = h ^ (h >>> 16); return ((h >>> 0) % 10000) / 10000; }
+  function fmt(n) { return n.toLocaleString('ja-JP'); }
+
+  // ---------------- model ----------------
+  function load(mi, opt) {
+    opt = opt || {};
+    st.mi = mi; st.playing = false; st.budget = 0; st.hold = 0; st.accel = 1; st.finished = false;
+    var spec = MAPS[mi];
+    st.p = Core.parseMap({ name: spec.label, rows: spec.rows });
+    ['naive', 'learn'].forEach(function (k) {
+      st.side[k] = { s: new Core.Solver(st.p, k === 'learn'), last: null, flash: [], jumps: [], matched: 0, doneAt: 0, steps: 0, dirty: true, culprits: null, irrelevant: null, flags: {} };
+    });
+    st.noteEls = [];
+    $('notes').innerHTML = '<div class="empty">付箋はまだありません。行き止まりのたびに1枚増えます。</div>';
+    $('result').className = 'result'; $('result').innerHTML = '';
+    $('narr-naive').innerHTML = spec.blurb;
+    $('narr-learn').innerHTML = '<em>▶ 再生</em> を押すと、ふたりが同じ地図を同時に塗り始めます。右側に付箋が貼られる瞬間を見てください。';
+    Array.prototype.forEach.call($('tabs').children, function (b, i) { b.setAttribute('aria-pressed', i === mi ? 'true' : 'false'); });
+    layout(); updateCounts(); syncButtons();
+    if (opt.autoplay) setPlaying(true);
+  }
+
+  function regionText(r, c) { return st.p.names[r] + 'を' + Core.COLORS[c] + 'で'; }
+  function conflictRegion(sv, ci) {
+    var cl = sv.clauses[ci];
+    if (cl.kind === 'alo' || cl.kind === 'amo' || cl.kind === 'given') return [cl.r];
+    if (cl.kind === 'edge') return [cl.a, cl.b];
+    // learnt clause: blame the regions it mentions
+    var rs = []; cl.lits.forEach(function (l) { var r = Math.floor((l >> 1) / st.p.k); if (rs.indexOf(r) < 0) rs.push(r); });
+    return rs;
+  }
+
+  function doStep(k) {
+    var S = st.side[k], sv = S.s;
+    if (sv.done) return null;
+    var firedBefore = sv.notes.map(function (n) { return n.fired; });
+    var ev = sv.step(); S.steps++; S.last = ev; S.dirty = true;
+    var now = performance.now();
+    if (!ev) return null;
+    // learned notes that fired during this step's propagation -> flag on the current tree node
+    sv.notes.forEach(function (n, i) {
+      if (i < firedBefore.length && n.fired > firedBefore[i]) {
+        var nid = sv.curAnchor(); (S.flags[nid] = S.flags[nid] || []).indexOf(n.id) < 0 && S.flags[nid].push(n.id);
+        markNoteHot(n.id);
+      }
+    });
+    var txt = '';
+    if (ev.type === 'decide') {
+      txt = '<em>' + regionText(ev.r, ev.c) + '</em>塗ってみる。';
+      S.flash.push({ r: ev.r, t: now, kind: 'put' });
+    } else if (ev.type === 'backtrack') {
+      var fr = st.p.names[ev.flipR];
+      txt = 'ひとつ前に戻る。' + fr + 'の' + Core.COLORS[ev.flipC] + 'はやめて、';
+      var fc = sv.regionColor(ev.flipR);
+      txt += fc >= 0 ? fr + 'は残りの<em>' + Core.COLORS[fc] + '</em>しかない。' : fr + 'の次の色を試す。';
+      S.culprits = null;
+    } else if (ev.type === 'learn') {
+      var nt = ev.note;
+      txt = '原因は <em>' + nt.culprits.map(function (c) { return st.p.names[c.r] + 'の' + Core.COLORS[c.c]; }).join(' ＋ ') + '</em>。付箋' + (nt.id + 1) + 'に書いて、' +
+        (ev.from - ev.to >= 2 ? '<em>' + (ev.from - ev.to) + '段</em>一気に戻る（間の選択は関係なかった）。' : 'ひとつ戻る。');
+      S.culprits = { list: nt.culprits, t: now, note: nt.id };
+      S.irrelevant = { regions: ev.skipped.map(function (id) { return sv.tree.nodes[id].r; }), t: now };
+      S.jumps.push({ from: ev.deadNode, to: sv.anchor[ev.to], n: ev.from - ev.to, note: nt.id });
+      addNote(nt);
+      if (st.speed <= 1) st.hold = now + (st.speed === 0 ? 2600 : 1700);
+    } else if (ev.type === 'sat') {
+      txt = ev.ok ? '<em>全部塗れた。</em>検算：隣どうしの同じ色 0 か所。' : '<em>検算に失敗</em>';
+      if (!ev.ok) st.errors.push(k + ' solution failed verification');
+      S.flash = []; S.irrelevant = null;
+      S.doneAt = now;
+    } else if (ev.type === 'unsat') {
+      txt = 'この地図は3色では塗れない。'; S.doneAt = now;
+    }
+    if (ev.conflict) {
+      var rs = conflictRegion(sv, ev.conflict.clause);
+      S.flash.push({ rs: rs, t: now, kind: 'dead' });
+      txt += ' → <em>' + rs.map(function (r) { return st.p.names[r]; }).join('と') + '</em>' + (rs.length > 1 ? 'が同じ色になる。' : 'に塗れる色がない。') + '<em>行き止まり。</em>';
+      if (k === 'naive') {
+        // does the naive searcher hit a combination already written on a note?
+        var ln = st.side.learn.s.notes;
+        for (var i = 0; i < ln.length; i++) if (sv.falsifies(ln[i].lits)) {
+          var nd = sv.tree.nodes[ev.conflict.node]; nd.match = ln[i].id; ln[i].matched = (ln[i].matched || 0) + 1; S.matched++;
+          txt += '（付箋' + (ln[i].id + 1) + 'と同じ理由）';
+          break;
+        }
+      }
+    }
+    if (S.flash.length > 40) S.flash.splice(0, S.flash.length - 40);
+    S.narr = txt;
+    return ev;
+  }
+
+  function advance() {
+    var N = st.side.naive.s, L = st.side.learn.s, moved = false;
+    if (st.race) {
+      if (!L.done) { doStep('learn'); moved = true; }
+      if (!N.done) { doStep('naive'); moved = true; }
+    } else {
+      if (!L.done) { doStep('learn'); moved = true; } else if (!N.done) { doStep('naive'); moved = true; }
+    }
+    if (!moved || (N.done && L.done)) finish();
+    return moved;
+  }
+
+  function finish() {
+    if (st.finished) return;
+    if (!(st.side.naive.s.done && st.side.learn.s.done)) return;
+    st.finished = true; setPlaying(false); showResult();
+  }
+
+  // ---------------- notes ----------------
+  function sw(c) { return '<span class="sw" style="background:' + COLS[c] + '"></span>'; }
+  function addNote(nt) {
+    var box = $('notes'); if (st.noteEls.length === 0) box.innerHTML = '';
+    var el = document.createElement('div');
+    var col = NOTE[nt.id % NOTE.length], rot = (hsh(nt.id, 7) * 5 - 2.5).toFixed(1) + 'deg';
+    el.className = 'note' + (reduced ? '' : ' slap');
+    el.style.background = col; el.style.setProperty('--rot', rot);
+    var big = nt.culprits.map(function (c) { return st.p.names[c.r] + sw(c.c) + '<small>' + Core.COLORS[c.c] + '</small>'; }).join(' ＋ ') + ' は詰む';
+    el.innerHTML = '<div class="no">付箋 ' + (nt.id + 1) + '　立入禁止</div><div class="big">' + big + '</div>' +
+      '<div class="exact">書いた規則：' + nt.words.text + '</div><div class="used" data-u></div>';
+    box.appendChild(el); st.noteEls.push(el);
+    updateNoteUse();
+  }
+  function markNoteHot(id) {
+    var el = st.noteEls && st.noteEls[id]; if (!el) return;
+    el.classList.add('hot'); clearTimeout(el._t); el._t = setTimeout(function () { el.classList.remove('hot'); }, 350);
+  }
+  function updateNoteUse() {
+    var ln = st.side.learn.s.notes;
+    st.noteEls.forEach(function (el, i) {
+      var n = ln[i], m = n.matched || 0;
+      el.querySelector('[data-u]').innerHTML = '素朴な方が同じ理由で詰んだ <b>' + fmt(m) + '</b>回';
+    });
+  }
+
+  // ---------------- result ----------------
+  function showResult() {
+    var N = st.side.naive, L = st.side.learn, nd = N.s.stats.conflicts, ld = L.s.stats.conflicts;
+    var okN = N.s.done.type === 'sat' && N.s.done.ok, okL = L.s.done.type === 'sat' && L.s.done.ok;
+    // runtime invariant: the final colouring obeys every note (notes never forbid a real solution)
+    var cols = L.s.done.colors, notesOk = true;
+    if (cols) L.s.notes.forEach(function (n) {
+      var sat = n.lits.some(function (l) { var v = l >> 1, r = Math.floor(v / st.p.k), c = v % st.p.k; return (cols[r] === c) !== ((l & 1) === 1); });
+      if (!sat) notesOk = false;
+    });
+    var ratio = ld > 0 ? Math.round(nd / ld) : null;
+    var el = $('result');
+    el.innerHTML = '<div class="vs"><span class="lbl">行き止まりの数</span><span>素朴 <span class="a">' + fmt(nd) + '</span>回</span><span class="x">対</span><span>学習 <span class="a">' + fmt(ld) + '</span>回</span>' +
+      (ratio && ratio > 1 ? '<span class="x">（約' + fmt(ratio) + '分の1）</span>' : '') + '</div>' +
+      '<p>試した手数は 素朴 ' + fmt(N.s.stats.decisions) + '手 ／ 学習 ' + fmt(L.s.stats.decisions) + '手。付箋は ' + L.s.notes.length + '枚。' +
+      (N.matched ? '素朴な探索の行き止まり ' + fmt(nd) + '回のうち <b>' + fmt(N.matched) + '回</b>は、付箋にもう書いてある組み合わせに、もう一度入って詰んだものでした。' : '') + '</p>' +
+      '<p><span class="chk">' + (okN && okL ? '検算 ✓' : '検算 ✗') + '</span>どちらの塗り方も、隣どうし同じ色の所はありません。<span class="chk" style="margin-left:8px">' + (notesOk ? '付箋 ✓' : '付箋 ✗') + '</span>付箋の規則は、見つかった塗り方をどれも禁じていません。</p>';
+    el.className = 'result on';
+    if (!(okN && okL && notesOk)) st.errors.push('verification failed');
+  }
+
+  // ---------------- drawing ----------------
+  var cv = {};
+  function setupCanvas(id, cssH) {
+    var c = $(id), w = c.clientWidth || c.parentNode.clientWidth, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (cssH) c.style.height = cssH + 'px';
+    var h = c.clientHeight || cssH;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    var ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cv[id] = { c: c, ctx: ctx, w: w, h: h, dpr: dpr };
+    return cv[id];
+  }
+  var patterns = null;
+  function makePatterns() {
+    patterns = COLS.map(function (col, ci) {
+      var s = 14, pc = document.createElement('canvas'); pc.width = pc.height = s * 2;
+      var x = pc.getContext('2d'); x.scale(2, 2);
+      x.strokeStyle = col; x.lineCap = 'round';
+      for (var i = -2; i < 4; i++) {
+        x.globalAlpha = 0.55 + 0.25 * hsh(i, ci); x.lineWidth = 1.6 + hsh(ci, i) * 0.8;
+        x.beginPath(); x.moveTo(i * 5 - 1, s + 1); x.lineTo(i * 5 + s + 1, -1); x.stroke();
+      }
+      return pc;
+    });
+  }
+  function pline(ctx, x1, y1, x2, y2, seed, rough) {
+    if (!rough) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); return; }
+    var mx = (x1 + x2) / 2 + (hsh(seed, 1) - 0.5) * rough, my = (y1 + y2) / 2 + (hsh(seed, 2) - 0.5) * rough;
+    ctx.moveTo(x1 + (hsh(seed, 3) - 0.5) * rough * 0.5, y1 + (hsh(seed, 4) - 0.5) * rough * 0.5);
+    ctx.quadraticCurveTo(mx, my, x2, y2);
+  }
+
+  function layout() {
+    if (!st.p) return;
+    var mobile = window.innerWidth < 760;
+    ['naive', 'learn'].forEach(function (k) {
+      var c = $('board-' + k), w = c.parentNode.clientWidth - (mobile ? 20 : 36);
+      var cell = Math.max(8, Math.min(mobile ? 22 : 24, Math.floor(w / st.p.W)));
+      var h = cell * st.p.H + 8;
+      var B = setupCanvas('board-' + k, h); B.cell = cell; B.ox = Math.floor((B.w - cell * st.p.W) / 2); B.oy = 4;
+      B.base = buildBase(B);
+      setupCanvas('tree-' + k, mobile ? 190 : 260);
+      st.side[k] && (st.side[k].dirty = true);
+    });
+    if (!patterns) makePatterns();
+  }
+  // static layer: borders + labels in pencil
+  function buildBase(B) {
+    var p = st.p, cell = B.cell, oc = document.createElement('canvas');
+    oc.width = Math.round(B.w * B.dpr); oc.height = Math.round(B.h * B.dpr);
+    var x = oc.getContext('2d'); x.setTransform(B.dpr, 0, 0, B.dpr, 0, 0);
+    var at = function (cx, cy) { return cy < 0 || cy >= p.H || cx < 0 || cx >= p.W ? '.' : p.rows[cy][cx]; };
+    x.strokeStyle = INK; x.lineCap = 'round'; x.lineWidth = 1.5; x.globalAlpha = 0.85;
+    x.beginPath();
+    var seed = 0;
+    for (var y = 0; y <= p.H; y++) for (var X = 0; X < p.W; X++) {
+      var a = at(X, y - 1), b = at(X, y); if (a !== b) pline(x, B.ox + X * cell, B.oy + y * cell, B.ox + (X + 1) * cell, B.oy + y * cell, seed++, 1.4);
+    }
+    for (X = 0; X <= p.W; X++) for (y = 0; y < p.H; y++) {
+      a = at(X - 1, y); b = at(X, y); if (a !== b) pline(x, B.ox + X * cell, B.oy + y * cell, B.ox + X * cell, B.oy + (y + 1) * cell, seed++, 1.4);
+    }
+    x.stroke();
+    // labels at the cell closest to the region's centroid
+    B.centers = [];
+    x.globalAlpha = 1; x.fillStyle = INK; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = '600 ' + Math.max(11, Math.round(cell * 0.75)) + 'px "Klee One", sans-serif';
+    for (var r = 0; r < p.n; r++) {
+      var cs = p.cells[r], sx = 0, sy = 0; cs.forEach(function (q) { sx += q[0]; sy += q[1]; }); sx /= cs.length; sy /= cs.length;
+      var best = cs[0], bd = 1e9; cs.forEach(function (q) { var d = (q[0] - sx) * (q[0] - sx) + (q[1] - sy) * (q[1] - sy); if (d < bd) { bd = d; best = q; } });
+      var cx = B.ox + (best[0] + 0.5) * cell, cy = B.oy + (best[1] + 0.5) * cell;
+      B.centers.push([cx, cy]);
+      x.fillStyle = 'rgba(252,252,247,.85)'; x.beginPath(); x.arc(cx, cy, cell * 0.48, 0, 7); x.fill();
+      x.fillStyle = INK; x.fillText(p.names[r], cx, cy + 1);
+    }
+    return oc;
+  }
+
+  function drawBoard(k, now) {
+    var B = cv['board-' + k], S = st.side[k], sv = S.s, p = st.p, ctx = B.ctx, cell = B.cell;
+    ctx.clearRect(0, 0, B.w, B.h);
+    for (var r = 0; r < p.n; r++) {
+      var c = sv.regionColor(r);
+      if (c < 0) continue;
+      var pat = ctx.createPattern(patterns[c], 'repeat');
+      if (pat.setTransform && window.DOMMatrix) pat.setTransform(new DOMMatrix().scale(0.5));
+      ctx.fillStyle = pat;
+      ctx.globalAlpha = 1;
+      p.cells[r].forEach(function (q) { ctx.fillRect(B.ox + q[0] * cell, B.oy + q[1] * cell, cell, cell); });
+      ctx.globalAlpha = 0.13; ctx.fillStyle = COLS[c];
+      p.cells[r].forEach(function (q) { ctx.fillRect(B.ox + q[0] * cell, B.oy + q[1] * cell, cell, cell); });
+      ctx.globalAlpha = 1;
+    }
+    // regions skipped by a backjump: veil them for a moment ("関係なかった")
+    if (S.irrelevant && now - S.irrelevant.t < 2200) {
+      var a = 1 - Math.max(0, (now - S.irrelevant.t - 1400) / 800);
+      S.irrelevant.regions.forEach(function (rr) {
+        if (rr < 0) return;
+        ctx.globalAlpha = 0.55 * a; ctx.fillStyle = '#fcfcf7';
+        p.cells[rr].forEach(function (q) { ctx.fillRect(B.ox + q[0] * cell, B.oy + q[1] * cell, cell, cell); });
+      });
+      ctx.globalAlpha = 1;
+    }
+    ctx.drawImage(B.base, 0, 0, B.w, B.h);
+    // flashes
+    S.flash.forEach(function (f) {
+      var age = now - f.t;
+      if (f.kind === 'put' && age < 500) {
+        var ce = B.centers[f.r]; ctx.strokeStyle = INK; ctx.globalAlpha = 1 - age / 500; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(ce[0], ce[1], cell * (0.5 + age / 700), 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      if (f.kind === 'dead' && age < 900) {
+        ctx.globalAlpha = Math.min(1, 1.6 - age / 560); ctx.strokeStyle = MARK; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        f.rs.forEach(function (rr, j) {
+          var ce = B.centers[rr], s = cell * 0.62;
+          ctx.beginPath(); pline(ctx, ce[0] - s, ce[1] - s, ce[0] + s, ce[1] + s, rr * 3 + j, 3); pline(ctx, ce[0] + s, ce[1] - s, ce[0] - s, ce[1] + s, rr * 5 + j, 3); ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+      }
+    });
+    // culprits: marker circles in the note colour
+    if (S.culprits) {
+      var age2 = now - S.culprits.t, colr = NOTE_INK[S.culprits.note % NOTE_INK.length];
+      var prog = Math.min(1, age2 / 500), fade = age2 > 4200 ? Math.max(0, 1 - (age2 - 4200) / 600) : 1;
+      if (fade > 0) {
+        ctx.strokeStyle = colr; ctx.lineWidth = 3.2; ctx.globalAlpha = 0.9 * fade; ctx.lineCap = 'round';
+        S.culprits.list.forEach(function (cu, j) {
+          var ce = B.centers[cu.r], rad = cell * 0.95;
+          ctx.beginPath(); ctx.ellipse(ce[0], ce[1], rad * 1.15, rad, -0.2 + j * 0.3, 0.3, 0.3 + Math.PI * 2.1 * prog); ctx.stroke();
+        });
+        if (prog >= 1) {
+          var c0 = B.centers[S.culprits.list[0].r];
+          ctx.fillStyle = colr; ctx.font = '600 ' + Math.max(12, cell * 0.7) + 'px "Klee One",sans-serif'; ctx.textAlign = 'left';
+          var lx = Math.min(c0[0] + cell * 1.1, B.w - 80), ly = Math.max(c0[1] - cell * 0.9, 12);
+          ctx.fillText('犯人', lx, ly);
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  function drawTree(k, now) {
+    var T = cv['tree-' + k], S = st.side[k], sv = S.s, ctx = T.ctx, nodes = sv.tree.nodes;
+    ctx.clearRect(0, 0, T.w, T.h);
+    var deep = 0; for (var d0 = 0; d0 < nodes.length; d0++) if (nodes[d0].depth > deep) deep = nodes[d0].depth;
+    S.maxDepth = Math.max(S.maxDepth || 10, deep + 3);
+    var cols = sv.tree.cols, maxD = S.maxDepth, padL = 14, padR = 14, padT = 12, padB = k === 'naive' ? 30 : 10;
+    var sx = Math.min(60, (T.w - padL - padR) / Math.max(1, cols)), sy = Math.min(20, (T.h - padT - padB) / maxD);
+    var X = function (n) { return padL + n.x * sx; }, Y = function (n) { return padT + n.depth * sy; };
+    var dense = sx < 3, rough = dense ? 0 : 2;
+    // current path
+    var onPath = {}; var cur = sv.done && sv.done.type === 'sat' ? sv.curAnchor() : sv.curAnchor();
+    for (var q = cur; q >= 0; q = nodes[q].parent) onPath[q] = 1;
+    // edges
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = INK; ctx.globalAlpha = dense ? 0.45 : 0.7; ctx.lineWidth = dense ? 0.7 : 1.2;
+    ctx.beginPath();
+    for (var i = 1; i < nodes.length; i++) {
+      var n = nodes[i], pn = nodes[n.parent];
+      if (onPath[i]) continue;
+      if (n.x === pn.x) pline(ctx, X(pn), Y(pn), X(n), Y(n), i, rough);
+      else { pline(ctx, X(pn), Y(pn), X(n), Y(pn) + sy * 0.6, i, rough); pline(ctx, X(n), Y(pn) + sy * 0.6, X(n), Y(n), i + 7, 0); }
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = 2.2; ctx.strokeStyle = INK; ctx.beginPath();
+    for (q = cur; q > 0; q = nodes[q].parent) {
+      n = nodes[q]; pn = nodes[n.parent];
+      if (n.x === pn.x) pline(ctx, X(pn), Y(pn), X(n), Y(n), q, rough);
+      else { pline(ctx, X(pn), Y(pn), X(n), Y(pn) + sy * 0.6, q, rough); pline(ctx, X(n), Y(pn) + sy * 0.6, X(n), Y(n), q + 7, 0); }
+    }
+    ctx.stroke();
+    // skipped (abandoned by a backjump): marker strike
+    ctx.strokeStyle = MARK; ctx.globalAlpha = 0.75; ctx.lineWidth = 5;
+    nodes.forEach(function (n) {
+      if (!n.skipped) return; var pn = nodes[n.parent];
+      ctx.beginPath(); ctx.moveTo(X(n) - 7, (Y(n) + Y(pn)) / 2 - 5); ctx.lineTo(X(n) + 7, (Y(n) + Y(pn)) / 2 + 5); ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+    // nodes
+    var r0 = dense ? 1.3 : Math.min(4.2, Math.max(2, sx * 0.3));
+    var showLbl = sx >= 14;
+    ctx.font = '12px "Klee One",sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (i = 1; i < nodes.length; i++) {
+      n = nodes[i]; var x = X(n), y = Y(n);
+      if (n.dead) {
+        var cm = n.match !== undefined ? NOTE_INK[n.match % NOTE_INK.length] : INK;
+        if (n.match !== undefined && !dense) { ctx.fillStyle = NOTE[n.match % NOTE.length]; ctx.fillRect(x - 5, y + 1, 10, 10); }
+        ctx.strokeStyle = n.match !== undefined ? cm : MARK; ctx.lineWidth = dense ? 1 : 2; var s = dense ? 1.6 : 3.6;
+        ctx.beginPath(); ctx.moveTo(x - s, y + 6 - s); ctx.lineTo(x + s, y + 6 + s); ctx.moveTo(x + s, y + 6 - s); ctx.lineTo(x - s, y + 6 + s); ctx.stroke();
+        if (!dense) { // eraser crumbs
+          ctx.fillStyle = 'rgba(200,170,170,.55)';
+          for (var e = 0; e < 3; e++) { ctx.beginPath(); ctx.arc(x + (hsh(i, e) - 0.5) * 14, y + 10 + hsh(e, i) * 6, 0.9 + hsh(i, e + 9), 0, 7); ctx.fill(); }
+        }
+      }
+      ctx.fillStyle = COLS[n.c]; ctx.strokeStyle = COLS[n.c]; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(x, y, onPath[i] ? r0 + 1 : r0, 0, 7);
+      if (n.kind === 'forced') { ctx.fillStyle = '#fcfcf7'; ctx.fill(); ctx.stroke(); } else ctx.fill();
+      if (showLbl && (onPath[i] || n.dead || nodes.length < 140)) { ctx.fillStyle = INK; ctx.fillText(st.p.names[n.r], x + r0 + 2, y); }
+      var fl = S.flags[i];
+      if (fl && !dense) fl.forEach(function (id, j) { ctx.fillStyle = NOTE[id % NOTE.length]; ctx.fillRect(x - 12 - j * 7, y - 9, 7, 7); ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 0.6; ctx.strokeRect(x - 12 - j * 7, y - 9, 7, 7); });
+    }
+    // root
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X(nodes[0]), Y(nodes[0]), 3, 0, 7); ctx.fill();
+    // backjump arrows
+    S.jumps.forEach(function (j, ji) {
+      var a = nodes[j.from], b = nodes[j.to]; if (!a || !b) return;
+      var x1 = X(a) + 6, y1 = Y(a), x2 = X(b) + 6, y2 = Y(b) + 2;
+      var colr = NOTE_INK[j.note % NOTE_INK.length], bulge = Math.max(26, sx * 0.9);
+      ctx.strokeStyle = colr; ctx.lineWidth = 2.4; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.bezierCurveTo(x1 + bulge, y1 - 10, x2 + bulge, y2 + 10, x2 + 3, y2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x2 + 3, y2); ctx.lineTo(x2 + 11, y2 - 3); ctx.moveTo(x2 + 3, y2); ctx.lineTo(x2 + 10, y2 + 6); ctx.stroke();
+      if (j.n >= 2) {
+        ctx.fillStyle = colr; ctx.font = '600 12px "Klee One",sans-serif';
+        var lx = Math.min(x1 + bulge * 0.75 + 4, T.w - 64);
+        ctx.fillText(j.n + '段もどる', lx, (y1 + y2) / 2);
+      }
+      ctx.globalAlpha = 1;
+    });
+    // naive only: why did each dead end happen?  share of dead ends that match a note already written
+    if (k === 'naive' && sv.stats.conflicts > 0 && st.side.learn.s.notes.length) {
+      var tot = sv.stats.conflicts, bx = padL, bw = T.w - padL - padR, by = T.h - 13;
+      ctx.font = '11.5px "Klee One",sans-serif'; ctx.fillStyle = INK; ctx.textBaseline = 'alphabetic';
+      ctx.fillText('行き止まりの理由（色＝同じ理由の付箋）', bx, by - 4);
+      var xx = bx;
+      st.side.learn.s.notes.forEach(function (nt) {
+        var w = bw * (nt.matched || 0) / tot; if (w <= 0) return;
+        ctx.fillStyle = NOTE[nt.id % NOTE.length]; ctx.fillRect(xx, by, w, 10);
+        if (w > 34) { ctx.fillStyle = INK; ctx.fillText(String(nt.id + 1), xx + 3, by + 9); }
+        xx += w;
+      });
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 10);
+      ctx.textBaseline = 'middle';
+    }
+    if (nodes.length === 1) { ctx.fillStyle = '#8a8a94'; ctx.font = '13px "Klee One",sans-serif'; ctx.fillText('ここから枝分かれが伸びていきます', padL + 10, padT + 2); }
+  }
+
+  function updateCounts() {
+    ['naive', 'learn'].forEach(function (k) {
+      var s = st.side[k].s.stats;
+      $('dead-' + k).textContent = fmt(s.conflicts); $('dec-' + k).textContent = fmt(s.decisions);
+      if (st.side[k].narr !== undefined) $('narr-' + k).innerHTML = st.side[k].narr;
+    });
+    if (st.noteEls.length) updateNoteUse();
+    $('mini').innerHTML = '行き止まり　素朴 <b>' + fmt(st.side.naive.s.stats.conflicts) + '</b>回　／　学習 <b>' + fmt(st.side.learn.s.stats.conflicts) + '</b>回　付箋 ' + st.side.learn.s.notes.length + '枚';
+    var ff = $('ff-naive');
+    if (st.accel > 1.5 && !st.side.naive.s.done) { ff.textContent = '早送り ×' + Math.round(st.accel); ff.className = 'ff on'; } else ff.className = 'ff';
+  }
+
+  // ---------------- loop ----------------
+  var last = 0;
+  function frame(now) {
+    var dt = Math.min(100, now - (last || now)); last = now;
+    if (st.playing && now >= st.hold) {
+      var learnDone = !!st.side.learn.s.done;
+      // once the learning searcher is done, the naive one is fast-forwarded (the counts stay real)
+      if (st.race && learnDone && !st.side.naive.s.done && st.speed < 3) { st.accelT += dt; st.accel = Math.min(1000, Math.pow(2, st.accelT / 600)); }
+      var rate = RATES[st.speed] * st.accel;
+      if (rate === Infinity) { var guard = 0; while (!st.finished && advance() && guard++ < 50000) if (st.hold > now) break; }
+      else {
+        st.budget += dt * rate / 1000; var n = 0;
+        while (st.budget >= 1 && n < 5000) { st.budget -= 1; n++; advance(); if (st.finished || st.hold > now) { st.budget = 0; break; } }
+      }
+    }
+    var anyDirty = false;
+    ['naive', 'learn'].forEach(function (k) {
+      var S = st.side[k];
+      var animating = S.flash.some(function (f) { return now - f.t < 900; }) || (S.culprits && now - S.culprits.t < 4900) || (S.irrelevant && now - S.irrelevant.t < 2300);
+      if (S.dirty || animating) { drawBoard(k, now); drawTree(k, now); S.dirty = false; anyDirty = true; }
+    });
+    if (anyDirty) updateCounts();
+    requestAnimationFrame(frame);
+  }
+
+  function setPlaying(on) {
+    if (on && st.finished) { load(st.mi); }
+    st.playing = on; if (on) st.hold = 0;
+    $('play').textContent = on ? '❚❚ 停止' : '▶ 再生';
+  }
+  function syncButtons() {
+    Array.prototype.forEach.call($('speeds').children, function (b) { b.setAttribute('aria-pressed', +b.dataset.s === st.speed ? 'true' : 'false'); });
+    $('race').setAttribute('aria-pressed', st.race ? 'true' : 'false');
+    var sm = window.innerWidth < 760;
+    $('race').textContent = st.race ? (sm ? '同時' : '同時に走らせる') : (sm ? '順番' : '順番に（学習→素朴）');
+    $('play').textContent = st.playing ? '❚❚ 停止' : '▶ 再生';
+  }
+
+  // ---------------- UI ----------------
+  MAPS.forEach(function (m, i) {
+    var b = document.createElement('button'); b.className = 'tab'; b.textContent = m.label;
+    b.onclick = function () { load(i); };
+    $('tabs').appendChild(b);
+  });
+  $('play').onclick = function () { setPlaying(!st.playing); };
+  $('step').onclick = function () { if (st.finished) load(st.mi); setPlaying(false); st.hold = 0; advance(); };
+  $('reset').onclick = function () { load(st.mi); };
+  $('race').onclick = function () { st.race = !st.race; load(st.mi); syncButtons(); };
+  Array.prototype.forEach.call($('speeds').children, function (b) {
+    b.onclick = function () { st.speed = +b.dataset.s; syncButtons(); if (!st.playing && !st.finished) setPlaying(true); };
+  });
+  var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(layout, 120); });
+
+  load(1);
+  requestAnimationFrame(frame);
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () { layout(); st.ready = true; });
+  setTimeout(function () { st.ready = true; }, 4000);
+
+  // test hooks
+  window.__sn = {
+    get ready() { return st.ready; },
+    load: function (i, auto) { load(i, { autoplay: !!auto }); },
+    speed: function (s) { st.speed = s; syncButtons(); },
+    play: function () { setPlaying(true); }, pause: function () { setPlaying(false); },
+    race: function (on) { st.race = !!on; load(st.mi); syncButtons(); },
+    step: function (n) { for (var i = 0; i < (n || 1); i++) advance(); },
+    stepUntil: function (pred, max) { for (var i = 0; i < (max || 100000); i++) { if (pred(this.state())) return true; if (!advance()) return false; } return false; },
+    state: function () {
+      var f = function (k) { var S = st.side[k], s = S.s; return { dead: s.stats.conflicts, dec: s.stats.decisions, notes: s.notes.length, done: s.done && s.done.type, ok: s.done && s.done.ok, last: S.last && S.last.type, matched: S.matched, maxJump: s.stats.maxJump, nodes: s.tree.nodes.length }; };
+      return { map: MAPS[st.mi].key, naive: f('naive'), learn: f('learn'), finished: st.finished, errors: st.errors.slice() };
+    }
+  };
+})();
+
+</script>
+</body>
+</html>
