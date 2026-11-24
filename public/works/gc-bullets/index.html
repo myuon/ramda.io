@@ -140,6 +140,15 @@ canvas{display:block;width:100%}
   button{padding:6px 9px;font-size:12.5px}
 }
 </style>
+<style>
+/* ramda.io: 解説動画の埋め込み(スマホでは .page が flex 縦並びになるので order で最後に置く) */
+.rv{box-sizing:border-box;width:100%;max-width:360px;margin:32px auto 28px;padding:0 4px;order:9}
+.rv-h{font-size:17px;line-height:1.4;margin:0 0 10px;font-weight:700}
+.rv-frame{position:relative;width:100%;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#000}
+.rv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.rv-ch{font-size:13px;line-height:1.6;margin:10px 0 0}
+.rv-ch a{color:inherit}
+</style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -207,6 +216,11 @@ canvas{display:block;width:100%}
   </ol>
 </div>
 <p class="foot" id="foot">単位は語（4バイト）。GC の仕事量は、コピーした語、たどったポインタ、走査したカード・ルート・ヘッダの合計で、実時間ではない。停止時間は左右共通で 1,000語 = 20ミリ秒 に換算している（本物の GC より数千倍遅く見せている）。ヒープの総量は左右で同じ（世代別は eden 12,288語、survivor 4,096語×2、old は地形の1.25倍＋40,960語。非世代別はその合計を1つの空間にする）。1回の停止は、同じフレームの中で続けて起きた GC の合計（old が足りずに major GC と minor GC が続くと1回の長い停止になる）。地形マップは段・列・タイルのオブジェクトの木で、ゲームの間ずっと生きている長寿命データ。参照実行は GC を持たない普通の JS オブジェクトのグラフで、参照数で死んだ瞬間を測る。起動時のマップの読み込みと最初の5秒は、表示の前に済ませている。</p>
+<section class="rv" id="video" aria-labelledby="rv-h">
+  <h2 class="rv-h" id="rv-h">解説動画（85秒）</h2>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/Ut1chcwpiEo" title="弾は若くして死ぬ。 の解説動画" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <p class="rv-ch">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
+</section>
 </div>
 <script>
 /*<runtime>*/
