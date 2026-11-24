@@ -1,0 +1,1077 @@
+<!doctype html>
+<!--
+  弾は若くして死ぬ。 bullet.html — generational vs non-generational GC under a bullet-hell game.
+
+  Capture hook (for a future video script; deterministic: fixed seed per preset):
+    URL hash   #preset=normal|bigmap|longlived  &scale=1|4|16|32  &life=<frames>  &speed=0|0.25|1|2  &freeze=1
+               (query string ?scale=..&speed=.. also works). freeze=1 stops the page clock.
+    window.__bullet:
+      .preset(name)               reset into a preset (normal / bigmap / longlived)
+      .set({scale,life,speed})    change settings; scale or life resets both games
+      .freeze() / .play(speed)    stop or restart the page clock (sim time only moves via the calls below)
+      .stepFrames(n)              advance simulated time by n x 16.67 ms (a frozen side stays frozen)
+      .advance(ms, until?)        advance simulated time; optional until(state) predicate stops early
+      .toFrame(f, side="gen")     advance until that side's game frame >= f
+      .forceMajor()               start a major GC on the generational side now (「大掃除を起こす」)
+      .state()                    numbers on screen: frames, stops, minor/major counts, pause totals and worst,
+                                  frozen-ms left per side, verdict text, invariant check counts, halted
+      .draw()                     redraw now (after advancing while frozen)
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>弾は若くして死ぬ。― 世代別 GC の賭け</title>
+<meta name="description" content="同じ弾幕ゲームを2つの GC で同時に動かす。マップを広げると、片方だけが止まる。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ramda.io">
+<meta property="og:title" content="弾は若くして死ぬ。― 世代別 GC の賭け">
+<meta property="og:description" content="同じ弾幕ゲームを2つの GC で同時に動かす。マップを広げると、片方だけが止まる。">
+<meta property="og:url" content="https://www.ramda.io/works/gc-bullets/">
+<meta property="og:image" content="https://www.ramda.io/works/gc-bullets/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="弾は若くして死ぬ。― 世代別 GC の賭け">
+<meta name="twitter:description" content="同じ弾幕ゲームを2つの GC で同時に動かす。マップを広げると、片方だけが止まる。">
+<meta name="twitter:image" content="https://www.ramda.io/works/gc-bullets/ogp.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#ffffff; --ink:#000000; --red:#e4002b; --g1:#eeeeee; --g2:#c4c4c4; --g3:#6b6b6b;
+  --m:32px; --gut:24px;
+  --sans:"Archivo","Noto Sans JP","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --jp:"Noto Sans JP","Archivo",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
+.page{max-width:1360px;margin:0 auto;padding:24px var(--m) 56px}
+.rule{border-top:2px solid var(--ink)}
+.hair{border-top:1px solid var(--ink)}
+
+header{display:grid;grid-template-columns:5fr 7fr;column-gap:var(--gut);align-items:end;padding-bottom:16px}
+h1{font-family:var(--jp);font-weight:900;font-size:60px;line-height:1.02;letter-spacing:-.02em}
+.lede{margin-top:12px;font-size:14px;line-height:1.6;max-width:34em}
+.hero{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--gut)}
+.hero div{border-top:1px solid var(--ink);padding-top:6px}
+.hero b{display:block;font-family:"Archivo";font-stretch:75%;font-weight:800;font-size:92px;line-height:.86;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.hero b small{font-size:.34em;font-weight:700;letter-spacing:0;margin-left:3px}
+.hero .r b{color:var(--red)}
+.hero span{display:block;margin-top:8px;font-size:12.5px;line-height:1.45;max-width:24em}
+.hero span em{font-style:normal;color:var(--g3)}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:center;padding:10px 0}
+.seg{display:flex;align-items:center}
+.seg .lab{font-size:12px;color:var(--g3);margin-right:10px}
+button{font:inherit;font-size:13px;font-weight:600;background:var(--paper);color:var(--ink);border:1px solid var(--ink);padding:6px 12px;cursor:pointer;margin-left:-1px;min-height:32px}
+.seg button:first-of-type{margin-left:0}
+button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+button.act{border-color:var(--red);color:var(--red)}
+button.act:active{background:var(--red);color:var(--paper)}
+button:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.live{margin-left:auto;font-size:12.5px;color:var(--g3)}
+.rulecap{font-size:12px;color:var(--g3);padding-bottom:4px}
+.verdict{border-top:2px solid var(--ink);padding:10px 0 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 18px}
+.verdict b{font-family:var(--jp);font-weight:900;font-size:26px;line-height:1.25}
+.verdict.lost b{color:var(--red)}
+.verdict span{font-size:13px;color:var(--ink)}
+.presets{display:flex;align-items:center;padding:4px 0 2px}
+.presets .lab{font-size:12px;color:var(--g3);margin-right:10px}
+.presets button:first-of-type{margin-left:0}
+.stats span.maj{color:var(--red);font-weight:700}
+.live b{color:var(--ink);font-weight:700}
+
+.duel{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--gut);padding-top:14px}
+.side{min-width:0}
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-bottom:6px;border-top:2px solid var(--ink);padding-top:6px}
+.shead h2{font-family:var(--jp);font-weight:900;font-size:22px;line-height:1.15}
+.shead h2 small{font-weight:500;font-size:12.5px;margin-left:8px;color:var(--g3)}
+.chip{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip i{display:inline-block;width:10px;height:10px;background:var(--ink)}
+.chip.stw{color:var(--red)} .chip.stw i{background:var(--red)}
+canvas{display:block;width:100%}
+.field{aspect-ratio:480/300;height:auto}
+.cap{font-size:11.5px;color:var(--g3);display:flex;justify-content:space-between;gap:8px;padding:6px 0 2px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);column-gap:12px;padding-top:8px;border-top:1px solid var(--ink);margin-top:4px}
+.stats div b{display:block;font-family:"Archivo";font-stretch:75%;font-weight:800;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.stats div span{font-size:11.5px;color:var(--g3)}
+.side.flat .stats div.w b{color:var(--red)}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:12px;color:var(--g3);padding:14px 0 4px}
+.legend .k{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:12px;height:12px;background:var(--ink)}
+.sw.dot{border-radius:50%;width:9px;height:9px}
+.sw.ghost{background:transparent;border:1.5px solid var(--g2);border-radius:50%;width:9px;height:9px}
+.sw.red{background:var(--red)}
+.sw.dead{background:var(--g2)}
+
+.checks{display:grid;grid-template-columns:3fr 9fr;column-gap:var(--gut);padding-top:22px}
+.checks h2{font-family:var(--jp);font-size:22px;font-weight:900;line-height:1.2;padding-top:10px}
+.checks ol{list-style:none;padding-top:10px}
+.checks li{display:grid;grid-template-columns:88px 1fr 120px;gap:12px;padding:8px 0;border-bottom:1px solid var(--g2);align-items:baseline}
+.checks li b{font-weight:800;font-size:13px}
+.checks li b.ok::before{content:"";display:inline-block;width:9px;height:9px;background:var(--ink);margin-right:7px}
+.checks li b.ng{color:var(--red)}
+.checks li b.ng::before{content:"";display:inline-block;width:9px;height:9px;background:var(--red);margin-right:7px}
+.checks li span{font-size:13px}
+.checks li code{font-family:"Archivo";font-stretch:75%;font-weight:700;font-size:15px;text-align:right;font-variant-numeric:tabular-nums}
+.foot{margin-top:24px;font-size:12px;color:var(--g3);max-width:62em;line-height:1.6}
+
+@media (max-width:860px){
+  :root{--m:16px;--gut:12px}
+  .page{padding-top:14px;display:flex;flex-direction:column}
+  header{grid-template-columns:1fr;padding-bottom:4px;order:0}
+  h1{font-size:24px} h1 br{display:none} .lede{display:none}
+  .hero{display:none}
+  .verdict{order:1;padding:5px 0 4px;gap:0 8px} .verdict b{font-size:15px} .verdict span{font-size:10.5px;line-height:1.35}
+  .presets{order:1;padding:2px 0 0} .presets .lab{display:none} .presets button{font-size:12px;padding:4px 8px;min-height:28px}
+  .duel{grid-template-columns:1fr;row-gap:8px;padding-top:6px;order:2}
+  #barRule{order:3;margin-top:12px} .bar{order:4} .rulecap{order:5} .legend{order:6} .checks{order:6} .foot{order:7}
+  .shead{padding-top:3px;padding-bottom:3px} .shead h2{font-size:14px} .shead h2 small{display:none}
+  .chip{font-size:12px}
+  .cap{display:none}
+  .stats{padding-top:3px;margin-top:2px} .stats div b{font-size:15px} .stats div span{font-size:9.5px;line-height:1.2;display:block}
+  .checks{grid-template-columns:1fr}
+  .checks li{grid-template-columns:70px 1fr 64px;gap:8px}
+  .live{margin-left:0;width:100%}
+  button{padding:6px 9px;font-size:12.5px}
+}
+</style>
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+<div class="page">
+<header>
+  <div>
+    <h1>弾は若くして<br>死ぬ。</h1>
+    <p class="lede">同じ弾幕ゲームを、同じ種・同じ入力で2つ同時に動かしている。弾も火花も敵も地形のタイルも、すべて模擬ヒープ上の本物のオブジェクト。GC が走ると、そのゲームは GC の仕事量に比例した時間だけ本当に止まる。<span class="long">左は若い領域だけを掃除する世代別 GC、右はヒープ全体をたどる GC。</span></p>
+  </div>
+  <div class="hero">
+    <div><b id="hGen">—</b><span>世代別 GC の最悪の停止。<em id="hGenD"></em></span></div>
+    <div class="r"><b id="hFlat">—</b><span>非世代別 GC の最悪の停止。<em id="hFlatD"></em></span></div>
+  </div>
+</header>
+
+<div class="verdict" id="verdict" aria-live="polite"><b id="vHead">判定を待っている</b><span id="vSub"></span></div>
+<div class="presets" role="group" aria-label="場面"><span class="lab">場面</span>
+  <button data-preset="normal" aria-pressed="false">ふつうのゲーム</button><button data-preset="bigmap" aria-pressed="false">マップが巨大</button><button data-preset="longlived" aria-pressed="false">弾が長生き</button></div>
+
+<div class="duel">
+  <section class="side gen" id="sideGen">
+    <div class="shead"><h2>世代別 GC<small>eden を頻繁に、old はまれに</small></h2><div class="chip" id="chipGen"><i></i><span>実行中</span></div></div>
+    <canvas class="field" id="fGen" aria-label="世代別 GC で動くゲーム"></canvas>
+    <canvas id="bGen" aria-label="世代別ヒープ"></canvas>
+    <canvas id="pGen" aria-label="世代別 GC の停止の記録"></canvas>
+    <div class="stats"><div><b id="gN">0</b><span id="gNs">止まった回数</span></div><div><b id="gT">0</b><span>停止の合計</span></div><div class="w"><b id="gW">0</b><span>最悪の停止</span></div><div><b id="gL">0</b><span>相手との差</span></div></div>
+  </section>
+  <section class="side flat" id="sideFlat">
+    <div class="shead"><h2>非世代別 GC<small>毎回ヒープ全体をたどって詰める</small></h2><div class="chip" id="chipFlat"><i></i><span>実行中</span></div></div>
+    <canvas class="field" id="fFlat" aria-label="非世代別 GC で動くゲーム"></canvas>
+    <canvas id="bFlat" aria-label="非世代別ヒープ"></canvas>
+    <canvas id="pFlat" aria-label="非世代別 GC の停止の記録"></canvas>
+    <div class="stats"><div><b id="fN">0</b><span id="fNs">止まった回数</span></div><div><b id="fT">0</b><span>停止の合計</span></div><div class="w"><b id="fW">0</b><span>最悪の停止</span></div><div><b id="fL">0</b><span>相手との差</span></div></div>
+  </section>
+</div>
+
+<div class="rule" id="barRule" style="margin-top:22px"></div>
+<div class="bar">
+  <div class="seg" role="group" aria-label="弾の寿命"><span class="lab">弾の寿命</span>
+    <button data-life="30">0.5秒</button><button data-life="60">1秒</button><button data-life="120">2秒</button><button data-life="240">4秒</button><button data-life="480">8秒</button><button data-life="960">16秒</button></div>
+  <div class="seg" role="group" aria-label="長寿命データの量"><span class="lab">地形マップ</span>
+    <button data-scale="1">1倍</button><button data-scale="4">4倍</button><button data-scale="16">16倍</button><button data-scale="32">32倍</button></div>
+  <div class="seg" role="group" aria-label="速度"><span class="lab">速度</span>
+    <button data-speed="0">止める</button><button data-speed="0.25">遅い</button><button data-speed="1">普通</button><button data-speed="2">速い</button></div>
+  <div class="seg" role="group" aria-label="操作"><span class="lab">操作</span>
+    <button id="bMajor" class="act">大掃除を起こす</button><button id="bWave">敵を呼ぶ</button><button id="bReset">やり直す</button></div>
+  <div class="live" id="live"></div>
+</div>
+<p class="rulecap">弾は画面の端で反対側に回り込み、決まった時間（弾の寿命）がたつか自機に当たると消える。画面に出せる弾は2,000発まで。</p>
+<div class="legend">
+  <span class="k"><i class="sw dot"></i>生きている弾・火花・敵・タイル</span>
+  <span class="k"><i class="sw ghost"></i>もう誰も指していない死骸。GC はまだ知らないので、メモリに残っている</span>
+  <span class="k"><i class="sw red"></i>GC がコピーした生き残り／停止中</span>
+  <span class="k"><i class="sw dead"></i>ヒープの帯：灰は死骸、黒は生きている語</span>
+</div>
+
+<div class="checks">
+  <div><div class="rule"></div><h2>検査</h2></div>
+  <ol>
+    <li><b id="cReach" class="ok">成立</b><span>到達できるオブジェクトはすべて残り、中身もポインタも GC なしの参照実行と一致する（左右のヒープ両方）。解放されたのは参照実行でも死んでいたものだけ</span><code id="kReach">0</code></li>
+    <li><b id="cRem" class="ok">成立</b><span>記憶集合は完全：old から young へのポインタはすべて汚れたカードの上にある（世代別）</span><code id="kRem">0</code></li>
+    <li><b id="cOut" class="ok">成立</b><span>各ヒープで動くゲームの出力が、GC なしの参照実行と一致する</span><code id="kOut">0</code></li>
+    <li><b id="cCross" class="ok">成立</b><span>左と右のゲームは、同じフレーム番号で同じ出力を出している（止まった時間がずれても、中身は同じ）</span><code id="kCross">0</code></li>
+  </ol>
+</div>
+<p class="foot" id="foot">単位は語（4バイト）。GC の仕事量は、コピーした語、たどったポインタ、走査したカード・ルート・ヘッダの合計で、実時間ではない。停止時間は左右共通で 1,000語 = 20ミリ秒 に換算している（本物の GC より数千倍遅く見せている）。ヒープの総量は左右で同じ（世代別は eden 12,288語、survivor 4,096語×2、old は地形の1.25倍＋40,960語。非世代別はその合計を1つの空間にする）。1回の停止は、同じフレームの中で続けて起きた GC の合計（old が足りずに major GC と minor GC が続くと1回の長い停止になる）。地形マップは段・列・タイルのオブジェクトの木で、ゲームの間ずっと生きている長寿命データ。参照実行は GC を持たない普通の JS オブジェクトのグラフで、参照数で死んだ瞬間を測る。起動時のマップの読み込みと最初の5秒は、表示の前に済ませている。</p>
+</div>
+<script>
+/*<runtime>*/
+// ================================================================
+//  Generational GC runtime. No DOM: scripts/fuzz.mjs extracts this
+//  block and runs it under Node. Everything on screen comes from it.
+//
+//  Object layout in a flat Int32Array (one word = 4 bytes):
+//    w0  header  size:12 | nptr:8 <<12 | age:4 <<20 | MARK<<24 | FWD<<25
+//    w1  object id (or forwarding address while FWD is set)
+//    w2.. nptr pointer fields (-1 = null, otherwise a word address)
+//    ..   payload words (int32)
+// ================================================================
+const GCRT=(()=>{
+"use strict";
+const NULL=-1, MARK=1<<24, FWD=1<<25, POISON=0x5eadbeef|0;
+const hSize=h=>h&0xfff, hNp=h=>(h>>>12)&0xff, hAge=h=>(h>>>20)&0xf;
+const mkH=(n,np,age)=>n|(np<<12)|(Math.min(age,15)<<20);
+class OOM extends Error{ constructor(msg){ super(msg); this.oom=true; } }
+class Violation extends Error{ constructor(msg){ super(msg); this.violation=true; } }
+
+// ---------------------------------------------------------------
+// shared mark + sliding compaction (LISP2). Marks everything reachable
+// from roots anywhere in the heap, slides live objects of [lo,hi) to lo,
+// fixes pointers in roots, in live objects of [lo,hi), and in the live
+// objects of every extra region (the young spaces, for a major GC).
+function markCompact(H, lo, hi, extra, rec){
+  const m=H.mem, roots=H.roots, fwd=H.fwd;
+  let work=0, marked=0, markedWords=0;
+  const stack=[];
+  for(let i=0;i<roots.length;i++){ const r=roots[i]; work++; if(r>=0&&!(m[r]&MARK)){ m[r]|=MARK; stack.push(r); } }
+  while(stack.length){
+    const p=stack.pop(), h=m[p], np=hNp(h); marked++; markedWords+=hSize(h); work+=1+np;
+    for(let j=0;j<np;j++){ const v=m[p+2+j]; if(v>=0&&!(m[v]&MARK)){ m[v]|=MARK; stack.push(v); } }
+  }
+  // pass 1: forwarding addresses (side table) and the dead list
+  let dst=lo, p=lo, deadObjs=0, deadWords=0;
+  const dead=rec?[]:null, moves=rec?[]:null, deadIds=H.deadSink;
+  while(p<hi){ const h=m[p], n=hSize(h); work++;
+    if(h&MARK){ fwd[p]=dst; if(moves) moves.push(m[p+1],p,dst,n); dst+=n; }
+    else { deadObjs++; deadWords+=n; if(dead) dead.push(m[p+1]); if(deadIds) deadIds.push(m[p+1]); }
+    p+=n; }
+  const reloc=v=>(v>=lo&&v<hi)?fwd[v]:v;
+  // pass 2: update pointers
+  for(let i=0;i<roots.length;i++) roots[i]=reloc(roots[i]);
+  const fix=(a,b)=>{ let q=a; while(q<b){ const h=m[q], n=hSize(h);
+      if(h&MARK){ const np=hNp(h); work+=np; for(let j=0;j<np;j++){ const f=q+2+j; m[f]=reloc(m[f]); } }
+      q+=n; } };
+  fix(lo,hi); for(const [a,b] of extra) fix(a,b);
+  // pass 3: slide
+  p=lo; let moved=0;
+  while(p<hi){ const h=m[p], n=hSize(h);
+    if(h&MARK){ const d=fwd[p]; if(d!==p){ m.copyWithin(d,p,p+n); moved+=n; work+=n; } m[d]=h&~MARK; }
+    p+=n; }
+  m.fill(0,dst,hi);
+  for(const [a,b] of extra){ let q=a; while(q<b){ m[q]&=~MARK; q+=hSize(m[q]); } }
+  return {top:dst, work, marked, markedWords, deadObjs, deadWords, moved, dead, moves};
+}
+
+function parse(m,a,b,out,space){ let p=a; while(p<b){ const h=m[p], n=hSize(h);
+  out.push({id:m[p+1],a:p,n,np:hNp(h),age:hAge(h),space}); p+=n; } return out; }
+
+// ---------------------------------------------------------------
+// Generational heap: eden | survivor s0 | survivor s1 | old
+class GenHeap{
+  constructor({eden=1024,surv=128,old=3072,tenure=3,card=16,nroots=64}={}){
+    this.kind="gen"; this.E=eden; this.S=surv; this.O=old; this.tenure=tenure; this.CARD=card;
+    this.size=eden+2*surv+old; this.mem=new Int32Array(this.size); this.fwd=new Int32Array(this.size);
+    this.s0=eden; this.s1=eden+surv; this.oldBase=eden+2*surv; this.oldEnd=this.size;
+    this.edenTop=0; this.from=this.s0; this.to=this.s1; this.survTop=this.from; this.oldTop=this.oldBase;
+    this.ncards=Math.ceil(old/card); this.cards=new Uint8Array(this.ncards); this.covers=new Int32Array(this.ncards).fill(-1);
+    this.roots=new Int32Array(nroots).fill(NULL);
+    this.st={minor:0,major:0,promoFail:0,barriers:0,cardMarks:0,allocWords:0,allocObjs:0,edenObjs:0,edenDead:0,copiedWords:0,promotedWords:0,work:0};
+    this.record=false; this.events=[]; this.deadSink=null; this.onCard=null;
+  }
+  isYoung(a){ return a>=0&&a<this.oldBase; }
+  used(){ return {eden:this.edenTop, surv:this.survTop-this.from, old:this.oldTop-this.oldBase}; }
+  alloc(np,npay,id){
+    const n=2+np+npay; if(n>this.E) throw new OOM("object larger than eden");
+    if(this.edenTop+n>this.E){ this.collect("alloc"); if(this.edenTop+n>this.E) throw new OOM("eden"); }
+    const m=this.mem, a=this.edenTop; this.edenTop+=n;
+    m[a]=mkH(n,np,0); m[a+1]=id; m.fill(NULL,a+2,a+2+np); m.fill(0,a+2+np,a+n);
+    this.st.allocWords+=n; this.st.allocObjs++; return a;
+  }
+  // write barrier: card marking on every pointer store into an old object
+  storePtr(obj,j,v){
+    const f=obj+2+j; this.mem[f]=v; this.st.barriers++;
+    if(obj>=this.oldBase){ const c=((f-this.oldBase)/this.CARD)|0; if(!this.cards[c]){ this.cards[c]=1; this.st.cardMarks++; if(this.onCard) this.onCard(c, v>=0&&v<this.oldBase); } }
+  }
+  // Minor GC; if old might not hold the worst-case promotion, attempt it
+  // anyway and on promotion failure roll back, run a major GC, retry.
+  collect(reason){
+    if(this.oldEnd-this.oldTop>=this.edenTop+(this.survTop-this.from)) return this.minor(reason);
+    let sv=this.save(); try{ return this.minor(reason); }catch(e){ if(!e.oom) throw e; this.restore(sv); }
+    this.st.promoFail++; this.major(reason+":promotion-failed");
+    sv=this.save(); try{ return this.minor(reason); }catch(e){ if(!e.oom) throw e; this.restore(sv); throw new OOM("old"); }
+  }
+  save(){ return {mem:this.mem.slice(),roots:this.roots.slice(),cards:this.cards.slice(),covers:this.covers.slice(),t:[this.edenTop,this.from,this.to,this.survTop,this.oldTop]}; }
+  restore(s){ this.mem.set(s.mem); this.roots.set(s.roots); this.cards.set(s.cards); this.covers.set(s.covers); [this.edenTop,this.from,this.to,this.survTop,this.oldTop]=s.t; }
+  setCovers(d,n){ const B=this.oldBase,C=this.CARD; const c0=Math.ceil((d-B)/C), c1=Math.floor((d+n-1-B)/C); for(let c=c0;c<=c1;c++) this.covers[c]=d; }
+  snapshot(){ const m=this.mem, o=[]; parse(m,0,this.edenTop,o,"eden"); parse(m,this.from,this.survTop,o,"surv"); parse(m,this.oldBase,this.oldTop,o,"old"); return o; }
+  minor(reason){
+    const m=this.mem, rec=this.record, snap=rec?this.snapshot():null;
+    const E=this.E, from=this.from, fromEnd=from+this.S, to=this.to, toEnd=to+this.S, B=this.oldBase, C=this.CARD;
+    const inFrom=a=>(a>=0&&a<E)||(a>=from&&a<fromEnd);
+    let work=0, toTop=to, copied=0, promoted=0, survivors=0;
+    const promoStart=this.oldTop, moves=rec?[]:null;
+    const copy=a=>{ const h=m[a]; if(h&FWD) return m[a+1];
+      const n=hSize(h), age=hAge(h)+1; let d, pr=0;
+      if(age>=this.tenure||toTop+n>toEnd){ d=this.oldTop; if(d+n>this.oldEnd) throw new OOM("promotion"); this.oldTop+=n; this.setCovers(d,n); promoted+=n; pr=1; }
+      else { d=toTop; toTop+=n; }
+      m.copyWithin(d,a,a+n); m[d]=mkH(n,hNp(h),age); m[a]=h|FWD; m[a+1]=d;
+      copied+=n; survivors++; work+=n; if(moves) moves.push(m[d+1],a,d,n,pr,age); return d; };
+    for(let i=0;i<this.roots.length;i++){ const r=this.roots[i]; work++; if(inFrom(r)) this.roots[i]=copy(r); }
+    // remembered set: scan only the fields that lie in dirty cards
+    const scanned=rec?[]:null; let cardsScanned=0;
+    for(let c=0;c<this.ncards;c++){ if(!this.cards[c]) continue;
+      const cs=B+c*C, ce=Math.min(cs+C,promoStart); cardsScanned++; if(scanned) scanned.push(c);
+      if(cs>=promoStart){ this.cards[c]=0; continue; }
+      let p=this.covers[c], still=0;
+      while(p<ce){ const h=m[p], n=hSize(h), np=hNp(h);
+        for(let j=0;j<np;j++){ const f=p+2+j; if(f<cs||f>=ce) continue; let v=m[f]; work++;
+          if(inFrom(v)){ v=copy(v); m[f]=v; } if(v>=0&&v<B) still=1; }
+        p+=n; }
+      this.cards[c]=still; }
+    // Cheney scan of to-space and of the objects promoted in this GC
+    let sp=to, op=promoStart;
+    while(sp<toTop||op<this.oldTop){
+      while(sp<toTop){ const h=m[sp], n=hSize(h), np=hNp(h); work++;
+        for(let j=0;j<np;j++){ const f=sp+2+j, v=m[f]; work++; if(inFrom(v)) m[f]=copy(v); } sp+=n; }
+      while(op<this.oldTop){ const h=m[op], n=hSize(h), np=hNp(h); work++;
+        for(let j=0;j<np;j++){ const f=op+2+j; let v=m[f]; work++; if(inFrom(v)){ v=copy(v); m[f]=v; }
+          if(v>=0&&v<B) this.cards[((f-B)/C)|0]=1; } op+=n; }
+    }
+    // instrumentation only (not GC work): how many eden objects died
+    let edenObjs=0, edenDead=0, deadWords=0; const deadIds=this.deadSink;
+    for(let p=0;p<this.edenTop;){ const h=m[p], n=hSize(h); edenObjs++; if(!(h&FWD)){ edenDead++; deadWords+=n; if(deadIds) deadIds.push(m[p+1]); } p+=n; }
+    for(let p=from;p<this.survTop;){ const h=m[p], n=hSize(h); if(!(h&FWD)){ deadWords+=n; if(deadIds) deadIds.push(m[p+1]); } p+=n; }
+    const freedEden=this.edenTop, freedSurv=this.survTop-from;
+    m.fill(POISON,0,E); m.fill(POISON,from,fromEnd);
+    this.edenTop=0; this.from=to; this.to=from; this.survTop=toTop;
+    const s=this.st; s.minor++; s.edenObjs+=edenObjs; s.edenDead+=edenDead; s.copiedWords+=copied; s.promotedWords+=promoted; s.work+=work;
+    const ev={kind:"minor",reason,work,copied,promoted,survivors,edenObjs,edenDead,deadWords,freedEden,freedSurv,cardsScanned,n:s.minor};
+    if(rec){ ev.snap=snap; ev.moves=moves; ev.scanned=scanned; ev.fromBase=from; ev.toBase=to; }
+    this.events.push(ev); return ev;
+  }
+  major(reason){
+    const m=this.mem, rec=this.record, snap=rec?this.snapshot():null, B=this.oldBase;
+    const r=markCompact(this,B,this.oldTop,[[0,this.edenTop],[this.from,this.survTop]],rec);
+    this.oldTop=r.top;
+    // rebuild the object-start table and the card table precisely
+    this.covers.fill(-1); this.cards.fill(0); let work=r.work;
+    for(let p=B;p<this.oldTop;){ const h=m[p], n=hSize(h), np=hNp(h); this.setCovers(p,n); work++;
+      for(let j=0;j<np;j++){ const v=m[p+2+j]; if(v>=0&&v<B) this.cards[((p+2+j-B)/this.CARD)|0]=1; } p+=n; }
+    const s=this.st; s.major++; s.work+=work;
+    const ev={kind:"major",reason,work,marked:r.marked,markedWords:r.markedWords,deadObjs:r.deadObjs,deadWords:r.deadWords,moved:r.moved,n:s.major};
+    if(rec){ ev.snap=snap; ev.dead=r.dead; ev.moves=r.moves; }
+    this.events.push(ev); return ev;
+  }
+  forceMinor(){ return this.collect("force"); }
+  forceMajor(){ return this.major("force"); }
+  regions(){ return [[0,this.edenTop],[this.from,this.survTop],[this.oldBase,this.oldTop]]; }
+}
+
+// ---------------------------------------------------------------
+// Non-generational heap: one space, bump allocation, full mark-compact.
+class FlatHeap{
+  constructor({words=4352,nroots=64,grow=false}={}){
+    this.kind=grow?"nogc":"flat"; this.size=words; this.grow=grow;
+    this.mem=new Int32Array(words); this.fwd=grow?null:new Int32Array(words); this.top=0;
+    this.roots=new Int32Array(nroots).fill(NULL);
+    this.st={full:0,allocWords:0,allocObjs:0,work:0,barriers:0};
+    this.record=false; this.events=[]; this.deadSink=null;
+  }
+  isYoung(){ return false; }
+  used(){ return {heap:this.top}; }
+  alloc(np,npay,id){
+    const n=2+np+npay;
+    if(this.top+n>this.size){
+      if(this.grow){ let s=this.size; while(this.top+n>s) s*=2; const nm=new Int32Array(s); nm.set(this.mem); this.mem=nm; this.size=s; }
+      else { this.full("alloc"); if(this.top+n>this.size) throw new OOM("heap"); }
+    }
+    const m=this.mem, a=this.top; this.top+=n;
+    m[a]=mkH(n,np,0); m[a+1]=id; m.fill(NULL,a+2,a+2+np); m.fill(0,a+2+np,a+n);
+    this.st.allocWords+=n; this.st.allocObjs++; return a;
+  }
+  storePtr(obj,j,v){ this.mem[obj+2+j]=v; }
+  snapshot(){ return parse(this.mem,0,this.top,[],"heap"); }
+  full(reason){
+    if(this.grow) return null;
+    const rec=this.record, snap=rec?this.snapshot():null, m=this.mem;
+    const r=markCompact(this,0,this.top,[],rec);
+    this.top=r.top;
+    for(let p=0;p<this.top;){ const h=m[p], n=hSize(h); m[p]=mkH(n,hNp(h),hAge(h)+1); p+=n; }
+    const s=this.st; s.full++; s.work+=r.work;
+    const ev={kind:"full",reason,work:r.work,marked:r.marked,markedWords:r.markedWords,deadObjs:r.deadObjs,deadWords:r.deadWords,moved:r.moved,n:s.full};
+    if(rec){ ev.snap=snap; ev.dead=r.dead; ev.moves=r.moves; }
+    this.events.push(ev); return ev;
+  }
+  forceMinor(){ return this.full("force"); }
+  forceMajor(){ return this.full("force"); }
+  regions(){ return [[0,this.top]]; }
+}
+
+// common mutator primitives on any heap (all bounds-checked the same way)
+const H_ops={
+  np(H,a){ return hNp(H.mem[a]); },
+  npay(H,a){ const h=H.mem[a]; return hSize(h)-2-hNp(h); },
+};
+
+// ---------------------------------------------------------------
+// Reference execution: plain JS objects, no collector at all. Reference
+// counts are kept only to time each object's death for the histogram.
+class Oracle{
+  constructor(nroots){ this.objs=new Map(); this.roots=new Array(nroots).fill(0); this.clock=0; this.onDeath=null; this.out=0; this.reads=0; }
+  inc(id){ if(id) this.objs.get(id).rc++; }
+  dec(id){ const st=[id];
+    while(st.length){ const x=st.pop(); if(!x) continue; const o=this.objs.get(x); if(--o.rc>0) continue;
+      this.objs.delete(x); if(this.onDeath) this.onDeath(this.clock-o.birth,o); for(const y of o.ptr) if(y) st.push(y); } }
+  alloc(id,np,npay){ const o={id,ptr:new Array(np).fill(0),pay:new Int32Array(npay),rc:0,birth:this.clock,n:2+np+npay}; this.clock+=o.n; this.objs.set(id,o); return o; }
+  setRoot(i,id){ const old=this.roots[i]; this.inc(id); this.roots[i]=id; if(old) this.dec(old); }
+  get(i){ const id=this.roots[i]; return id?this.objs.get(id):null; }
+}
+
+// payload word k of object id: deterministic so every heap writes the same thing
+const pv=(id,k)=>(Math.imul(id,0x9E3779B1)^Math.imul(k+1,0x85EBCA77))|0;
+
+// ---------------------------------------------------------------
+// Machine: one mutator program executed in lockstep on several heaps
+// and on the reference. Each op is applied to all; outputs are hashed.
+// ops: [0 ALLOC r np npay] [1 STORE r j s] [2 LOAD d r j] [3 READ r k]
+//      [4 SETV r k v] [5 CLEAR r] [6 MOVE d s]
+class Machine{
+  constructor(heaps,nroots=64){
+    this.heaps=heaps; this.nroots=nroots; this.ref=new Oracle(nroots); this.nextId=1;
+    this.outs=heaps.map(()=>0); this.ops=0; this.checks={reach:0,remset:0,output:0}; this.violation=null;
+  }
+  exec(op){
+    this.ops++;
+    const R=this.ref;
+    switch(op[0]){
+      case 0:{ const [,r,np,npay]=op, id=this.nextId++;
+        for(const H of this.heaps){ const a=H.alloc(np,npay,id); for(let k=0;k<npay;k++) H.mem[a+2+np+k]=pv(id,k); H.roots[r]=a; }
+        const o=R.alloc(id,np,npay); for(let k=0;k<npay;k++) o.pay[k]=pv(id,k); R.setRoot(r,id); break; }
+      case 1:{ const [,r,j,s]=op;
+        for(const H of this.heaps){ const a=H.roots[r]; if(a<0||j>=hNp(H.mem[a])) continue; H.storePtr(a,j,H.roots[s]); }
+        const o=R.get(r); if(o&&j<o.ptr.length){ const v=R.roots[s], old=o.ptr[j]; R.inc(v); o.ptr[j]=v; if(old) R.dec(old); } break; }
+      case 2:{ const [,d,r,j]=op;
+        for(const H of this.heaps){ const a=H.roots[r]; if(a<0||j>=hNp(H.mem[a])){ H.roots[d]=NULL; continue; } H.roots[d]=H.mem[a+2+j]; }
+        const o=R.get(r); R.setRoot(d,(o&&j<o.ptr.length)?o.ptr[j]:0); break; }
+      case 3:{ const [,r,k]=op;
+        for(let i=0;i<this.heaps.length;i++){ const H=this.heaps[i], a=H.roots[r]; let v=7;
+          if(a>=0){ const np=hNp(H.mem[a]), npay=hSize(H.mem[a])-2-np; v=npay?H.mem[a+2+np+(k%npay)]^H.mem[a+1]:H.mem[a+1]; }
+          this.outs[i]=(Math.imul(this.outs[i],31)+v)|0; }
+        const o=R.get(r); let v=7; if(o) v=o.pay.length?o.pay[k%o.pay.length]^o.id:o.id;
+        R.out=(Math.imul(R.out,31)+v)|0; R.reads++; break; }
+      case 4:{ const [,r,k,v]=op;
+        for(const H of this.heaps){ const a=H.roots[r]; if(a<0) continue; const np=hNp(H.mem[a]), npay=hSize(H.mem[a])-2-np; if(npay) H.mem[a+2+np+(k%npay)]=v; }
+        const o=R.get(r); if(o&&o.pay.length) o.pay[k%o.pay.length]=v; break; }
+      case 5:{ const [,r]=op; for(const H of this.heaps) H.roots[r]=NULL; R.setRoot(r,0); break; }
+      case 6:{ const [,d,s]=op; for(const H of this.heaps) H.roots[d]=H.roots[s]; R.setRoot(d,R.roots[s]); break; }
+    }
+  }
+  outputOk(){ this.checks.output++; for(const o of this.outs) if(o!==this.ref.out) return false; return true; }
+}
+
+// ---------------------------------------------------------------
+// Invariant checks
+function validStarts(H){ const s=new Set(); for(const [a,b] of H.regions()){ let p=a; while(p<b){ const h=H.mem[p], n=hSize(h);
+  if(n<2||p+n>b) throw new Violation(`heap not parsable at ${p}`); if(h&(MARK|FWD)) throw new Violation(`stale mark/forward bit at ${p}`); s.add(p); p+=n; } } return s; }
+// reachability: the graph reachable from the heap's roots must equal the
+// reference graph reachable from the reference roots, field by field.
+function checkReach(H,R){
+  const m=H.mem, starts=validStarts(H), seen=new Map(), st=[];
+  const visit=(a,id)=>{ if(a<0){ if(id) throw new Violation(`object #${id} is reachable but the heap lost it`); return; }
+    if(!starts.has(a)) throw new Violation(`pointer ${a} does not point at a live object (freed or moved)`);
+    const hid=m[a+1]; if(hid!==id) throw new Violation(`pointer ${a} holds #${hid}, reference says #${id}`);
+    if(seen.has(id)){ if(seen.get(id)!==a) throw new Violation(`#${id} reachable at two addresses`); return; }
+    seen.set(id,a); st.push(a); };
+  for(let i=0;i<H.roots.length;i++) visit(H.roots[i],R.roots[i]);
+  while(st.length){ const a=st.pop(), id=m[a+1], o=R.objs.get(id);
+    if(!o) throw new Violation(`#${id} reachable in heap but dead in reference`);
+    const h=m[a], np=hNp(h), npay=hSize(h)-2-np;
+    if(np!==o.ptr.length||npay!==o.pay.length) throw new Violation(`#${id} shape changed`);
+    for(let k=0;k<npay;k++) if(m[a+2+np+k]!==o.pay[k]) throw new Violation(`#${id} payload ${k} corrupted`);
+    for(let j=0;j<np;j++) visit(m[a+2+j],o.ptr[j]); }
+  return seen.size;
+}
+// remembered set completeness: every old->young field sits in a dirty card,
+// and every young pointer held by an old object points at a valid young object.
+function checkRemset(H){
+  if(H.kind!=="gen") return 0; const m=H.mem, B=H.oldBase; let n=0;
+  const young=new Set(); for(const [a,b] of [[0,H.edenTop],[H.from,H.survTop]]){ let p=a; while(p<b){ young.add(p); p+=hSize(m[p]); } }
+  for(let p=B;p<H.oldTop;){ const h=m[p], sz=hSize(h), np=hNp(h);
+    for(let j=0;j<np;j++){ const f=p+2+j, v=m[f]; if(v>=0&&v<B){ n++;
+      if(!H.cards[((f-B)/H.CARD)|0]) throw new Violation(`old→young pointer at ${f} not in remembered set (card ${((f-B)/H.CARD)|0} clean)`);
+      if(!young.has(v)) throw new Violation(`old object holds dangling young pointer ${v}`); } }
+    p+=sz; }
+  return n;
+}
+
+// ---------------------------------------------------------------
+// The mutator: a seeded program generator. Decisions read only the
+// reference state, so the op stream is identical whatever the heaps do.
+// roots: 0 session table (48 fields), 1 long-lived table (16), 2 leak list head,
+//        3 scratch, 63 reader, 4..62 stack ring of temporaries
+function rng(seed){ let a=seed>>>0||1; const r=()=>{ a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; r.int=n=>Math.floor(r()*n); return r; }
+const TABLE=0, LONG=1, LEAK=2, SCR=3, READER=63, RING0=4, RINGMAX=59, TBL=48, LTBL=96;
+class Workload{
+  constructor(seed,params){ this.r=rng(seed); this.p=Object.assign({short:.96,ring:8,leak:false,leakP:.3,big:.03},params||{}); this.ring=0; this.depth=new Int8Array(64); this.started=false; }
+  boot(out){ out.push([0,TABLE,TBL,1],[0,LONG,LTBL,1]);
+    // a long-lived data set (think: loaded config, interned strings): live for the whole run
+    for(let k=0;k<LTBL;k++) out.push([0,SCR,1,6+this.r.int(9)],[1,LONG,k,SCR],[5,SCR]);
+    this.started=true; }
+  // one allocation event, as a short burst of ops
+  event(ref,out){
+    if(!this.started){ this.boot(out); return out; }
+    const r=this.r, P=this.p, ring=Math.max(2,Math.min(RINGMAX,P.ring|0));
+    const pay=()=> r()<P.big ? 18+r.int(10) : 1+Math.floor(r()*r()*8);
+    if(P.leak&&r()<P.leakP){ out.push([0,SCR,1,1+r.int(3)],[1,SCR,0,LEAK],[6,LEAK,SCR],[5,SCR]); }
+    const u=r();
+    if(u<P.short){
+      const prev=RING0+((this.ring+ring-1)%ring), slot=RING0+(this.ring%ring); this.ring=(this.ring+1)%ring;
+      out.push([0,slot,1+(r()<.3?1:0),pay()]);
+      if(r()<.2&&this.depth[prev]<2&&ref.roots[prev]){ out.push([1,slot,0,prev]); this.depth[slot]=this.depth[prev]+1; } else this.depth[slot]=0;
+    } else if(u<P.short+(1-P.short)*.8){
+      out.push([0,SCR,1+r.int(2),2+r.int(5)],[1,TABLE,r.int(TBL),SCR],[5,SCR]);
+    } else {
+      out.push([0,SCR,1,6+r.int(9)],[1,LONG,r.int(LTBL),SCR],[5,SCR]);
+    }
+    if(r()<.4){ out.push([3,RING0+r.int(ring),r.int(8)]); }
+    if(r()<.25){ out.push([2,READER,TABLE,r.int(TBL)],[3,READER,r.int(8)]);
+      // deep store: a session entry (likely old) now points at a fresh temporary
+      if(r()<.15) out.push([1,READER,0,RING0+((this.ring+ring-1)%ring)]);
+      out.push([5,READER]); }
+    if(r()<.08){ out.push([2,READER,LONG,r.int(LTBL)],[3,READER,r.int(8)],[5,READER]); }
+    if(r()<.1){ out.push([4,RING0+r.int(ring),r.int(8),(r()*2e9)|0]); }
+    return out;
+  }
+}
+
+return {NULL,MARK,FWD,hSize,hNp,hAge,OOM,Violation,GenHeap,FlatHeap,Oracle,Machine,Workload,checkReach,checkRemset,validStarts,rng,H_ops,TABLE,LONG,LEAK};
+})();
+if(typeof window!=="undefined") window.GCRT=GCRT; else globalThis.GCRT=GCRT;
+/*</runtime>*/
+</script>
+<script>
+/*<game>*/
+// ================================================================
+//  The program being collected: a small bullet-hell game. All of its
+//  state lives in the simulated heap: every bullet, spark and enemy is
+//  one heap object, and it dies when the game drops the last pointer to
+//  it (its table slot is overwritten with null). Decisions read only the
+//  reference (Oracle) state, so the op stream is identical on every
+//  machine and the drawing can read each heap's own memory.
+//  No DOM: scripts/bullet-measure.mjs extracts this block too.
+// ================================================================
+const GAME=(()=>{
+"use strict";
+const RT=GCRT;
+const FW=480, FH=300, FX=64;
+// roots
+const R={PB:0,EB:1,PT:2,EN:3,MAP:4,PL:5,SCR:6,S2:7,S3:8,TMP:9,EBT:10,EMPTY:62,RD:63};
+// kinds (payload word 0)
+const K={PB:1,EB:2,PT:3,EN:4,COL:5,PL:6,TMP:7,SEG:8,TBL:9,MAP:10,HUD:11,TILE:12,BANK:13};
+const CAP={PB:48,EB:250,PT:240,EN:20}, NBANK=8, SEGC=64, COLW=12, BASECOLS=64, COLNP=8, TILE=8;
+// mover payload: 0 kind, 1 x0, 2 y0, 3 vx, 4 vy, 5 birth frame, 6 death frame (-1 alive), 7 aux, 8 hp (enemies)
+const P={kind:0,x0:1,y0:2,vx:3,vy:4,birth:5,death:6,aux:7,hp:8};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+// position of a mover at frame f, in field pixels (same formula for game logic and drawing)
+function mvPos(kind,x0,y0,vx,vy,t,aux,out){
+  let x=(x0+vx*t)/FX, y=(y0+vy*t)/FX;
+  if(kind===K.EN) x+=aux*Math.sin(t*0.035);
+  if(kind===K.EB&&(aux&4)){ x=((x+8)%(FW+16)+(FW+16))%(FW+16)-8; y=((y+8)%(FH+16)+(FH+16))%(FH+16)-8; } // lingering bullets wrap around
+  if(kind===K.PT) { const d=1-Math.min(1,t/(aux||1))*.55; x=(x0+vx*t*d)/FX; y=(y0+vy*t*d)/FX; }
+  out[0]=x; out[1]=y; return out;
+}
+// map words are measured, not estimated: build the map once on a growing heap
+const _mw=new Map();
+function mapWords(scale){ if(_mw.has(scale)) return _mw.get(scale); const H=new RT.FlatHeap({words:4096,grow:true}), M=new RT.Machine([H]), g=new Game(M,{scale}); g.boot(); const w=H.top; _mw.set(scale,w); return w; }
+// heap sizes: both heaps get the same total. Eden/survivor are fixed; old holds the map
+// with 25% slack plus a fixed 40,960 words for the moving objects (room for 2,000 bullets twice over).
+function sizes(scale){ const E=12288, S=4096, mw=mapWords(scale); const O=Math.ceil(mw*1.25/1024)*1024+40960;
+  return {eden:E,surv:S,old:O,tenure:4,total:E+2*S+O,mapWords:mw}; }
+
+class Game{
+  constructor(M,{seed=20261124,scale=1,life=0}={}){
+    // life: bullet lifespan rule. 0 = bullets leave the screen and hit terrain (normal);
+    // -1 = fast bullets (x1.8 speed); N>0 = lingering bullets: they wrap around the screen
+    // edges, pass through terrain and fade after N frames (or when they hit the player).
+    this.life=life;
+    this.M=M; this.r=RT.rng(seed); this.mr=RT.rng(seed^0x5bd1e995); this.scale=scale; this.f=0; this.cols=BASECOLS*scale;
+    this.st={score:0,kills:0,hits:0,grazes:0,spawned:0,full:0}; this.next=new Int32Array(64); this.ebNext=0; this.booted=false;
+    this.inp={burst:0}; this._p=[0,0];
+  }
+  x(op){ this.M.exec(op); }
+  ref(root){ return this.M.ref.get(root); }
+  obj(id){ return this.M.ref.objs.get(id); }
+  boot(){
+    const x=op=>this.M.exec(op), r=this.mr;
+    for(const [root,cap] of [[R.PB,CAP.PB],[R.PT,CAP.PT],[R.EN,CAP.EN]]){ x([0,root,cap,1]); x([4,root,0,K.TBL]); }
+    // enemy bullets: a bank of NBANK tables of CAP.EB slots (at most 2,000 bullets on screen)
+    x([0,R.EB,NBANK,1]); x([4,R.EB,0,K.BANK]);
+    for(let b=0;b<NBANK;b++){ x([0,R.SCR,CAP.EB,1]); x([4,R.SCR,0,K.TBL]); x([1,R.EB,b,R.SCR]); x([5,R.SCR]); }
+    x([0,R.PL,0,4]); x([4,R.PL,0,K.PL]);
+    const nseg=Math.ceil(this.cols/SEGC);
+    x([0,R.MAP,nseg,2]); x([4,R.MAP,0,K.MAP]); x([4,R.MAP,1,this.cols]);
+    // the level: segment -> column -> tile objects. Column payload: kind, floor tiles, ceiling tiles.
+    let nf=3, nc=2;
+    for(let s=0;s<nseg;s++){
+      x([0,R.SCR,SEGC,1]); x([4,R.SCR,0,K.SEG]); x([1,R.MAP,s,R.SCR]);
+      for(let c=0;c<SEGC&&s*SEGC+c<this.cols;c++){
+        nf=clamp(nf+r.int(3)-1,1,5); nc=clamp(nc+r.int(3)-1,0,3);
+        x([0,R.S2,COLNP,3]); x([4,R.S2,0,K.COL]); x([4,R.S2,1,nf]); x([4,R.S2,2,nc]);
+        for(let t=0;t<nf+nc;t++){ x([0,R.S3,0,2]); x([4,R.S3,0,K.TILE]); x([4,R.S3,1,r.int(3)]); x([1,R.S2,t,R.S3]); }
+        x([5,R.S3]); x([1,R.SCR,c,R.S2]); x([5,R.S2]);
+      }
+      x([5,R.SCR]);
+    }
+    this.booted=true;
+  }
+  scroll(f){ return f>>1; }
+  // terrain column under field x (game logic reads the reference graph)
+  colAt(fx,f){ const idx=(((Math.floor((fx+this.scroll(f))/COLW))%this.cols)+this.cols)%this.cols;
+    const m=this.ref(R.MAP), seg=this.obj(m.ptr[(idx/SEGC)|0]); return this.obj(seg.ptr[idx%SEGC]); }
+  spawn(root,cap,npay,kind,x,y,vx,vy,aux,hp){
+    const t=this.ref(root); let j=-1;
+    for(let k=0;k<cap;k++){ const s=(this.next[root]+k)%cap; if(!t.ptr[s]){ j=s; break; } }
+    if(j<0) return -1; this.next[root]=(j+1)%cap;
+    return this.spawnAt(root,j,npay,kind,x,y,vx,vy,aux,hp);
+  }
+  spawnAt(root,j,npay,kind,x,y,vx,vy,aux,hp){
+    const xx=op=>this.M.exec(op);
+    xx([0,R.SCR,0,npay]);
+    xx([4,R.SCR,P.kind,kind]); xx([4,R.SCR,P.x0,Math.round(x*FX)]); xx([4,R.SCR,P.y0,Math.round(y*FX)]);
+    xx([4,R.SCR,P.vx,Math.round(vx*FX)]); xx([4,R.SCR,P.vy,Math.round(vy*FX)]); xx([4,R.SCR,P.birth,this.f]);
+    xx([4,R.SCR,P.death,-1]); xx([4,R.SCR,P.aux,aux|0]); if(npay>8) xx([4,R.SCR,P.hp,hp|0]);
+    xx([1,root,j,R.SCR]); xx([5,R.SCR]); this.st.spawned++; return j;
+  }
+  // enemy bullets live in a bank of tables: load table b into a root, then work on slot j
+  spawnEB(x,y,vx,vy,aux){ const bank=this.ref(R.EB), N=NBANK*CAP.EB; let k=-1;
+    for(let i=0;i<N;i++){ const s=(this.ebNext+i)%N; if(!this.obj(bank.ptr[(s/CAP.EB)|0]).ptr[s%CAP.EB]){ k=s; break; } }
+    if(k<0) return -1; this.ebNext=(k+1)%N; const b=(k/CAP.EB)|0, j=k%CAP.EB;
+    this.M.exec([2,R.EBT,R.EB,b]); this.spawnAt(R.EBT,j,8,K.EB,x,y,vx,vy,aux); this.M.exec([5,R.EBT]); return k; }
+  killEB(b,j){ this.M.exec([2,R.EBT,R.EB,b]); this.kill(R.EBT,j); this.M.exec([5,R.EBT]); }
+  // the last pointer goes away: the table slot is overwritten with null
+  kill(root,j){ const xx=op=>this.M.exec(op);
+    xx([2,R.SCR,root,j]); xx([4,R.SCR,P.death,this.f]); xx([5,R.SCR]); xx([1,root,j,R.EMPTY]); }
+  sparks(x,y,n,spd,life){ const r=this.r;
+    for(let i=0;i<n;i++){ const a=r()*6.2832, s=spd*(.3+r()*.9); if(this.spawn(R.PT,CAP.PT,8,K.PT,x,y,Math.cos(a)*s,Math.sin(a)*s,life+r.int(life))<0) break; } }
+  pos(o,f){ const p=o.pay; return mvPos(p[0],p[1],p[2],p[3],p[4],f-p[5],p[7],this._p); }
+  step(){
+    if(!this.booted) this.boot();
+    const f=++this.f, r=this.r, xx=op=>this.M.exec(op), I=this.inp;
+    // player (autopilot, deterministic)
+    const px=FW/2+Math.sin(f*0.017)*150+Math.sin(f*0.051)*40, py=FH-78+Math.sin(f*0.029)*16;
+    xx([4,R.PL,1,Math.round(px*FX)]); xx([4,R.PL,2,Math.round(py*FX)]);
+    if(f%4===0){ this.spawn(R.PB,CAP.PB,8,K.PB,px-6,py-8,0,-7,0); this.spawn(R.PB,CAP.PB,8,K.PB,px+6,py-8,0,-7,0); }
+    // enemy waves
+    if(f%55===0||I.burst>0){ const n=1+r.int(2)+(I.burst>0?2:0); if(I.burst>0) I.burst--;
+      for(let i=0;i<n;i++) this.spawn(R.EN,CAP.EN,9,K.EN,50+r.int(380),-16,(r()-.5)*.5,.28+r()*.22,20+r.int(50),5+r.int(7)); }
+    const EN=this.ref(R.EN), PB=this.ref(R.PB), EB=this.ref(R.EB), PT=this.ref(R.PT);
+    const L=this.life, SPD=L<0?1.8:1, WR=L>0?4:0;
+    const ens=[];
+    for(let j=0;j<CAP.EN;j++){ const id=EN.ptr[j]; if(!id) continue; const o=this.obj(id), p=this.pos(o,f);
+      if(p[1]>FH+24||p[0]<-40||p[0]>FW+40){ this.kill(R.EN,j); continue; }
+      ens.push({j,o,x:p[0],y:p[1]}); }
+    // enemies fire: rings and aimed fans
+    for(const e of ens){ const t=f-e.o.pay[P.birth];
+      if(t>20&&(t+e.j*11)%46===0&&e.y<FH*.6){
+        const n=12+r.int(6), a0=r()*6.2832, sp=1.0+r()*.5;
+        for(let i=0;i<n;i++){ const a=a0+i*6.2832/n; this.spawnEB(e.x,e.y,Math.cos(a)*sp*SPD,Math.sin(a)*sp*SPD,(i&1)|WR); }
+      } else if(t>20&&(t+e.j*5)%37===0){
+        const a=Math.atan2(py-e.y,px-e.x); for(let i=-2;i<=2;i++) this.spawnEB(e.x,e.y,Math.cos(a+i*.16)*1.8*SPD,Math.sin(a+i*.16)*1.8*SPD,2|WR);
+      } }
+    // player bullets vs enemies
+    for(let j=0;j<CAP.PB;j++){ const id=PB.ptr[j]; if(!id) continue; const p=this.pos(this.obj(id),f);
+      if(p[1]<-10){ this.kill(R.PB,j); continue; }
+      for(const e of ens){ if(e.dead) continue; const dx=p[0]-e.x, dy=p[1]-e.y; if(dx*dx+dy*dy<15*15){
+        this.kill(R.PB,j); this.st.hits++; const hp=e.o.pay[P.hp]-1;
+        xx([2,R.SCR,R.EN,e.j]); xx([4,R.SCR,P.hp,hp]); xx([5,R.SCR]);
+        this.sparks(p[0],p[1],3,1.6,8);
+        if(hp<=0){ e.dead=true; this.kill(R.EN,e.j); this.st.kills++; this.st.score+=100; this.sparks(e.x,e.y,18,2.4,22); }
+        break; } } }
+    // enemy bullets: off field, terrain, player
+    for(let b=0;b<NBANK;b++){ const EBt=this.obj(EB.ptr[b]);
+    for(let j=0;j<CAP.EB;j++){ const id=EBt.ptr[j]; if(!id) continue; const p=this.pos(this.obj(id),f), bx=p[0], by=p[1];
+      const o=this.obj(id);
+      if(o.pay[P.aux]&4){ if(f-o.pay[P.birth]>=L){ this.killEB(b,j); continue; } }
+      else { if(bx<-6||bx>FW+6||by<-6||by>FH+6){ this.killEB(b,j); continue; }
+      const col=this.colAt(bx,f);
+      if(by>FH-col.pay[1]*TILE||by<col.pay[2]*TILE){ this.killEB(b,j); this.sparks(bx,by,2,1.1,7); continue; } }
+      const dx=bx-px, dy=by-py, d2=dx*dx+dy*dy;
+      if(d2<5*5){ this.killEB(b,j); this.sparks(bx,by,6,1.8,10); this.st.score-=10; continue; }
+      if(d2<16*16){ this.st.grazes++; xx([3,R.EB,j]); } } }
+    // sparks expire
+    for(let j=0;j<CAP.PT;j++){ const id=PT.ptr[j]; if(!id) continue; const o=this.obj(id); if(f-o.pay[P.birth]>=o.pay[P.aux]) this.kill(R.PT,j); }
+    // per-frame temporaries: a collision candidate list per enemy (pointers to nearby player bullets)
+    for(const e of ens){ if(e.dead) continue; xx([0,R.TMP,4,2]); xx([4,R.TMP,0,K.TMP]); let k=0;
+      for(let j=0;j<CAP.PB&&k<4;j++){ const id=PB.ptr[j]; if(!id) continue; const p=this.pos(this.obj(id),f);
+        if(Math.abs(p[0]-e.x)<60&&Math.abs(p[1]-e.y)<90){ xx([2,R.S2,R.PB,j]); xx([1,R.TMP,k++,R.S2]); } }
+      xx([3,R.TMP,f]); xx([5,R.TMP]); xx([5,R.S2]); }
+    // the HUD line is formatted into a fresh string every frame
+    xx([0,R.TMP,0,6]); xx([4,R.TMP,0,K.HUD]); xx([4,R.TMP,1,this.st.score]); xx([4,R.TMP,2,this.st.grazes]); xx([3,R.TMP,1]); xx([5,R.TMP]);
+    // terrain under the player is read through the map
+    const idx=(((Math.floor((px+this.scroll(f))/COLW))%this.cols)+this.cols)%this.cols;
+    xx([2,R.S3,R.MAP,(idx/SEGC)|0]); xx([2,R.S3,R.S3,idx%SEGC]); xx([3,R.S3,1]); xx([5,R.S3]);
+    xx([3,R.PL,f]);
+  }
+}
+return {Game,FW,FH,FX,R,K,P,CAP,NBANK,SEGC,COLW,BASECOLS,COLNP,TILE,mvPos,sizes,mapWords};
+})();
+if(typeof window!=="undefined") window.GAME=GAME; else globalThis.GAME=GAME;
+/*</game>*/
+</script>
+<script>
+// ================================================================
+//  View. Each side owns its own heap, its own machine (with its own
+//  GC-less reference) and its own copy of the game. Everything drawn
+//  is read from that side's heap memory: live objects by following
+//  pointers from the roots, dead ones ("ghosts") by parsing the heap.
+// ================================================================
+(()=>{
+"use strict";
+const RT=window.GCRT, G=window.GAME;
+const $=id=>document.getElementById(id);
+const C={paper:"#ffffff",ink:"#000000",red:"#e4002b",g1:"#eeeeee",g2:"#c4c4c4",g3:"#6b6b6b",ghost:"#b4b4b4"};
+const MS_PER_WORD=0.02;          // freeze: 1,000 words = 20 ms, both sides
+const FRAME=1000/60, WARM=300, SEED=20261124;
+const DPR=Math.min(window.devicePixelRatio||1,2.5);
+const qs=new URLSearchParams(location.search);
+const {R,K,P,FW,FH,FX,SEGC,COLW,TILE,mvPos}=G;
+const hSize=RT.hSize, hNp=RT.hNp;
+
+// presets: fixed seed, chosen from scripts/bullet-measure.mjs (see the table in the commit / report)
+const PRESETS={normal:{scale:4,life:60},bigmap:{scale:32,life:60},longlived:{scale:1,life:240}};
+const hs=new URLSearchParams(location.hash.replace(/^#/,""));
+const opt=(k,d)=>hs.has(k)?hs.get(k):qs.has(k)?qs.get(k):d;
+const p0=PRESETS[opt("preset","normal")]||PRESETS.normal;
+const S={preset:PRESETS[opt("preset","normal")]?opt("preset","normal"):"normal",scale:+opt("scale",p0.scale),life:+opt("life",p0.life),speed:+opt("speed",1),simT:0,sides:[],halted:null,
+  checks:{reach:0,rem:0,out:0,cross:0},pend:[],yMax:1,frozenClock:opt("freeze","0")==="1"};
+window.__bh=S;
+
+function mkSide(kind){
+  const z=G.sizes(S.scale);
+  const H=kind==="gen"?new RT.GenHeap({eden:z.eden,surv:z.surv,old:z.old,tenure:z.tenure}):new RT.FlatHeap({words:z.total});
+  const M=new RT.Machine([H]); const game=new G.Game(M,{seed:SEED,scale:S.scale,life:S.life});
+  return {kind,H,M,game,z,acc:0,debt:0,debt0:0,thawT:-1,cur:null,pauses:[],n:0,tot:0,max:0,maxEv:null,nMinor:0,nMajor:0,survSum:0,
+    ghosts:[],swept:null,flash:null,note:null,log:new Map(),dead:[]};
+}
+function reset(){
+  S.sides=[mkSide("gen"),mkSide("flat")]; S.halted=null; S.simT=0; S.pend=[]; S.yMax=1;
+  S.checks={reach:0,rem:0,out:0,cross:0};
+  for(const id of ["cReach","cRem","cOut","cCross"]){ $(id).className="ok"; $(id).textContent="成立"; }
+  for(const sd of S.sides){ // load the map and run the first seconds before showing (not timed)
+    try{ for(let i=0;i<WARM;i++) sd.game.step(); }catch(e){ fail(e); }
+    sd.H.events.length=0; sd.H.record=true; sd.H.deadSink=sd.dead; check(sd);
+  }
+  layout(); drawAll(0);
+}
+
+// ---------------------------------------------------------------- stepping
+function stepSide(sd,other){
+  const g=sd.game;
+  for(const p of S.pend) if(p.f===g.f+1) g.inp.burst+=p.n;
+  sd.dead.length=0;
+  try{ g.step(); }catch(e){ fail(e); return; }
+  const f=g.f, out=sd.M.ref.out;
+  // cross-check with the other side at the same frame number
+  const o=other.log.get(f); if(o!==undefined){ other.log.delete(f); if(o!==out) fail(new RT.Violation(`フレーム ${f} で左右の出力が違う`)); else S.checks.cross++; }
+  else sd.log.set(f,out);
+  const gc=onEvents(sd);
+  if(gc||g.f%120===0) check(sd);
+  // drop pending inputs both sides have consumed
+  S.pend=S.pend.filter(p=>p.f>Math.min(S.sides[0].game.f,S.sides[1].game.f));
+}
+function onEvents(sd){
+  let gc=false, gcPrev=false; const d0=sd.debt, w=sd.H.events.reduce((x,e)=>x+e.work,0);
+  for(const ev of sd.H.events){
+    gc=true; const dur=ev.work*MS_PER_WORD; if(ev.kind==="minor"){ sd.nMinor++; sd.survSum+=ev.survivors; } else if(ev.kind==="major") sd.nMajor++;
+    sd.debt+=dur; sd.debt0=sd.debt; if(!gcPrev||ev.work>=sd.cur.work) sd.cur=ev; if(!gcPrev) sd.n++; gcPrev=true; sd.tot+=dur;
+    sd.pauses.push({t:S.simT,dur,work:ev.work,kind:ev.kind}); if(sd.pauses.length>600) sd.pauses.shift();
+    S.yMax=Math.max(S.yMax,ev.work);
+    const freed=sd.dead.length;
+    if(ev.kind==="minor"){
+      const ids=new Set(); for(let i=0;i<ev.moves.length;i+=6) ids.add(ev.moves[i]);
+      sd.flash={ids,t:S.simT};
+      sd.note={t:S.simT,a:`minor GC  ${fmt(ev.work)}語 → ${ms(dur)}`,b:`${fmt(freed)}個をまとめて解放、生き残り ${fmt(ev.survivors)}個だけコピー`};
+    } else {
+      const ids=new Set(); for(let i=0;i<ev.moves.length;i+=4) ids.add(ev.moves[i]);
+      sd.flash={ids,t:S.simT};
+      sd.note={t:S.simT,a:`${ev.kind==="major"?"major GC":"全体 GC"}  ${fmt(ev.work)}語 → ${ms(dur)}`,b:`生きている ${fmt(ev.marked)}個をすべてたどり、${fmt(ev.deadObjs)}個を解放`};
+    }
+    // the dead it just freed: where they were (read from the heap on the previous frame)
+    const pos=new Map(sd.ghosts.map(q=>[q.id,q])); const pts=[]; for(const id of sd.dead){ const q=pos.get(id); if(q) pts.push(q); }
+    sd.swept={pts,t:S.simT};
+  }
+  if(gc){ const stop=sd.debt-d0; sd.curWork=w; sd.curKinds=[...new Set(sd.H.events.map(e=>e.kind))]; if(stop>sd.max){ sd.max=stop; sd.maxEv=sd.cur; sd.maxWork=w; } }
+  sd.H.events.length=0; return gc;
+}
+function forceMajor(){ const sd=S.sides[0]; if(S.halted||sd.debt>0) return; sd.dead.length=0; try{ sd.H.forceMajor(); }catch(e){ if(!e.oom) fail(e); return; } onEvents(sd); check(sd); }
+function check(sd){
+  if(S.halted) return;
+  try{
+    RT.checkReach(sd.H,sd.M.ref); S.checks.reach++;
+    if(sd.kind==="gen"){ RT.checkRemset(sd.H); S.checks.rem++; }
+    if(!sd.M.outputOk()) throw new RT.Violation(`出力が参照実行と違う (${sd.kind})`);
+    S.checks.out++;
+  }catch(e){ fail(e); }
+}
+function fail(e){
+  S.halted=e.message||String(e); console.warn("invariant violated:",S.halted);
+  const map={reach:"cReach",remembered:"cRem",出力:"cOut",左右:"cCross"};
+  let hit=false; for(const [k,id] of Object.entries(map)) if(S.halted.includes(k)){ $(id).className="ng"; $(id).textContent="不成立"; hit=true; }
+  if(!hit){ $("cReach").className="ng"; $("cReach").textContent="不成立"; }
+  $("foot").textContent="検査に失敗したため止めた: "+S.halted;
+}
+function tick(dt){
+  if(S.halted) return;
+  advSim(Math.min(dt,50)*S.speed);
+}
+function advSim(adv){
+  if(S.halted) return; S.simT+=adv;
+  const [a,b]=S.sides;
+  for(const [sd,ot] of [[a,b],[b,a]]){
+    sd.acc+=adv; let steps=0;
+    while(sd.acc>0&&steps<6){
+      if(sd.debt>0){ const u=Math.min(sd.debt,sd.acc); sd.debt-=u; sd.acc-=u; if(sd.debt<=1e-9){ sd.debt=0; sd.thawT=S.simT; sd.flashEnd=S.simT; } continue; }
+      if(sd.acc<FRAME) break;
+      sd.acc-=FRAME; stepSide(sd,ot); steps++;
+    }
+    if(steps>=6) sd.acc=Math.min(sd.acc,FRAME);
+  }
+}
+
+// ---------------------------------------------------------------- formatting
+const fmt=n=>Math.round(n).toLocaleString("ja-JP");
+const ms=d=>d>=1000?(d/1000).toFixed(2)+"秒":Math.round(d)+"ミリ秒";
+const msShort=d=>d>=1000?(d/1000).toFixed(2)+"s":Math.round(d)+"ms";
+
+// ---------------------------------------------------------------- layout
+const els={gen:{f:$("fGen"),b:$("bGen"),p:$("pGen"),chip:$("chipGen")},flat:{f:$("fFlat"),b:$("bFlat"),p:$("pFlat"),chip:$("chipFlat")}};
+let LY=null;
+function sizeCanvas(cv,w,h){ cv.width=Math.round(w*DPR); cv.height=Math.round(h*DPR); cv.style.height=h+"px"; const cx=cv.getContext("2d"); cx.setTransform(DPR,0,0,DPR,0,0); return cx; }
+function layout(){
+  const W=els.gen.f.clientWidth||els.gen.f.parentNode.clientWidth, mobile=W<520;
+  const z=S.sides[0].z, rowW=z.eden;
+  const rh=mobile?2:5, gap=mobile?1:2, top=mobile?11:16, stripH=mobile?20:46;
+  LY={W,mobile,fh:W*FH/FW,rh,gap,top,stripH,rowW};
+  const hg=bandSegs(S.sides[0]).h+4, hf=bandSegs(S.sides[1]).h+4; LY.bandH=Math.max(hg,hf);
+  // phones stack the sides, so each band takes only its own height; desktop aligns them
+  LY.bandHk={gen:mobile?hg:LY.bandH,flat:mobile?hf:LY.bandH};
+  for(const k of ["gen","flat"]){ const e=els[k];
+    e.fx=sizeCanvas(e.f,W,LY.fh); e.bx=sizeCanvas(e.b,W,LY.bandHk[k]); e.px=sizeCanvas(e.p,W,LY.stripH); }
+}
+
+// ---------------------------------------------------------------- heap reading
+const pt=[0,0];
+function readWorld(sd){
+  const H=sd.H, m=H.mem, f=sd.game.f, roots=H.roots, ref=sd.M.ref.objs;
+  const W={pb:[],eb:[],pt:[],en:[],cols:[],pl:null};
+  const pay=(a,k)=>m[a+2+hNp(m[a])+k];
+  const movers=(root,list,tt)=>{ const t=tt!==undefined?tt:roots[root]; if(t<0) return; const np=hNp(m[t]);
+    if(pay(t,0)===K.BANK){ for(let b=0;b<np;b++) movers(root,list,m[t+2+b]); return; }
+    for(let j=0;j<np;j++){ const a=m[t+2+j]; if(a<0) continue; const np2=hNp(m[a]), b=a+2+np2;
+      mvPos(m[b],m[b+1],m[b+2],m[b+3],m[b+4],f-m[b+5],m[b+7],pt);
+      list.push({x:pt[0],y:pt[1],id:m[a+1],aux:m[b+7],hp:m[b]===K.EN?m[b+8]:0,t:f-m[b+5]}); } };
+  movers(R.PB,W.pb); movers(R.EB,W.eb); movers(R.PT,W.pt); movers(R.EN,W.en);
+  const pl=roots[R.PL]; if(pl>=0){ W.pl={x:pay(pl,1)/FX,y:pay(pl,2)/FX}; W.plId=m[pl+1]; }
+  // terrain: map -> segment -> column -> tiles, only the visible columns
+  const mp=roots[R.MAP]; if(mp>=0){ const ncol=pay(mp,1), sc=sd.game.scroll(f), c0=Math.floor(sc/COLW);
+    for(let i=0;i<=Math.ceil(FW/COLW)+1;i++){ const idx=((c0+i)%ncol+ncol)%ncol;
+      const seg=m[mp+2+((idx/SEGC)|0)]; if(seg<0) continue; const col=m[seg+2+(idx%SEGC)]; if(col<0) continue;
+      const nf=pay(col,1), nc=pay(col,2), tiles=[], tids=[]; for(let t=0;t<nf+nc;t++){ const ta=m[col+2+t]; tiles.push(ta>=0?pay(ta,1):-1); tids.push(ta>=0?m[ta+1]:0); }
+      W.cols.push({x:(c0+i)*COLW-sc,nf,nc,tiles,tids}); } }
+  // ghosts: parse the heap linearly; a mover the reference no longer has is garbage still in memory
+  const gh=[];
+  for(const [a0,b0] of H.regions()){ let p=a0; while(p<b0){ const h=m[p], n=hSize(h), np=hNp(h), b=p+2+np, kind=n-2-np>0?m[b]:0;
+      if(kind>=1&&kind<=4&&!ref.has(m[p+1])){ const df=m[b+6]>=0?m[b+6]:f; mvPos(kind,m[b+1],m[b+2],m[b+3],m[b+4],df-m[b+5],m[b+7],pt); gh.push({x:pt[0],y:pt[1],id:m[p+1],kind}); }
+      p+=n; } }
+  sd.ghosts=gh; W.ghosts=gh; return W;
+}
+
+// ---------------------------------------------------------------- drawing
+function drawField(sd,cx){
+  const s=LY.W/FW, W=readWorld(sd), now=S.simT;
+  cx.save(); cx.clearRect(0,0,LY.W,LY.fh); cx.scale(s,s);
+  cx.fillStyle=C.paper; cx.fillRect(0,0,FW,FH);
+  // ghosts first (behind everything)
+  cx.strokeStyle=C.ghost; cx.lineWidth=.9; cx.beginPath();
+  for(const q of W.ghosts){ const x=Math.max(2,Math.min(FW-2,q.x)), y=Math.max(2,Math.min(FH-2,q.y)); cx.moveTo(x+1.6,y); cx.arc(x,y,1.6,0,6.2832); }
+  cx.stroke();
+  // red = what the last GC touched (copied or traced), shown while stopped and just after
+  const fl=sd.flash, fresh=fl&&fl.ids&&(sd.debt>0||(sd.thawT>=fl.t&&now-sd.thawT<300))?fl.ids:null;
+  // terrain tiles
+  for(const c of W.cols){ for(let t=0;t<c.tiles.length;t++){ const ty=c.tiles[t]; if(ty<0) continue;
+      const y=t<c.nf?FH-(t+1)*TILE:(t-c.nf)*TILE; cx.fillStyle=fresh&&fresh.has(c.tids[t])?C.red:ty===2?C.g3:C.ink; cx.fillRect(c.x+.5,y+.5,COLW-1,TILE-1); } }
+  // sparks
+  cx.fillStyle=C.ink; for(const q of W.pt){ const z=q.t<4?2.4:1.6; cx.fillRect(q.x-z/2,q.y-z/2,z,z); }
+  // enemies
+  for(const q of W.en){ cx.save(); cx.translate(q.x,q.y); cx.rotate(q.t*.02); cx.fillStyle=fresh&&fresh.has(q.id)?C.red:C.ink; cx.fillRect(-8,-8,16,16); cx.fillStyle=C.paper; cx.fillRect(-3,-3,6,6); cx.restore(); }
+  // player bullets
+  for(const q of W.pb){ cx.fillStyle=fresh&&fresh.has(q.id)?C.red:C.ink; cx.fillRect(q.x-1,q.y-5,2,10); }
+  // enemy bullets
+  for(const q of W.eb){ const red=fresh&&fresh.has(q.id);
+    cx.beginPath(); cx.arc(q.x,q.y,q.aux===2?2.6:3.3,0,6.2832);
+    if(q.aux===1&&!red){ cx.fillStyle=C.paper; cx.fill(); cx.lineWidth=1.4; cx.strokeStyle=C.ink; cx.stroke(); }
+    else { cx.fillStyle=red?C.red:C.ink; cx.fill(); } }
+  if(fresh){ cx.fillStyle=C.red; for(const q of W.pt) if(fresh.has(q.id)) cx.fillRect(q.x-1.5,q.y-1.5,3,3); }
+  // player
+  if(W.pl){ const {x,y}=W.pl; cx.fillStyle=fresh&&fresh.has(W.plId)?C.red:C.ink; cx.beginPath(); cx.moveTo(x,y-10); cx.lineTo(x+8,y+7); cx.lineTo(x,y+3); cx.lineTo(x-8,y+7); cx.closePath(); cx.fill(); }
+  // the objects a GC just freed: a short fade where they were
+  // what the GC is freeing: still drawn as garbage while the world is stopped, then gone
+  const sw=sd.swept, fz0=sd.debt>0;
+  if(sw&&(fz0||(sd.thawT>=sw.t&&now-sd.thawT<450))){ const k=fz0?1:1-(now-sd.thawT)/450;
+    cx.strokeStyle=fz0?C.ghost:`rgba(0,0,0,${.3*k})`; cx.lineWidth=.9; cx.beginPath();
+    for(const q of sw.pts){ const r=fz0?1.6:1.6+(1-k)*4; const x=Math.max(2,Math.min(FW-2,q.x)), y=Math.max(2,Math.min(FH-2,q.y)); cx.moveTo(x+r,y); cx.arc(x,y,r,0,6.2832); } cx.stroke(); }
+  const fz=sd.debt>0;
+  const minorStop=fz&&sd.debt0<120;
+  if(sd.note&&(minorStop||(!fz&&sd.thawT>=sd.note.t&&now-sd.thawT<1600))){ cx.textAlign="left"; cx.fillStyle=C.paper; cx.fillRect(6,30,300,34); cx.fillStyle=sd.note.a.startsWith("minor")&&!minorStop?C.ink:C.red; cx.fillRect(6,30,300,2);
+    cx.font=`800 12px "Noto Sans JP", sans-serif`; cx.fillText(sd.note.a,10,46); cx.font=`500 10px "Noto Sans JP", sans-serif`; cx.fillStyle=C.ink; cx.fillText(sd.note.b,10,59); }
+  if(fz){
+    const big=sd.debt0>=120, ev=sd.cur;
+    if(big){
+      cx.strokeStyle=C.red; cx.lineWidth=10; cx.strokeRect(5,5,FW-10,FH-10);
+      const bx=FW/2-175, by=FH/2-86; cx.fillStyle=C.paper; cx.fillRect(bx,by,350,172); cx.fillStyle=C.red; cx.fillRect(bx,by,350,4);
+      cx.textAlign="center"; cx.fillStyle=C.red;
+      cx.font=`900 80px "Noto Sans JP", sans-serif`; cx.fillText("停止",FW/2,by+92);
+      cx.fillStyle=C.ink; cx.font=`800 24px Archivo, sans-serif`; cx.fillText(`あと ${(sd.debt/1000).toFixed(2)} 秒`,FW/2,by+124);
+      cx.font=`700 11.5px "Noto Sans JP", sans-serif`;
+      const multi=sd.curKinds&&sd.curKinds.length>1;
+      cx.fillText(ev.kind==="minor"?`minor GC：生き残り ${fmt(ev.survivors)}個をコピー`:`${ev.kind==="major"?"major GC（大掃除）":"全体 GC"}：生きている ${fmt(ev.marked)}個をたどる`,FW/2,by+146);
+      cx.fillText(`${multi?"続けて minor GC も。合計 ":""}${fmt(sd.curWork)}語の仕事 = ${ms(sd.debt0)}`,FW/2,by+162);
+    } else { cx.strokeStyle=C.red; cx.lineWidth=4; cx.strokeRect(2,2,FW-4,FH-4); }
+  }
+  cx.restore();
+}
+// band geometry: rows of LY.rowW words (one eden per row), same words-per-pixel on both sides
+function bandSegs(sd){
+  const H=sd.H, rw=LY.rowW, rh=LY.rh, gap=LY.gap, lab=LY.top; const segs=[]; let y=0;
+  const add=(base,size,label,x0,rhh)=>{ const rows=x0!==undefined?1:Math.ceil(size/rw); const sg={base,size,label,x0,y0:y+lab,rows,rh:rhh||rh}; segs.push(sg); return sg; };
+  if(sd.kind==="gen"){
+    const erh=LY.mobile?6:14; add(0,H.E,"eden",undefined,erh); y+=lab+erh+gap+(LY.mobile?1:4);
+    add(H.s0,H.S,"survivor"+(H.from===H.s0?"（使用中）":""),0); add(H.s1,H.S,"survivor"+(H.from===H.s1?"（使用中）":""),H.S+Math.round(rw*.06)); y+=lab+rh+gap+(LY.mobile?1:4);
+    const o=add(H.oldBase,H.O,"old"); y=o.y0+o.rows*(rh+gap);
+  } else { const o=add(0,H.size,"ヒープ全体（1つの空間）"); y=o.y0+o.rows*(rh+gap); }
+  return {segs,h:y+2};
+}
+// the band is rasterised per pixel cell (one cell = rowW/W words) into an ImageData, then blitted per row
+const RGB={e:[238,238,238],d:[196,196,196],l:[0,0,0],r:[228,0,43]};
+const bandCv=document.createElement("canvas"), bandCx=bandCv.getContext("2d");
+function drawBand(sd,cx){
+  const H=sd.H, m=H.mem, ref=sd.M.ref.objs, W=LY.W, rw=LY.rowW, rh=LY.rh, gap=LY.gap;
+  cx.clearRect(0,0,W,LY.bandH+10);
+  const {segs}=bandSegs(sd), cw=Math.max(1,Math.round(W)), wpc=rw/cw;
+  // one pixel strip per row of every segment
+  let nrow=0; for(const sg of segs){ sg.r0=nrow; nrow+=sg.rows; }
+  if(bandCv.width!==cw||bandCv.height!==nrow){ bandCv.width=cw; bandCv.height=nrow; }
+  const cell=new Uint8Array(cw*nrow); // 0 empty-capacity-none, 1 empty, 2 dead, 3 live, 4 red
+  const mark=(sg,a,n,v)=>{ let off=a-sg.base; const one=sg.x0!==undefined;
+    while(n>0){ const r=one?0:Math.floor(off/rw), c=one?off+(sg.x0||0):off%rw, take=one?n:Math.min(n,rw-(off%rw));
+      const row=(sg.r0+r)*cw; let x0=Math.floor(c/wpc), x1=Math.min(cw-1,Math.floor((c+take-1)/wpc));
+      for(let x=x0;x<=x1;x++){ if(cell[row+x]<v) cell[row+x]=v; } n-=take; off+=take; } };
+  for(const sg of segs) mark(sg,sg.base,sg.size,1);
+  const used=sd.kind==="gen"?[[0,H.edenTop],[H.from,H.survTop],[H.oldBase,H.oldTop]]:[[0,H.top]];
+  const flash=sd.flash&&(sd.debt>0||(sd.thawT>=sd.flash.t&&S.simT-sd.thawT<300))?sd.flash:null;
+  let live=0, dead=0;
+  if(sd.debt>0&&sd.cur&&sd.cur.snap){ // stopped: show the heap as the GC found it
+    for(const o of sd.cur.snap){ const sg=segs.find(q=>o.a>=q.base&&o.a<q.base+q.size)||segs[segs.length-1]; const t=flash&&flash.ids&&flash.ids.has(o.id);
+      const lv=t||(sd.cur.kind==="minor"&&o.space==="old"&&ref.has(o.id)); if(lv) live+=o.n; else dead+=o.n; mark(sg,o.a,o.n,t?4:lv?3:2); }
+  } else
+  for(const [a0,b0] of used){ const sg=segs.find(q=>a0>=q.base&&a0<q.base+q.size)||segs[segs.length-1]; let p=a0;
+    while(p<b0){ const h=m[p], n=hSize(h), id=m[p+1], lv=ref.has(id); if(lv) live+=n; else dead+=n;
+      mark(sg,p,n,lv?(flash&&flash.ids&&flash.ids.has(id)?4:3):2); p+=n; } }
+  const img=bandCx.createImageData(cw,nrow), d=img.data, pal=[null,RGB.e,RGB.d,RGB.l,RGB.r];
+  for(let i=0;i<cell.length;i++){ const c=pal[cell[i]]; if(!c) continue; d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255; }
+  bandCx.putImageData(img,0,0); cx.imageSmoothingEnabled=false;
+  for(const sg of segs) for(let r=0;r<sg.rows;r++) cx.drawImage(bandCv,0,sg.r0+r,cw,1,0,sg.y0+r*(sg.rh+gap),W,sg.rh);
+  cx.font=`500 ${LY.mobile?9:11}px "Noto Sans JP", sans-serif`; cx.textAlign="left"; cx.fillStyle=C.g3;
+  for(const sg of segs) cx.fillText(sg.label,(sg.x0||0)/wpc,sg.y0-3);
+  cx.textAlign="right"; cx.fillStyle=C.ink;
+  cx.fillText(`生きている ${fmt(live)}語　死骸 ${fmt(dead)}語`,W,segs[0].y0-3);
+}
+function drawStrip(sd,cx){
+  const W=LY.W, Hh=LY.stripH, win=60000, t1=S.simT, t0=t1-win, sx=W/win, yM=S.yMax;
+  cx.clearRect(0,0,W,Hh); cx.fillStyle=C.ink; cx.fillRect(0,Hh-1,W,1);
+  for(const p of sd.pauses){ if(p.t+p.dur<t0) continue; const x=(p.t-t0)*sx, w=Math.max(1.5,p.dur*sx), h=Math.max(1.5,(Hh-14)*p.work/yM);
+    cx.fillStyle=p.kind==="minor"?C.ink:C.red; cx.fillRect(x,Hh-1-h,w,h);
+    if(p.kind==="major"){ cx.font=`700 ${LY.mobile?9:11}px "Noto Sans JP", sans-serif`; cx.textAlign=x>W-70?"right":"left"; cx.fillText("major GC",x>W-70?x-3:x+w+3,LY.mobile?9:22); } }
+  cx.font=`500 ${LY.mobile?9:11}px "Noto Sans JP", sans-serif`; cx.fillStyle=C.g3; cx.textAlign="left";
+  cx.fillText(LY.mobile?"":"GC ごとの停止。幅は止まった時間、高さは仕事量（左右で同じ目盛り）。直近60秒。赤は全体をたどる GC",0,10);
+}
+function drawAll(){
+  const [a,b]=S.sides;
+  for(const sd of S.sides){ const e=els[sd.kind]; const t0=performance.now(); drawField(sd,e.fx); const t1=performance.now(); drawBand(sd,e.bx); const t2=performance.now(); drawStrip(sd,e.px); if(S.prof){ S.prof[sd.kind+'F']=(S.prof[sd.kind+'F']||0)+t1-t0; S.prof[sd.kind+'B']=(S.prof[sd.kind+'B']||0)+t2-t1; }
+    const fz=sd.debt>0; e.chip.className="chip"+(fz?" stw":""); e.chip.lastChild.textContent=fz?`GC で停止中 ${msShort(sd.debt)}`:"実行中"; }
+  const lag=(b.game.f-a.game.f)/60;
+  const set=(p,sd,l)=>{ $(p+"N").textContent=fmt(sd.n);
+    if(sd.kind==="gen"){ $(p+"Ns").innerHTML=`止まった回数 <span class="${sd.nMajor?"maj":""}">major ${sd.nMajor}</span>`; } $(p+"T").textContent=msShort(sd.tot); $(p+"W").textContent=msShort(sd.max); $(p+"L").textContent=(l>=0?"+":"")+l.toFixed(1)+"s"; };
+  set("g",a,-lag); set("f",b,lag);
+  const hero=(id,sd)=>{ $(id).innerHTML=!sd.maxEv?"—":sd.max>=1000?`${(sd.max/1000).toFixed(2)}<small>秒</small>`:`${Math.round(sd.max)}<small>ミリ秒</small>`;
+    $(id+"D").textContent=sd.maxEv?` ${sd.maxEv.kind==="minor"?"minor GC":sd.maxEv.kind==="major"?"major GC":"全体 GC"} ${fmt(sd.maxWork)}語。`:""; };
+  hero("hGen",a); hero("hFlat",b);
+  $("live").innerHTML=`長寿命の地形 <b>${fmt(a.z.mapWords)}語</b> ／ ヒープ <b>${fmt(a.z.total)}語</b>（左右同じ） ／ 右は左より <b>${(lag<0?-lag:lag).toFixed(1)}秒</b>${lag<=0?"遅れている":"進んでいる"}`;
+  verdict(a,b);
+  $("kReach").textContent=fmt(S.checks.reach); $("kRem").textContent=fmt(S.checks.rem); $("kOut").textContent=fmt(S.checks.out); $("kCross").textContent=fmt(S.checks.cross);
+}
+
+// ---------------------------------------------------------------- verdict, computed from the counters above
+function verdictText(a,b){
+  if(b.n<3) return {head:`判定を待っている：右の全体 GC が3回起きるまで（いま${b.n}回）`,sub:a.n?`いまの数字：停止の合計 ${msShort(a.tot)} 対 ${msShort(b.tot)}、最悪の1回 ${msShort(a.max)} 対 ${msShort(b.max)}`:"",lost:false};
+  const tr=a.tot/b.tot, wr=b.max/a.max, sv=a.nMinor?Math.round(a.survSum/a.nMinor):0, nr=a.n/b.n;
+  const nums=`停止の合計 ${msShort(a.tot)} 対 ${msShort(b.tot)}（${tr.toFixed(2)}倍）、最悪の1回 ${msShort(a.max)} 対 ${msShort(b.max)}、回数 ${a.n} 対 ${b.n}`+(a.nMajor?`、うち major GC ${a.nMajor}回`:"");
+  if(tr>1.05) return {head:`賭けが外れた：弾が長生きで、minor GC が毎回 ${fmt(sv)}個もコピーしている`,sub:nums+(wr>1.25?"。1回の最悪はまだ世代別のほうが短い":""),lost:true};
+  if(tr<0.95&&wr>1.25) return {head:nr>1.2?`いまは世代別の勝ち：止まる回数は${nr.toFixed(1)}倍だが、1回が${wr.toFixed(1)}倍短い`:`いまは世代別の勝ち：1回が${wr.toFixed(1)}倍短く、合計も少ない`,sub:nums,lost:false};
+  if(tr<0.95) return {head:"合計では世代別の勝ち。でも major GC（大掃除）で同じくらい長く止まった",sub:nums,lost:false};
+  return {head:`互角：止まった合計はほぼ同じ（${tr.toFixed(2)}倍）`,sub:nums,lost:false};
+}
+let vLast=-1e9;
+function verdict(a,b){ if(S.simT-vLast<250&&S.simT>=vLast) return; vLast=S.simT; const v=verdictText(a,b); S.verdict=v;
+  $("vHead").textContent=v.head; $("vSub").textContent=v.sub; $("verdict").className="verdict"+(v.lost?" lost":""); }
+
+// ---------------------------------------------------------------- controls
+function syncButtons(){
+  const pr=Object.entries(PRESETS).find(([k,v])=>v.scale===S.scale&&v.life===S.life); S.preset=pr?pr[0]:null;
+  for(const [attr,val] of [["scale",S.scale],["life",S.life],["speed",S.speed],["preset",S.preset]])
+    document.querySelectorAll(`[data-${attr}]`).forEach(x=>x.setAttribute("aria-pressed",String(String(x.dataset[attr])===String(val))));
+}
+function setOpts(o){ let r=false; if(o.scale!=null&&+o.scale!==S.scale){ S.scale=+o.scale; r=true; } if(o.life!=null&&+o.life!==S.life){ S.life=+o.life; r=true; }
+  if(o.speed!=null) S.speed=+o.speed; syncButtons(); if(r||o.reset) reset(); }
+function preset(name){ const p=PRESETS[name]; if(!p) throw new Error("unknown preset "+name); setOpts({scale:p.scale,life:p.life,reset:true}); }
+document.querySelectorAll("[data-scale]").forEach(b=>b.onclick=()=>setOpts({scale:b.dataset.scale}));
+document.querySelectorAll("[data-life]").forEach(b=>b.onclick=()=>setOpts({life:b.dataset.life}));
+document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>preset(b.dataset.preset));
+$("bMajor").onclick=()=>forceMajor();
+document.querySelectorAll("[data-speed]").forEach(b=>b.onclick=()=>setOpts({speed:b.dataset.speed}));
+$("bWave").onclick=()=>{ const f=Math.max(S.sides[0].game.f,S.sides[1].game.f)+1; S.pend.push({f,n:3}); };
+$("bReset").onclick=()=>reset();
+syncButtons();
+let rz=0; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ layout(); drawAll(); },80); });
+
+// test hook: advance simulated time without the frame clock (used by the screenshot script)
+S.advance=(msTotal,until)=>{ let t=0; while(t<msTotal&&!S.halted){ advSim(FRAME); t+=FRAME; if(until&&until(S)) break; } drawAll(); return t; };
+S.reset=reset;
+// capture hook (documented at the top of the file)
+const sideState=sd=>({frame:sd.game.f,stops:sd.n,minor:sd.nMinor,major:sd.nMajor,full:sd.kind==="flat"?sd.n:0,totalMs:+sd.tot.toFixed(1),worstMs:+sd.max.toFixed(1),
+  frozen:sd.debt>0,frozenLeftMs:+sd.debt.toFixed(1),sinceThawMs:sd.debt>0?0:+(S.simT-Math.max(sd.thawT,0)).toFixed(1),lastGC:sd.cur?{kind:sd.cur.kind,work:sd.cur.work}:null,score:sd.game.st.score});
+window.__bullet={
+  preset, set:setOpts, freeze(){ S.frozenClock=true; }, play(sp){ S.frozenClock=false; if(sp!=null) setOpts({speed:sp}); },
+  stepFrames(n){ for(let i=0;i<n;i++) advSim(FRAME); drawAll(); return this.state(); },
+  advance(ms,until){ S.advance(ms,until?(()=>until(this.state())):null); return this.state(); },
+  toFrame(f,side="gen"){ const sd=S.sides[side==="gen"?0:1]; let g=0; while(sd.game.f<f&&g++<1e6&&!S.halted) advSim(FRAME); drawAll(); return this.state(); },
+  forceMajor(){ forceMajor(); drawAll(); return this.state(); },
+  draw(){ drawAll(); },
+  state(){ const [a,b]=S.sides, v=verdictText(a,b); return {preset:S.preset,scale:S.scale,life:S.life,speed:S.speed,simT:+S.simT.toFixed(1),gen:sideState(a),flat:sideState(b),
+    verdict:v.head,verdictSub:v.sub,checks:{...S.checks},halted:S.halted}; }
+};
+
+reset();
+let last=performance.now();
+S.prof={tick:0,draw:0,n:0};
+function frame(now){ const dt=now-last; last=now; const a=performance.now(); if(!S.frozenClock) tick(dt); const b=performance.now(); drawAll(); const c=performance.now(); S.prof.tick+=b-a; S.prof.draw+=c-b; S.prof.n++; requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>drawAll());
+})();
+</script>
+</body>
+</html>
