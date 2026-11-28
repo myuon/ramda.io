@@ -148,6 +148,15 @@
     #mapWrap { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); align-items:start; }
   }
 </style>
+<style>
+/* ramda.io: 解説動画の埋め込み */
+.rv{box-sizing:border-box;width:100%;max-width:360px;margin:40px auto 48px;padding:0 4px}
+.rv-h{font-size:17px;line-height:1.4;margin:0 0 10px;font-weight:700}
+.rv-frame{position:relative;width:100%;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#000}
+.rv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.rv-ch{font-size:13px;line-height:1.6;margin:10px 0 0}
+.rv-ch a{color:inherit}
+</style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -228,6 +237,12 @@
     <div class="tblWrap"><table id="tbl"></table></div>
     <p class="fine">右下の角から破れを 0.25 マスずつ広げ、自前のリード・ソロモン復号(GF(256)、シンドローム → Berlekamp-Massey → Chien → Forney)で元の URL に戻るかを調べた。同じ破れの画像を macOS の QR 読み取り(CIDetector)にも読ませると、どのレベルでも 0.25〜1.25 マス遅れて読めなくなる(リポジトリの scripts/sweep.mjs)。符号化は QR 仕様の例(01234567 1-M など)と一致し、版 1〜5 の全レベルを CIDetector が読めることを確かめた。</p>
   </div>
+</section>
+
+<section class="rv" id="video" aria-labelledby="rv-h">
+  <h2 class="rv-h" id="rv-h">解説動画（55秒）</h2>
+  <div class="rv-frame"><iframe src="https://www.youtube-nocookie.com/embed/V8nM9DrHtQQ" title="QR コードは破れても読めるのはなぜ？ の解説動画" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+  <p class="rv-ch">ほかの解説動画は YouTube チャンネル <a href="https://www.youtube.com/@ramda_io" target="_blank" rel="noopener">@ramda_io</a> にあります。</p>
 </section>
 
 <script>// QR コード(バージョン1〜4)のエンコードと、リード・ソロモンの復号。外部ライブラリなし。
