@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QR コードは破れても読めるのはなぜ？</title>
+<meta name="description" content="カフェの卓上の QR が破れても読めるのはなぜ。中身のバイトを色分けし、破れ・汚れの場所で読める/読めないが分かれる様子を、本物のリード・ソロモン復号で見る">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ramda.io">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="QR コードは破れても読めるのはなぜ？">
+<meta property="og:description" content="カフェの卓上の QR が破れても読めるのはなぜ。中身のバイトを色分けし、破れ・汚れの場所で読める/読めないが分かれる様子を、本物のリード・ソロモン復号で見る">
+<meta property="og:url" content="https://www.ramda.io/works/qr-repair/">
+<meta property="og:image" content="https://www.ramda.io/works/qr-repair/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="QR コードは破れても読めるのはなぜ？">
+<meta name="twitter:description" content="カフェの卓上の QR が破れても読めるのはなぜ。中身のバイトを色分けし、破れ・汚れの場所で読める/読めないが分かれる様子を、本物のリード・ソロモン復号で見る">
+<meta name="twitter:image" content="https://www.ramda.io/works/qr-repair/ogp.png">
+<style>
+  :root {
+    --night:#121110; --panel:#1c1a17; --line:#2e2a25; --cream:#f3efe6; --mute:#a9a194; --dim:#6f685e;
+    --red:#e5484d; --green:#2fb36d; --yellow:#ffd60a; --data:#3d7be0; --ec:#e8a13a; --fn:#8b857d;
+    --padL:max(14px, calc(18px + (100vw - 390px) * 0.119));
+    --padR:max(14px, calc(18px + (100vw - 390px) * 0.293));
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { background:var(--night); color:var(--cream); overflow-x:hidden; }
+  body { font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; -webkit-text-size-adjust:100%; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+  .mono { font-family:"SF Mono",Menlo,Consolas,monospace; }
+
+  /* ---------- 最初の画面 ---------- */
+  #hero { position:relative; }
+  #camWrap { position:relative; width:100%; aspect-ratio:1080/1010; background:#3b281b; overflow:hidden; }
+  #cam { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:pan-y; }
+  #cam.tearing { touch-action:none; cursor:crosshair; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.05em; border-radius:8px; white-space:nowrap; }
+  #tagTop { position:absolute; left:9.26%; top:25.9%; font-size:clamp(12px, 2.78vw, 30px); padding:.27em .6em; background:rgba(0,0,0,.55); }
+  #chip { position:absolute; left:50%; top:95.2%; transform:translate(-50%,-50%); background:var(--yellow); color:#111; font-weight:700;
+          font-size:clamp(13px, 3.1vw, 34px); padding:.42em .85em .42em .65em; border-radius:2em; display:flex; align-items:center; gap:.4em;
+          box-shadow:0 .2em .8em rgba(0,0,0,.45); white-space:nowrap; transition:background .2s, color .2s; }
+  #chip svg { width:1em; height:1em; flex:none; }
+  #chip.fail { background:#2b2724; color:#ff9c9f; }
+  #side { padding:clamp(10px, 2vw, 24px) var(--padR) 0 var(--padL); }
+  #num { display:flex; align-items:baseline; gap:.1em; font-weight:800; white-space:nowrap; font-size:clamp(20px, 4.45vw, 48px); line-height:1.1; }
+  #num b { font-size:2.7em; font-weight:900; color:var(--green); letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+  #num.fail b { color:var(--red); }
+  #sub { font-size:clamp(13px, 2.6vw, 28px); color:#cfc7b8; margin-top:.3em; min-height:1.5em; }
+  #sub em { font-style:normal; color:var(--red); font-weight:800; }
+  #legend { display:none; flex-wrap:wrap; gap:.3em 1em; font-size:clamp(12px, 2.3vw, 25px); color:#d9d2c4; margin-top:.35em; }
+  .color #legend { display:flex; } .color #sub { display:none; }
+  #legend i { display:inline-block; width:.95em; height:.95em; border-radius:3px; vertical-align:-.12em; margin-right:.3em; }
+
+  /* 裏 */
+  #back { margin:clamp(10px, 2vw, 22px) calc(-1 * var(--padR)) 0 calc(-1 * var(--padL)); padding:clamp(8px, 1.4vw, 14px) var(--padR) clamp(14px, 2vw, 22px) var(--padL); background:var(--panel); border-top:1px solid var(--line); }
+  #backHead { display:flex; align-items:center; gap:.4em; flex-wrap:wrap; font-size:clamp(12px, 2.05vw, 22px); }
+  #tagBack { background:#2c2925; color:#d9d2c4; padding:.25em .55em; }
+  #lv { display:inline-flex; border:1px solid #3a3631; border-radius:8px; overflow:hidden; }
+  #lv button { padding:.2em .55em; font-weight:700; color:var(--mute); }
+  #lv button.on { background:var(--cream); color:#111; }
+  .btn { border:1px solid #3a3631; border-radius:8px; padding:.2em .6em; color:#d9d2c4; white-space:nowrap; }
+  .btn.on { background:#3a3631; color:#fff; }
+  #stacks { display:flex; gap:clamp(6px, 1.4vw, 16px); align-items:flex-end; margin-top:clamp(8px, 1.4vw, 14px); }
+  .col { flex:1; min-width:0; }
+  .col .box { position:relative; height:clamp(64px, 11vw, 120px); background:#25221e; border-radius:6px; overflow:hidden; }
+  .col .brick { position:absolute; left:3px; right:3px; background:var(--red); border-radius:2px; }
+  .col .lim { position:absolute; left:0; right:0; border-top:2px dashed #cfc7b8; }
+  .col.naive .lim { border-top-color:#8d8577; }
+  .col.over .box { background:#3a1517; }
+  .col.over .box::after { content:"×"; position:absolute; right:6px; top:0; color:#ff9c9f; font-weight:900; font-size:clamp(16px, 3vw, 32px); }
+  .col .cap { font-size:clamp(10px, 2vw, 21px); color:var(--mute); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .col .cap b { color:var(--cream); font-variant-numeric:tabular-nums; }
+  .col.naive { flex:.8; }
+  #stackNote { font-size:clamp(10px, 2vw, 21px); color:var(--dim); margin-top:2px; }
+  .url { margin-top:clamp(6px, 1vw, 10px); font-size:calc((100vw - var(--padL) - var(--padR)) / 23); display:grid; grid-template-columns:1fr; gap:0; }
+  .url .ul { color:var(--mute); white-space:nowrap; font-size:clamp(11px, 2vw, 21px); margin-top:.3em; }
+  .url .v { white-space:pre; overflow:hidden; letter-spacing:-.02em; }
+  .url .x { background:var(--red); color:#fff; border-radius:2px; }
+  .url .g { background:var(--green); color:#0d1a12; border-radius:2px; }
+  .url .nope { color:#ff9c9f; font-family:inherit; }
+
+  /* ---------- 下の節 ---------- */
+  section { padding:clamp(36px, 7vw, 80px) var(--padL) 0; max-width:980px; margin:0 auto; }
+  h2 { font-size:clamp(22px, 4.2vw, 44px); line-height:1.3; font-weight:800; letter-spacing:.01em; }
+  h2 em { font-style:normal; color:var(--ec); }
+  .lead { color:#cfc7b8; font-size:clamp(14px, 2.3vw, 20px); margin-top:.6em; line-height:1.7; }
+  #mapWrap { display:grid; grid-template-columns:1fr; gap:16px; margin-top:18px; }
+  #map { width:100%; max-width:560px; aspect-ratio:1; display:block; margin:0 auto; border-radius:10px; touch-action:pan-y; }
+  #mapLegend { display:flex; flex-wrap:wrap; gap:.4em 1.1em; font-size:clamp(12px, 2vw, 16px); color:#d9d2c4; }
+  #mapLegend i { display:inline-block; width:1em; height:1em; border-radius:3px; vertical-align:-.15em; margin-right:.35em; }
+  #strip { display:flex; flex-direction:column; gap:6px; }
+  .srow { display:grid; grid-template-columns:4.2em 1fr; align-items:center; gap:6px; font-size:clamp(11px, 1.8vw, 14px); color:var(--mute); }
+  .cells { display:flex; gap:1px; height:clamp(22px, 3.6vw, 30px); }
+  .cells i { flex:1; min-width:0; border-radius:2px; position:relative; }
+  .cells i.gap { flex:0 0 5px; background:none !important; }
+  .cells i.bad::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(229,72,77,.95) 0 3px, rgba(0,0,0,0) 3px 6px); border-radius:2px; }
+  .cells i.hi { outline:2px solid var(--yellow); outline-offset:1px; z-index:1; }
+  #readout { min-height:1.6em; font-size:clamp(12px, 2vw, 16px); color:#e9e4da; }
+
+  #cases { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:18px; }
+  @media (min-width:760px) { #cases { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
+  .case { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:6px; }
+  .case canvas { width:100%; aspect-ratio:1; display:block; border-radius:6px; }
+  .case .hd { display:flex; align-items:center; gap:8px; }
+  .case .mk { font-size:clamp(26px, 5vw, 40px); font-weight:900; line-height:1; }
+  .case .mk.o { color:var(--green); } .case .mk.x { color:var(--red); }
+  .case .tt { font-weight:800; font-size:clamp(14px, 2.3vw, 18px); line-height:1.3; }
+  .case .ds { font-size:clamp(12px, 1.9vw, 14px); color:#cfc7b8; line-height:1.55; }
+  .case .rd { font-size:clamp(11px, 1.7vw, 13px); color:var(--mute); display:flex; gap:10px; flex-wrap:wrap; }
+  .case .rd b.o { color:var(--green); } .case .rd b.x { color:var(--red); }
+  #casesWhy { margin-top:14px; font-size:clamp(14px, 2.3vw, 19px); line-height:1.7; background:var(--panel); border-left:4px solid var(--data); padding:12px 16px; border-radius:6px; }
+  #casesWhy b { color:#8fb6ff; }
+  #whySvg { width:100%; max-width:760px; display:block; margin:18px auto 0; }
+  #whySvg text { font-family:"Hiragino Sans",system-ui,sans-serif; }
+  .step { transition:opacity .45s; }
+  #whyCtl { display:flex; gap:10px; justify-content:center; margin-top:10px; font-size:15px; flex-wrap:wrap; }
+  #bridge { margin-top:18px; font-size:clamp(15px, 2.5vw, 22px); line-height:1.7; background:var(--panel); border-left:4px solid var(--ec); padding:14px 16px; border-radius:6px; }
+  #bridge b { color:var(--ec); }
+  #take { text-align:center; padding-bottom:10px; }
+  #take p { font-size:clamp(22px, 4.6vw, 46px); font-weight:800; line-height:1.45; }
+  #take p em { font-style:normal; color:var(--green); }
+
+  #checks { margin-bottom:60px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-top:14px; font-size:14px; color:#d9d2c4; }
+  .panel h3 { font-size:15px; color:var(--cream); margin-bottom:8px; }
+  .kv { display:grid; grid-template-columns:1fr auto; gap:4px 12px; }
+  .kv b { font-variant-numeric:tabular-nums; text-align:right; }
+  .ok { color:var(--green); } .ng { color:var(--red); }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+  th, td { padding:5px 4px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; }
+  .tblWrap { overflow-x:auto; }
+  .ctl { display:flex; flex-wrap:wrap; gap:8px; }
+  .ctl .btn { font-size:14px; padding:.35em .8em; }
+  .fine { font-size:12px; color:var(--dim); margin-top:8px; line-height:1.6; }
+
+  /* 横長の画面: 絵と数字を左右に */
+  @media (min-width:1000px) and (min-aspect-ratio:1/1) {
+    #hero { display:grid; grid-template-columns:minmax(0, 1.05fr) minmax(0, 1fr); max-width:1400px; margin:0 auto; }
+    #camWrap { height:auto; }
+    #side { padding:28px 36px 0; display:flex; flex-direction:column; justify-content:center; }
+    #num { font-size:34px; } #sub { font-size:18px; } #legend { font-size:16px; }
+    #tagTop { font-size:18px; } #chip { font-size:22px; }
+    #back { margin:22px 0 0; padding:14px 18px 18px; border:1px solid var(--line); border-radius:10px; }
+    #backHead { font-size:16px; } .col .box { height:110px; } .col .cap, #stackNote { font-size:13px; } .url { font-size:15px; } .url .ul { font-size:13px; }
+    #mapWrap { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); align-items:start; }
+  }
+</style>
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+<div id="hero">
+  <div id="camWrap">
+    <canvas id="cam" width="1080" height="1010" aria-label="卓上カードの QR をスマホのカメラで読んでいる画面"></canvas>
+    <div class="tag" id="tagTop">表 ─ スマホのカメラ</div>
+    <div id="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span id="chipText"></span></div>
+  </div>
+  <div id="side">
+    <div id="num"><b id="nBroken">–</b><span id="numText">バイト壊れても読めた</span></div>
+    <div id="sub"></div>
+    <div id="legend"><span><i style="background:var(--data)"></i>文字のバイト</span><span><i style="background:var(--ec)"></i>誤り訂正(検算)のバイト</span><span><i style="background:var(--fn)"></i>読むための目印</span><span><i style="background:repeating-linear-gradient(135deg,var(--red) 0 3px,transparent 3px 6px)"></i>欠けたバイト</span></div>
+    <div id="back">
+      <div id="backHead">
+        <span class="tag" id="tagBack">裏 ─ 中身 <span id="nTotal">–</span> バイト</span>
+        <span id="lv"><button data-l="L">L</button><button data-l="M">M</button><button data-l="Q">Q</button><button data-l="H">H</button></span>
+        <button class="btn" id="bColor">色分け</button>
+        <button class="btn" id="bTear">指で破る</button>
+        <button class="btn" id="bPlay">❚❚</button>
+      </div>
+      <div id="stacks"></div>
+      <div id="stackNote"></div>
+      <div class="url">
+        <span class="ul">誤り訂正なし</span><span class="v mono" id="u1"></span>
+        <span class="ul">リード・ソロモン</span><span class="v mono" id="u2"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="mapSec">
+  <h2>どのマスが<em>誤り訂正</em>で、<br>どこが欠けた？</h2>
+  <p class="lead">QR のマス目を、8 マスで 1 バイトずつ塗り分けました。青が URL の文字、橙が誤り訂正(検算)のバイト、灰色は読むための目印です。並び方は符号化の規則どおりの本物の配置です。下の帯のバイトに触れると、QR の上でその 8 マスが光ります。</p>
+  <div id="mapWrap">
+    <canvas id="map" width="760" height="760" aria-label="QR のマス目をバイトごとに色分けした地図"></canvas>
+    <div>
+      <div id="mapLegend"></div>
+      <div id="strip" style="margin-top:12px"></div>
+      <div id="readout" style="margin-top:10px"></div>
+    </div>
+  </div>
+</section>
+
+<section id="casesSec">
+  <h2>同じ面積でも、<em>欠ける場所</em>で<br>強い・弱いが分かれる</h2>
+  <p class="lead" id="casesLead"></p>
+  <div id="cases"></div>
+  <p id="casesWhy"></p>
+  <p class="fine">「カメラ」の ○× は、同じ欠けの画像を Mac の QR 読み取り(CIDetector)に読ませた結果を、作るときに記録したものです(scripts/cases-apple.mjs)。画面では欠けた行列の指紋を照らし合わせ、違えば「未照合」と出します。「自前の読み」は QR の位置を知っている前提で、この画面の中で毎回復号しています。</p>
+</section>
+
+<section id="whySec">
+  <h2>なぜ、どこが壊れたか<em>分かる</em>のか</h2>
+  <p class="lead">数を 4 つだけ使った最小の例です。数字の箱に触れると、別の場所を壊せます。</p>
+  <svg id="whySvg" viewBox="0 0 760 640" role="img" aria-label="整数での誤り訂正の例"></svg>
+  <div id="whyCtl"><button class="btn" id="wPrev">◀ 戻る</button><button class="btn" id="wNext">次へ ▶</button><button class="btn" id="wBreak">別の場所を壊す</button></div>
+  <p id="bridge"></p>
+</section>
+
+<section id="take">
+  <p>余分に足した「検算」は、<br>間違いに<em>気づく</em>だけでなく、<br><em>どこか</em>を指さして直せる。</p>
+</section>
+
+<section id="checks">
+  <div class="panel">
+    <h3>動かし方</h3>
+    <div class="ctl"><button class="btn" id="bStep">コマ送り</button><button class="btn" id="bSpeed">速さ: 普通</button><button class="btn" id="bReset">元に戻す</button><button class="btn" id="bMax">読める限界まで</button></div>
+    <p class="fine">「指で破る」を押してから QR をなぞると穴があきます(パソコンではそのままドラッグでも)。</p>
+  </div>
+  <div class="panel">
+    <h3>実行時の検査(この画面で数えている)</h3>
+    <div class="kv" id="kv"></div>
+  </div>
+  <div class="panel">
+    <h3>レベルごとの限界(この画面を開いたときに計算)</h3>
+    <div class="tblWrap"><table id="tbl"></table></div>
+    <p class="fine">右下の角から破れを 0.25 マスずつ広げ、自前のリード・ソロモン復号(GF(256)、シンドローム → Berlekamp-Massey → Chien → Forney)で元の URL に戻るかを調べた。同じ破れの画像を macOS の QR 読み取り(CIDetector)にも読ませると、どのレベルでも 0.25〜1.25 マス遅れて読めなくなる(リポジトリの scripts/sweep.mjs)。符号化は QR 仕様の例(01234567 1-M など)と一致し、版 1〜5 の全レベルを CIDetector が読めることを確かめた。</p>
+  </div>
+</section>
+
+<script>// QR コード(バージョン1〜4)のエンコードと、リード・ソロモンの復号。外部ライブラリなし。
+// GF(256) は原始多項式 x^8+x^4+x^3+x^2+1 (0x11D)、α=2。生成多項式の根は α^0..α^(n-1)。
+(function (root) {
+  'use strict';
+
+  // ---------- GF(256) ----------
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  { let x = 1; for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+    for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255]; }
+  const mul = (a, b) => (a && b) ? EXP[LOG[a] + LOG[b]] : 0;
+  const div = (a, b) => { if (!b) throw new Error('div0'); return a ? EXP[(LOG[a] + 255 - LOG[b]) % 255] : 0; };
+  const pow = (e) => EXP[((e % 255) + 255) % 255];
+  const inv = (a) => EXP[255 - LOG[a]];
+
+  // 多項式は「低次から」の配列 p[i] = x^i の係数
+  function polyEvalLow(p, x) { let y = 0; for (let i = p.length - 1; i >= 0; i--) y = mul(y, x) ^ p[i]; return y; }
+
+  // ---------- RS 符号化 ----------
+  const genCache = {};
+  function generator(n) { // 高次から、先頭 1
+    if (genCache[n]) return genCache[n];
+    let g = [1];
+    for (let i = 0; i < n; i++) {
+      const ng = new Array(g.length + 1).fill(0);
+      for (let j = 0; j < g.length; j++) { ng[j] ^= g[j]; ng[j + 1] ^= mul(g[j], pow(i)); }
+      g = ng;
+    }
+    return (genCache[n] = g);
+  }
+  function rsEncode(data, n) { // data: 高次から。返り値: n 個の検算バイト
+    const g = generator(n), r = new Array(n).fill(0);
+    for (const d of data) {
+      const f = d ^ r[0];
+      r.shift(); r.push(0);
+      if (f) for (let j = 0; j < n; j++) r[j] ^= mul(g[j + 1], f);
+    }
+    return r;
+  }
+
+  // ---------- RS 復号: シンドローム → Berlekamp-Massey → Chien → Forney ----------
+  // cw: 高次から並んだ符号語(長さ N)、n: 検算バイト数。
+  // 返り値 { ok, corrected, positions, syndromes, lambda, reason }
+  function rsDecode(cw, n) {
+    const N = cw.length;
+    const r = cw.slice();
+    const S = new Array(n);
+    let clean = true;
+    for (let j = 0; j < n; j++) {
+      let s = 0; const a = pow(j);
+      for (let i = 0; i < N; i++) s = mul(s, a) ^ r[i]; // r(α^j)、高次から Horner
+      S[j] = s; if (s) clean = false;
+    }
+    if (clean) return { ok: true, corrected: r, positions: [], syndromes: S, lambda: [1] };
+    // Berlekamp-Massey
+    let C = [1], B = [1], L = 0, m = 1, b = 1;
+    for (let k = 0; k < n; k++) {
+      let d = S[k];
+      for (let i = 1; i <= L; i++) d ^= mul(C[i] || 0, S[k - i]);
+      if (d === 0) { m++; continue; }
+      const coef = div(d, b);
+      const T = C.slice();
+      const need = B.length + m;
+      while (C.length < need) C.push(0);
+      for (let i = 0; i < B.length; i++) C[i + m] ^= mul(coef, B[i]);
+      if (2 * L <= k) { L = k + 1 - L; B = T; b = d; m = 1; } else m++;
+    }
+    while (C.length > 1 && C[C.length - 1] === 0) C.pop();
+    const lambda = C;
+    if (lambda.length - 1 !== L || 2 * L > n) return { ok: false, reason: 'too-many', syndromes: S, lambda };
+    // Chien: x^e の位置 e(0..N-1)で Λ(α^-e)=0
+    const errPow = [];
+    for (let e = 0; e < N; e++) if (polyEvalLow(lambda, pow(-e)) === 0) errPow.push(e);
+    if (errPow.length !== L) return { ok: false, reason: 'roots', syndromes: S, lambda };
+    // Forney(第1根 α^0): e_k = X_k · Ω(X_k^-1) / Λ'(X_k^-1)
+    const omega = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) for (let j = 0; j < lambda.length && i + j < n; j++) omega[i + j] ^= mul(S[i], lambda[j]);
+    const dl = []; for (let i = 1; i < lambda.length; i++) dl[i - 1] = (i & 1) ? lambda[i] : 0; // 形式微分
+    const positions = [];
+    for (const e of errPow) {
+      const X = pow(e), Xi = pow(-e);
+      const den = polyEvalLow(dl, Xi);
+      if (!den) return { ok: false, reason: 'forney', syndromes: S, lambda };
+      const mag = mul(X, div(polyEvalLow(omega, Xi), den));
+      const idx = N - 1 - e;
+      r[idx] ^= mag; positions.push(idx);
+    }
+    // 直したあと検算がすべて 0 になることを確かめる
+    for (let j = 0; j < n; j++) { let s = 0; const a = pow(j); for (let i = 0; i < N; i++) s = mul(s, a) ^ r[i]; if (s) return { ok: false, reason: 'verify', syndromes: S, lambda }; }
+    positions.sort((a, b) => a - b);
+    return { ok: true, corrected: r, positions, syndromes: S, lambda };
+  }
+
+  // ---------- QR の表 (v1-4) ----------
+  // [検算バイト/ブロック, ブロック数, データバイト/ブロック]
+  // 版ごとの [検算バイト/ブロック, [[ブロック数, データバイト/ブロック], ...]]
+  const SPEC_RAW = {
+    1: { L: [7, [[1, 19]]], M: [10, [[1, 16]]], Q: [13, [[1, 13]]], H: [17, [[1, 9]]] },
+    2: { L: [10, [[1, 34]]], M: [16, [[1, 28]]], Q: [22, [[1, 22]]], H: [28, [[1, 16]]] },
+    3: { L: [15, [[1, 55]]], M: [26, [[1, 44]]], Q: [18, [[2, 17]]], H: [22, [[2, 13]]] },
+    4: { L: [20, [[1, 80]]], M: [18, [[2, 32]]], Q: [26, [[2, 24]]], H: [16, [[4, 9]]] },
+    5: { L: [26, [[1, 108]]], M: [24, [[2, 43]]], Q: [18, [[2, 15], [2, 16]]], H: [22, [[2, 11], [2, 12]]] },
+  };
+  // spec(v,e) = { ec, dl:[ブロックごとのデータ長], nb, dataTotal, total, t }
+  function spec(version, ecl) {
+    const [ec, groups] = SPEC_RAW[version][ecl]; const dl = [];
+    for (const [c, d] of groups) for (let i = 0; i < c; i++) dl.push(d);
+    const dataTotal = dl.reduce((a, b) => a + b, 0);
+    return { ec, dl, nb: dl.length, dataTotal, total: dataTotal + ec * dl.length, t: ec >> 1 };
+  }
+  // 互換: ブロックの長さがそろう版だけ [ec, nb, dpb]
+  const EC_TABLE = {};
+  for (const v of [1, 2, 3, 4]) { EC_TABLE[v] = {}; for (const e of 'LMQH') { const s = spec(v, e); EC_TABLE[v][e] = [s.ec, s.nb, s.dl[0]]; } }
+  // 文字列が入る最小の版
+  function fitVersion(text, ecl, mode) {
+    for (let v = 1; v <= 5; v++) { try { dataCodewords(text, v, ecl, mode); return v; } catch (e) { /* 次の版 */ } }
+    throw new Error('too long for v5');
+  }
+  const FORMAT_BITS = { L: 1, M: 0, Q: 3, H: 2 };
+  const ALNUM = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+
+  function bitsOf(segMode, text) {
+    const bits = [];
+    const put = (v, len) => { for (let i = len - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
+    if (segMode === 'numeric') {
+      put(1, 4); put(text.length, 10);
+      for (let i = 0; i < text.length; i += 3) { const ch = text.slice(i, i + 3); put(parseInt(ch, 10), ch.length * 3 + 1); }
+    } else if (segMode === 'alnum') {
+      put(2, 4); put(text.length, 9);
+      for (let i = 0; i < text.length; i += 2) {
+        if (i + 1 < text.length) put(ALNUM.indexOf(text[i]) * 45 + ALNUM.indexOf(text[i + 1]), 11);
+        else put(ALNUM.indexOf(text[i]), 6);
+      }
+    } else {
+      const bytes = typeof TextEncoder !== 'undefined' ? Array.from(new TextEncoder().encode(text)) : Array.from(Buffer.from(text, 'utf8'));
+      put(4, 4); put(bytes.length, 8); for (const b of bytes) put(b, 8);
+    }
+    return bits;
+  }
+
+  function dataCodewords(text, version, ecl, segMode) {
+    const sp = spec(version, ecl);
+    const cap = sp.dataTotal * 8;
+    const bits = bitsOf(segMode || 'byte', text);
+    if (bits.length > cap) throw new Error('too long');
+    for (let i = 0; i < 4 && bits.length < cap; i++) bits.push(0);
+    while (bits.length % 8) bits.push(0);
+    const out = [];
+    for (let i = 0; i < bits.length; i += 8) { let v = 0; for (let j = 0; j < 8; j++) v = (v << 1) | bits[i + j]; out.push(v); }
+    for (let p = 0; out.length < sp.dataTotal; p++) out.push(p % 2 ? 0x11 : 0xec);
+    return out;
+  }
+
+  // ブロックに分けて検算バイトを付け、仕様どおり交互に並べる
+  function buildCodewords(data, version, ecl) {
+    const { ec, dl } = spec(version, ecl);
+    const blocks = []; let off = 0;
+    for (const d of dl) { const dd = data.slice(off, off + d); off += d; blocks.push({ data: dd, ec: rsEncode(dd, ec) }); }
+    const seq = [], origin = []; // origin[k] = {block, index(ブロック内), kind}
+    const maxD = Math.max(...dl);
+    for (let i = 0; i < maxD; i++) for (let b = 0; b < dl.length; b++) if (i < dl[b]) { seq.push(blocks[b].data[i]); origin.push({ block: b, index: i, kind: 'data' }); }
+    for (let i = 0; i < ec; i++) for (let b = 0; b < dl.length; b++) { seq.push(blocks[b].ec[i]); origin.push({ block: b, index: dl[b] + i, kind: 'ec' }); }
+    return { seq, origin, blocks };
+  }
+
+  function formatValue(ecl, mask) {
+    const data = (FORMAT_BITS[ecl] << 3) | mask;
+    let rem = data; for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+    return ((data << 10) | (rem & 0x3ff)) ^ 0x5412;
+  }
+
+  const MASKS = [
+    (x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x, y) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+    (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => (x * y) % 2 + (x * y) % 3 === 0,
+    (x, y) => ((x * y) % 2 + (x * y) % 3) % 2 === 0, (x, y) => ((x + y) % 2 + (x * y) % 3) % 2 === 0,
+  ];
+
+  function functionLayout(version) {
+    const size = 17 + 4 * version;
+    const mod = Array.from({ length: size }, () => new Array(size).fill(false));
+    const fn = Array.from({ length: size }, () => new Array(size).fill(false));
+    const set = (x, y, v) => { mod[y][x] = v; fn[y][x] = true; };
+    const finder = (cx, cy) => {
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+        const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= size || y >= size) continue;
+        const d = Math.max(Math.abs(dx), Math.abs(dy)); set(x, y, d !== 2 && d !== 4);
+      }
+    };
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+    for (let i = 0; i < size; i++) { if (!fn[6][i]) set(i, 6, i % 2 === 0); if (!fn[i][6]) set(6, i, i % 2 === 0); }
+    if (version >= 2) { const c = size - 7; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(c + dx, c + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1); }
+    // 形式情報の場所を確保(値は後で)
+    for (let i = 0; i < 9; i++) { fn[8][i] = fn[i][8] = true; }
+    for (let i = 0; i < 8; i++) { fn[8][size - 1 - i] = true; fn[size - 1 - i][8] = true; }
+    set(8, size - 8, true); // 常に黒
+    return { size, mod, fn };
+  }
+
+  function formatPositions(size) { // [コピー1, コピー2]、bit i の (x,y)
+    const a = [], b = [];
+    for (let i = 0; i <= 5; i++) a[i] = [8, i];
+    a[6] = [8, 7]; a[7] = [8, 8]; a[8] = [7, 8];
+    for (let i = 9; i < 15; i++) a[i] = [14 - i, 8];
+    for (let i = 0; i < 8; i++) b[i] = [size - 1 - i, 8];
+    for (let i = 8; i < 15; i++) b[i] = [8, size - 15 + i];
+    return [a, b];
+  }
+
+  // ジグザグの読み順。返り値: [[x,y], ...](データの置き場のみ)
+  function zigzag(size, fn) {
+    const order = [];
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (let v = 0; v < size; v++) for (let j = 0; j < 2; j++) {
+        const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - v : v;
+        if (!fn[y][x]) order.push([x, y]);
+      }
+    }
+    return order;
+  }
+
+  function penalty(m) {
+    const n = m.length; let p = 0;
+    for (let pass = 0; pass < 2; pass++) for (let i = 0; i < n; i++) {
+      let run = 1;
+      for (let j = 1; j <= n; j++) {
+        const a = j < n ? (pass ? m[j][i] : m[i][j]) : null, b = pass ? m[j - 1][i] : m[i][j - 1];
+        if (a === b) run++; else { if (run >= 5) p += run - 2; run = 1; }
+      }
+      for (let j = 0; j + 11 <= n; j++) {
+        const s = []; for (let k = 0; k < 11; k++) s.push((pass ? m[j + k][i] : m[i][j + k]) ? 1 : 0);
+        const t = s.join(''); if (t === '10111010000' || t === '00001011101') p += 40;
+      }
+    }
+    for (let y = 0; y + 1 < n; y++) for (let x = 0; x + 1 < n; x++) { const c = m[y][x]; if (c === m[y][x + 1] && c === m[y + 1][x] && c === m[y + 1][x + 1]) p += 3; }
+    let dark = 0; for (const row of m) for (const c of row) if (c) dark++;
+    p += Math.floor(Math.abs(dark * 20 - n * n * 10) / (n * n)) * 10;
+    return p;
+  }
+
+  // 文字列 → 行列。moduleCw[y][x] = その場所のビットが属する並び順の符号語番号(-1 は機能部・余りビット)
+  function encode(text, opts) {
+    const ecl = (opts && opts.ecl) || 'H', version = (opts && opts.version) || fitVersion(text, ecl, opts && opts.mode);
+    const data = dataCodewords(text, version, ecl, opts && opts.mode);
+    const { seq, origin, blocks } = buildCodewords(data, version, ecl);
+    const base = functionLayout(version), size = base.size;
+    const order = zigzag(size, base.fn);
+    const moduleCw = Array.from({ length: size }, () => new Array(size).fill(-1));
+    const raw = base.mod.map(r => r.slice());
+    order.forEach(([x, y], i) => {
+      if (i < seq.length * 8) { raw[y][x] = ((seq[i >> 3] >>> (7 - (i & 7))) & 1) === 1; moduleCw[y][x] = i >> 3; }
+      else raw[y][x] = false;
+    });
+    let best = null;
+    for (let mk = 0; mk < 8; mk++) {
+      if (opts && opts.mask != null && opts.mask !== mk) continue;
+      const m = raw.map(r => r.slice());
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!base.fn[y][x] && MASKS[mk](x, y)) m[y][x] = !m[y][x];
+      const f = formatValue(ecl, mk), [a, b] = formatPositions(size);
+      for (let i = 0; i < 15; i++) { const bit = ((f >>> i) & 1) === 1; m[a[i][1]][a[i][0]] = bit; m[b[i][1]][b[i][0]] = bit; }
+      const pen = penalty(m);
+      if (!best || pen < best.pen) best = { m, mk, pen };
+    }
+    return { version, ecl, size, mask: best.mk, modules: best.m, isFunction: base.fn, moduleCw, codewords: seq, origin, blocks, data };
+  }
+
+  // ---------- 行列 → 文字列(読み取り) ----------
+  function readFormat(m) {
+    const size = m.length, [a, b] = formatPositions(size);
+    let bestF = null;
+    for (const pos of [a, b]) {
+      let v = 0; for (let i = 0; i < 15; i++) if (m[pos[i][1]][pos[i][0]]) v |= 1 << i;
+      for (const ecl of 'LMQH') for (let mk = 0; mk < 8; mk++) {
+        let d = formatValue(ecl, mk) ^ v, c = 0; while (d) { c += d & 1; d >>>= 1; }
+        if (!bestF || c < bestF.dist) bestF = { ecl, mask: mk, dist: c };
+      }
+    }
+    return bestF.dist <= 3 ? bestF : null;
+  }
+
+  function parseData(bytes, version) {
+    const bits = []; for (const b of bytes) for (let i = 7; i >= 0; i--) bits.push((b >>> i) & 1);
+    let p = 0; const take = (n) => { let v = 0; for (let i = 0; i < n; i++) v = (v << 1) | (bits[p++] || 0); return v; };
+    let out = '', ok = true;
+    while (p + 4 <= bits.length) {
+      const mode = take(4);
+      if (mode === 0) break;
+      if (mode === 4) { const n = take(8); const bs = []; for (let i = 0; i < n; i++) bs.push(take(8));
+        try { out += typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bs)) : Buffer.from(bs).toString('utf8'); } catch (e) { ok = false; out += bs.map(c => String.fromCharCode(c)).join(''); } }
+      else if (mode === 1) { let n = take(10); while (n >= 3) { out += String(take(10)).padStart(3, '0'); n -= 3; } if (n === 2) out += String(take(7)).padStart(2, '0'); else if (n === 1) out += String(take(4)); }
+      else if (mode === 2) { let n = take(9); while (n >= 2) { const v = take(11); out += ALNUM[Math.floor(v / 45)] + ALNUM[v % 45]; n -= 2; } if (n) out += ALNUM[take(6)]; }
+      else { ok = false; break; }
+      if (p > bits.length) { ok = false; break; }
+    }
+    return { text: out, ok };
+  }
+
+  // useEC=false のときは「素朴」: 検算を使わず、データのバイトをそのまま読む
+  function decode(m, opts) {
+    const useEC = !(opts && opts.useEC === false);
+    const size = m.length, version = (size - 17) / 4;
+    const fmt = readFormat(m);
+    if (!fmt) return { ok: false, reason: 'format' };
+    const { fn } = functionLayout(version);
+    const order = zigzag(size, fn);
+    const { ec, dl, nb, total } = spec(version, fmt.ecl);
+    const seq = new Array(total).fill(0);
+    order.forEach(([x, y], i) => { if (i < total * 8) { const bit = m[y][x] !== MASKS[fmt.mask](x, y); if (bit) seq[i >> 3] |= 1 << (7 - (i & 7)); } });
+    const blocks = dl.map(d => new Array(ec + d));
+    let k = 0; const maxD = Math.max(...dl);
+    for (let i = 0; i < maxD; i++) for (let b = 0; b < nb; b++) if (i < dl[b]) blocks[b][i] = seq[k++];
+    for (let i = 0; i < ec; i++) for (let b = 0; b < nb; b++) blocks[b][dl[b] + i] = seq[k++];
+    const data = []; const results = [];
+    let ok = true;
+    for (let b = 0; b < nb; b++) {
+      if (useEC) {
+        const r = rsDecode(blocks[b], ec); results.push(r);
+        if (!r.ok) { ok = false; data.push(...blocks[b].slice(0, dl[b])); } else data.push(...r.corrected.slice(0, dl[b]));
+      } else data.push(...blocks[b].slice(0, dl[b]));
+    }
+    const parsed = parseData(data, version);
+    return { ok: ok && parsed.ok, text: parsed.text, ecl: fmt.ecl, mask: fmt.mask, readSeq: seq, readBlocks: blocks, results, data };
+  }
+
+  const QR = { EXP, LOG, mul, div, pow, inv, generator, rsEncode, rsDecode, EC_TABLE, SPEC_RAW, spec, fitVersion, dataCodewords, buildCodewords, formatValue, encode, decode, readFormat, MASKS, functionLayout, zigzag };
+  if (typeof module !== 'undefined' && module.exports) module.exports = QR; else root.QR = QR;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>// 汚れ・破れのモデル。座標は QR のマス目の単位(左上が 0,0)。
+// 同じ関数で、画面の描画と「カメラがどう読むか」の両方を決める。
+//  tear : 右下の角から紙が破れて欠け、下の木の卓が見える(情報が消える)
+//  coffee: コーヒーの染み(色は付くが、インクとの差は残る)
+(function (root) {
+  'use strict';
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const PAPER = 0.93, INK = 0.08, WOOD = 0.42, COFFEE = 0.30, THRESH = 0.55;
+  // ぎざぎざの破れ線: 右下の角からの距離 k(マス目)より内側が欠ける
+  function tearEdge(t, s) { // t: 破れ線に沿った位置
+    return 0.9 * Math.sin(t * 0.9 + 1.3) + 0.55 * Math.sin(t * 2.3 + 0.4) + 0.3 * Math.sin(t * 5.1) + 0.18 * Math.sin(t * 9.7 + 2);
+  }
+  // 破れの場: この値が s.size より小さい所が欠ける(右下の角からの斜めの距離 − ぎざぎざ)
+  function tearField(x, y, n) { return (n - x) + (n - y) - tearEdge((x - y) * 0.5); }
+  // 指でなぞった穴: s.marks = [{x, y, r}](マス目の単位)
+  function inMarks(x, y, s) { if (!s.marks) return false; for (const m of s.marks) if ((x - m.x) ** 2 + (y - m.y) ** 2 < m.r * m.r) return true; return false; }
+  function torn(x, y, s) { // s = { kind:'tear', size, n, marks? }
+    return tearField(x, y, s.n) < s.size || inMarks(x, y, s);
+  }
+  function woodLum(x, y) { return WOOD + 0.05 * Math.sin(y * 0.7 + Math.sin(x * 0.13) * 3) + 0.03 * Math.sin(y * 3.1 + x * 0.2); }
+  function coffeeAlpha(x, y, s) {
+    const dx = x - s.cx, dy = y - s.cy, th = Math.atan2(dy, dx);
+    const rr = s.R * (1 + 0.07 * Math.sin(3 * th + 0.9) + 0.05 * Math.sin(5 * th + 1.8));
+    const d = Math.hypot(dx, dy) / rr; if (d > 1.05) return 0;
+    return (0.35 + 0.4 * smooth(0.8, 0.99, d)) * (1 - smooth(0.985, 1.05, d));
+  }
+  // 点 (x,y) の明るさ 0〜1
+  function lumAt(x, y, dark, s) {
+    if (s.kind === 'tear' && torn(x, y, s)) return woodLum(x, y);
+    const base = dark ? INK : PAPER;
+    if (s.kind === 'coffee') { const a = coffeeAlpha(x, y, s); return base * (1 - a) + Math.min(base, COFFEE) * a; }
+    return base;
+  }
+  // カメラの読み(素朴な2値化): マス目の中心の明るさが閾値より暗ければ黒
+  function readMatrix(modules, s) {
+    return modules.map((row, y) => row.map((dark, x) => lumAt(x + 0.5, y + 0.5, dark, s) < THRESH));
+  }
+  function tornFraction(n, s) { let c = 0; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (torn(x + 0.5, y + 0.5, s)) c++; return c / (n * n); }
+  const STAIN = { lumAt, torn, tearField, inMarks, readMatrix, tornFraction, woodLum, PAPER, INK, WOOD, THRESH };
+  if (typeof module !== 'undefined' && module.exports) module.exports = STAIN; else root.STAIN = STAIN;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>// 欠け方くらべ: 同じ QR に、場所だけ違う欠けを入れる。欠けたマスは「木が見えて黒く読める」(破れと同じモデル)。
+// 画面(ブラウザ)と scripts/cases-apple.mjs(Node + CIDetector)の両方がこの関数で同じ欠けを作る。
+(function (root) {
+  'use strict';
+  const AREA = 104; // 13 バイト分のマス
+  function fingerprint(m) { let x = 2166136261; for (const row of m) for (const b of row) { x ^= b ? 49 : 48; x = Math.imul(x, 16777619) >>> 0; } return x.toString(16); }
+  function rng(seed) { return () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x80000000; }; }
+  // q: QR.encode の結果。返り値: [{ id, title, set:[[x,y]...] , note }]
+  function make(q, QR) {
+    const n = q.size, out = [];
+    const rect = (x0, y0, w, h) => { const s = []; for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) s.push([x, y]); return s; };
+    // 1) まとまった破れ: データの真ん中に 13×8 の四角
+    out.push({ id: 'patch', title: 'まとまった欠け', set: rect(19, 14, 13, 8) });
+    // 2) 点々: データの場所から 104 マスを散らして選ぶ(同じ面積)
+    { const r = rng(7), cand = []; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!q.isFunction[y][x]) cand.push([x, y]);
+      const s = []; const used = new Set(); while (s.length < AREA) { const i = Math.floor(r() * cand.length); if (!used.has(i)) { used.add(i); s.push(cand[i]); } }
+      out.push({ id: 'dots', title: '点々と散らばる', set: s }); }
+    // 3) 1 つのブロックに集中: ブロック 1 のバイトを 13 個ぶん(インターリーブがなかったら、の仮定)
+    { const s = []; let c = 0; q.origin.forEach((o, k) => { if (o.block === 0 && c < 13) { c++; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.moduleCw[y][x] === k) s.push([x, y]); } });
+      out.push({ id: 'block', title: '1 つのブロックに集中', set: s }); }
+    // 4) 形式情報(レベルとマスクの 15 ビット)の片方 / 両方
+    const fmt = (which) => { const s = []; const a = [], b = [];
+      for (let i = 0; i <= 5; i++) a.push([8, i]); a.push([8, 7], [8, 8], [7, 8]); for (let i = 9; i < 15; i++) a.push([14 - i, 8]);
+      for (let i = 0; i < 8; i++) b.push([n - 1 - i, 8]); for (let i = 8; i < 15; i++) b.push([8, n - 15 + i]);
+      return which === 1 ? a : a.concat(b); };
+    out.push({ id: 'fmt1', title: '形式情報の片方', set: fmt(1) });
+    out.push({ id: 'fmt2', title: '形式情報の両方', set: fmt(2) });
+    // 5) 角の目印(位置検出): 右上の角 8×13(同じ面積)
+    out.push({ id: 'finder', title: '角の目印', set: rect(n - 13, 0, 13, 8) });
+    return out;
+  }
+  // 欠けを入れた「読んだ行列」: 欠けたマスは黒く読める
+  function apply(q, set) { const m = q.modules.map(r => r.slice()); for (const [x, y] of set) m[y][x] = true; return m; }
+  // 自前の読みの結果
+  function judge(q, c, QR, text) {
+    const m = apply(q, c.set), r = QR.decode(m);
+    const sp = QR.spec(q.version, q.ecl), per = sp.dl.map(() => 0); let broken = null;
+    if (r.readSeq) { broken = 0; r.readSeq.forEach((b, k) => { if (b !== q.codewords[k]) { broken++; per[q.origin[k].block]++; } }); }
+    return { ok: r.ok && r.text === text, formatOk: !!r.readSeq, broken, perBlock: per, t: sp.t, area: c.set.length, fp: fingerprint(m), wrong: r.ok && r.text !== text };
+  }
+  const CASES = { AREA, make, apply, judge, fingerprint };
+  if (typeof module !== 'undefined' && module.exports) module.exports = CASES; else root.CASES = CASES;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>window.CASES_APPLE = {
+ "measured": "2026-11-28",
+ "reader": "macOS CoreImage CIDetector",
+ "cases": {
+  "patch": {
+   "fp": "ae62a692",
+   "apple": "read"
+  },
+  "dots": {
+   "fp": "b1c58335",
+   "apple": "none"
+  },
+  "block": {
+   "fp": "fe5bc222",
+   "apple": "none"
+  },
+  "fmt1": {
+   "fp": "49a84760",
+   "apple": "read"
+  },
+  "fmt2": {
+   "fp": "a6b66587",
+   "apple": "none"
+  },
+  "finder": {
+   "fp": "ab645afb",
+   "apple": "none"
+  }
+ }
+};</script>
+<script>
+(function () {
+  'use strict';
+  const TEXT = 'https://www.ramda.io/works/qr-repair';
+  const params = new URLSearchParams(location.search);
+  const $ = id => document.getElementById(id);
+  const DATA = [['#2f6fd6', '#cfe0fb'], ['#5a2fd6', '#ddd2fa'], ['#1f8fb8', '#c9ecf6'], ['#3d4fe0', '#d4d8fb']];
+  const EC = [['#e08a1f', '#fbe3c2'], ['#c9651a', '#f7d4b8'], ['#d6a81c', '#f8ecbf'], ['#e07a3d', '#fad9c3']];
+  const FN = ['#6e6962', '#dcd8d0'];
+
+  // ---------- レベルの準備(すべて実行時の計算) ----------
+  const LV = {};
+  function prepare(ecl) {
+    const q = QR.encode(TEXT, { ecl });
+    const sp = QR.spec(q.version, ecl), n = q.size;
+    const kOf = sp.dl.map(d => new Array(d + sp.ec));
+    q.origin.forEach((o, k) => { kOf[o.block][o.index] = k; });
+    const mods = q.codewords.map(() => []);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const k = q.moduleCw[y][x]; if (k >= 0) mods[k].push([x, y]); }
+    const sweep = [];
+    for (let s = 0; s <= n * 1.3; s += 0.25) {
+      const r = QR.decode(STAIN.readMatrix(q.modules, { kind: 'tear', size: s, n }));
+      const broken = r.readSeq ? r.readSeq.reduce((a, b, k) => a + (b !== q.codewords[k]), 0) : null;
+      sweep.push({ s, ok: r.ok && r.text === TEXT, broken });
+    }
+    const fi = sweep.findIndex(x => !x.ok);
+    return { ecl, q, sp, n, kOf, mods, sweep, lastOk: sweep[fi - 1], firstFail: sweep[fi] };
+  }
+  for (const e of 'LMQH') LV[e] = prepare(e);
+
+  // ---------- 状態 ----------
+  const st = { L: LV[params.get('level') && LV[params.get('level')] ? params.get('level') : 'H'], size: 0, marks: [], color: params.get('color') === '1',
+               playing: !params.has('still'), speed: 1, tear: false, hover: -1, cur: null, key: '', phase: 'intro', hold: 0 };
+  st.size = st.L.lastOk.s;
+  const counters = { decodes: 0, match: 0, detected: 0, wrong: 0, naiveRead: 0 };
+
+  function evaluate() {
+    const L = st.L;
+    const s = { kind: 'tear', size: st.size, n: L.n, marks: st.marks };
+    const seen = STAIN.readMatrix(L.q.modules, s);
+    const key = L.ecl + seen.map(r => r.map(b => b ? 1 : 0).join('')).join('');
+    if (key === st.key) return st.cur;
+    st.key = key;
+    const r = QR.decode(seen);
+    const nv = QR.decode(seen, { useEC: false });
+    counters.decodes++;
+    const ok = r.ok && r.text === TEXT;
+    if (ok) counters.match++; else if (r.ok) counters.wrong++; else counters.detected++;
+    if (nv.ok && nv.text === TEXT) counters.naiveRead++;
+    const bad = L.q.codewords.map((c, k) => !r.readSeq || r.readSeq[k] !== c);
+    const perBlock = L.sp.dl.map(() => 0); let dataBad = 0;
+    bad.forEach((b, k) => { if (b) { perBlock[L.q.origin[k].block]++; if (L.q.origin[k].kind === 'data') dataBad++; } });
+    // 素朴: 検算を使わずデータのバイトから文字を取り出す(先頭 12 ビットは種類と長さ)
+    let raw = '';
+    if (r.readBlocks) {
+      const d = []; r.readBlocks.forEach((B, b) => d.push(...B.slice(0, L.sp.dl[b])));
+      const bit = k => (d[k >> 3] >>> (7 - (k & 7))) & 1;
+      for (let i = 0; i < TEXT.length; i++) { let v = 0; for (let j = 0; j < 8; j++) v = (v << 1) | bit(12 + i * 8 + j); raw += String.fromCharCode(v); }
+    }
+    st.cur = { ok, formatOk: !!r.readSeq, text: r.text, bad, broken: r.readSeq ? bad.filter(Boolean).length : null, perBlock, dataBad, raw, naiveOk: nv.ok && nv.text === TEXT };
+    return st.cur;
+  }
+
+  // ---------- 表: カメラの絵 ----------
+  const cv = $('cam'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const CW = 590, CH = 700, QPX = 464, QX = (CW - QPX) / 2, QY = 140, CX = 556, CY = 676, ROT = -3.2 * Math.PI / 180;
+  const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+  (function paintTable() {
+    const c = bg.getContext('2d'), img = c.createImageData(W, H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const w = Math.sin(x * 0.012 + Math.sin(y * 0.004) * 2.2) * 0.5 + Math.sin(x * 0.051 + y * 0.002) * 0.25 + Math.sin(x * 0.19 + Math.sin(y * 0.01)) * 0.08;
+      const k = 0.78 + 0.12 * w + 0.04 * Math.sin(y * 0.9 + x * 0.03);
+      const p = (y * W + x) * 4; img.data[p] = 112 * k; img.data[p + 1] = 76 * k; img.data[p + 2] = 50 * k; img.data[p + 3] = 255;
+    }
+    c.putImageData(img, 0, 0);
+  })();
+  const over = document.createElement('canvas'); over.width = W; over.height = H;
+  (function paintOverlay() {
+    const c = over.getContext('2d'), x = 1060, y = 40;
+    let g = c.createRadialGradient(x - 20, y + 20, 40, x, y, 260); g.addColorStop(0, '#f1eee8'); g.addColorStop(0.85, '#d9d4cb'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(x + 18, y + 26, 250, 0, 7); c.fill();
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, 250, 0, 7); c.fill();
+    c.fillStyle = '#fbfaf7'; c.beginPath(); c.arc(x, y, 160, 0, 7); c.fill();
+    g = c.createRadialGradient(x - 30, y - 30, 10, x, y, 135); g.addColorStop(0, '#6a3f22'); g.addColorStop(0.7, '#3e2312'); g.addColorStop(1, '#2a170b');
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, 135, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(200,160,120,.5)'; c.lineWidth = 6; c.beginPath(); c.arc(x + 10, y + 5, 70, 0.4, 2.2); c.stroke();
+    const vg = c.createRadialGradient(W / 2, H * 0.5, H * 0.35, W / 2, H * 0.5, H * 0.85);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); c.fillStyle = vg; c.fillRect(0, 0, W, H);
+  })();
+  const card = document.createElement('canvas'); card.width = CW; card.height = CH;
+  const cc = card.getContext('2d');
+  let field = null, fieldN = 0, holeMask = new Uint8Array(CW * CH);
+  const grain = new Uint8Array(CW * CH); for (let i = 0; i < grain.length; i++) grain[i] = Math.sin((i % CW) * 1.7 + Math.floor(i / CW) * 2.9) > -0.6 ? 1 : 0;
+  function prepField() {
+    const n = st.L.n, M = QPX / n; field = new Float32Array(CW * CH); fieldN = n;
+    for (let py = 0; py < CH; py++) for (let px = 0; px < CW; px++) field[py * CW + px] = STAIN.tearField((px - QX) / M, (py - QY) / M, n);
+  }
+  function modColor(x, y, dark, color) {
+    if (!color) return dark ? '#111' : null;
+    const L = st.L, k = L.q.moduleCw[y][x];
+    if (k < 0) return dark ? FN[0] : FN[1];
+    const o = L.q.origin[k], pal = (o.kind === 'data' ? DATA : EC)[o.block % 4];
+    return dark ? pal[0] : pal[1];
+  }
+  function drawQR(c, ox, oy, M, color, cur, ghostTorn) {
+    const L = st.L, n = L.n;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const col = modColor(x, y, L.q.modules[y][x], color); if (!col) continue;
+      c.fillStyle = col; c.fillRect(ox + x * M, oy + y * M, M + 0.6, M + 0.6);
+    }
+    if (color && cur) { // 欠けたバイト: 赤の斜線と枠
+      c.save(); c.strokeStyle = 'rgba(229,72,77,.95)'; c.lineWidth = Math.max(1.5, M * 0.13);
+      cur.bad.forEach((b, k) => { if (!b) return; for (const [x, y] of L.mods[k]) {
+        const X = ox + x * M, Y = oy + y * M; c.beginPath(); c.moveTo(X + M * .15, Y + M * .15); c.lineTo(X + M * .85, Y + M * .85); c.moveTo(X + M * .85, Y + M * .15); c.lineTo(X + M * .15, Y + M * .85); c.stroke(); } });
+      c.restore();
+    }
+    if (st.hover >= 0 && L.mods[st.hover]) {
+      c.save(); c.strokeStyle = '#ffd60a'; c.lineWidth = Math.max(2, M * 0.22);
+      for (const [x, y] of L.mods[st.hover]) c.strokeRect(ox + x * M + 1, oy + y * M + 1, M - 2, M - 2);
+      c.restore();
+    }
+  }
+  function renderCard(cur) {
+    const n = st.L.n, M = QPX / n;
+    if (fieldN !== n) prepField();
+    cc.globalCompositeOperation = 'source-over';
+    cc.clearRect(0, 0, CW, CH);
+    cc.fillStyle = '#f6f3ec'; cc.fillRect(0, 0, CW, CH);
+    cc.fillStyle = '#2b2622'; cc.textAlign = 'center';
+    cc.font = '700 26px "Hiragino Sans",sans-serif'; cc.fillText('TABLE  12', CW / 2, 48);
+    cc.font = '800 46px "Hiragino Sans",sans-serif'; cc.fillText('ご注文はスマホから', CW / 2, 106);
+    cc.fillStyle = '#7a6f63'; cc.font = '500 26px "Hiragino Sans",sans-serif'; cc.fillText('Scan to order', CW / 2, QY + QPX + 52);
+    drawQR(cc, QX, QY, M, st.color, cur);
+    const img = cc.getImageData(0, 0, CW, CH), d = img.data, size = st.size;
+    const ghost = st.color ? 70 : 0, edge = 0.28;
+    for (let i = 0; i < field.length; i++) {
+      const f = field[i];
+      if (f < size || holeMask[i]) { d[i * 4 + 3] = ghost; }
+      else if (f < size + edge && grain[i]) { d[i * 4] = 250; d[i * 4 + 1] = 248; d[i * 4 + 2] = 242; d[i * 4 + 3] = 235; }
+    }
+    cc.putImageData(img, 0, 0);
+  }
+  const toCam = (x, y) => { const dx = x - CW / 2, dy = y - CH / 2; return [CX + dx * Math.cos(ROT) - dy * Math.sin(ROT), CY + dx * Math.sin(ROT) + dy * Math.cos(ROT)]; };
+  const fromCam = (X, Y) => { const dx = X - CX, dy = Y - CY; return [CW / 2 + dx * Math.cos(-ROT) - dy * Math.sin(-ROT), CH / 2 + dx * Math.sin(-ROT) + dy * Math.cos(-ROT)]; };
+  function renderCam(cur) {
+    renderCard(cur);
+    ctx.drawImage(bg, 0, 0);
+    ctx.save(); ctx.translate(CX, CY); ctx.rotate(ROT);
+    ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 40; ctx.shadowOffsetX = 10; ctx.shadowOffsetY = 18;
+    ctx.drawImage(card, -CW / 2, -CH / 2); ctx.restore();
+    ctx.drawImage(over, 0, 0);
+    const pad = 18, Lb = 70, e = QPX;
+    const corners = [[QX - pad, QY - pad, 1, 1], [QX + e + pad, QY - pad, -1, 1], [QX + e + pad, QY + e + pad, -1, -1], [QX - pad, QY + e + pad, 1, -1]];
+    ctx.save(); ctx.strokeStyle = cur.ok ? '#ffd60a' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (!cur.ok) ctx.setLineDash([14, 16]);
+    for (const [x, y, sx, sy] of corners) { ctx.beginPath(); let p = toCam(x + sx * Lb, y); ctx.moveTo(p[0], p[1]); p = toCam(x, y); ctx.lineTo(p[0], p[1]); p = toCam(x, y + sy * Lb); ctx.lineTo(p[0], p[1]); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // ---------- 裏: 積み上がる赤、URL の2行 ----------
+  function buildStacks() {
+    const L = st.L, box = $('stacks'); box.innerHTML = '';
+    const mk = (cls, label) => { const c = document.createElement('div'); c.className = 'col ' + cls; c.innerHTML = `<div class="box"><div class="lim"></div></div><div class="cap">${label} <b>0</b></div>`; box.appendChild(c); return c; };
+    st.cols = { naive: mk('naive', 'なし'), rs: L.sp.dl.map((d, b) => mk('rs', L.sp.nb > 1 ? `B${b + 1}` : 'RS')) };
+    $('nTotal').textContent = L.sp.total;
+  }
+  function setCol(c, count, limit, scale) {
+    const boxEl = c.querySelector('.box'), h = boxEl.clientHeight || 100, bh = h / scale;
+    const bricks = boxEl.querySelectorAll('.brick'); const want = Math.min(count, scale);
+    for (let i = bricks.length; i < want; i++) { const b = document.createElement('div'); b.className = 'brick'; b.style.bottom = (i * bh + 1) + 'px'; b.style.height = Math.max(1, bh - 1.5) + 'px'; boxEl.appendChild(b); }
+    for (let i = bricks.length - 1; i >= want; i--) bricks[i].remove();
+    boxEl.querySelectorAll('.brick').forEach((b, i) => { b.style.bottom = (i * bh + 1) + 'px'; b.style.height = Math.max(1, bh - 1.5) + 'px'; });
+    boxEl.querySelector('.lim').style.bottom = (limit * bh) + 'px';
+    c.classList.toggle('over', count > limit);
+    c.querySelector('.cap b').textContent = limit > 0 ? `${count}/${limit}` : `${count}`;
+  }
+  const vis = ch => { const c = ch.charCodeAt(0); return (c < 0x21 || (c >= 0x7f && c < 0xa1)) ? '?' : ch; };
+  function renderBack(cur) {
+    const L = st.L, scale = Math.ceil(L.sp.t * 1.7);
+    setCol(st.cols.naive, cur.dataBad, 0, scale);
+    st.cols.rs.forEach((c, b) => setCol(c, cur.perBlock[b], L.sp.t, scale));
+    $('stackNote').textContent = L.sp.nb > 1 ? `赤 = 壊れたバイト　点線 = 直せる上限 ${L.sp.t}(${L.sp.nb} ブロックそれぞれ)` : `赤 = 壊れたバイト　点線 = 直せる上限 ${L.sp.t}`;
+    const u1 = $('u1'), u2 = $('u2');
+    u1.innerHTML = ''; u2.innerHTML = '';
+    if (!cur.formatOk) { u1.innerHTML = u2.innerHTML = '<span class="nope">目印が読めず、中身を読めない</span>'; return; }
+    const f1 = document.createDocumentFragment(), f2 = document.createDocumentFragment();
+    for (let i = 0; i < TEXT.length; i++) { const s = document.createElement('span'); s.textContent = vis(cur.raw[i] || ' '); if (cur.raw[i] !== TEXT[i]) s.className = 'x'; f1.appendChild(s); }
+    u1.appendChild(f1);
+    if (cur.ok) { for (let i = 0; i < TEXT.length; i++) { const s = document.createElement('span'); s.textContent = TEXT[i]; if (cur.raw[i] !== TEXT[i]) s.className = 'g'; f2.appendChild(s); } u2.appendChild(f2); }
+    else u2.innerHTML = '<span class="nope">直せる上限を超えた → 読めない(誤って別の URL にはしない)</span>';
+  }
+  function renderHead(cur) {
+    const L = st.L;
+    $('nBroken').textContent = cur.broken == null ? '–' : cur.broken;
+    $('num').classList.toggle('fail', !cur.ok);
+    $('numText').textContent = cur.ok ? 'バイト壊れても読めた' : (cur.formatOk ? 'バイト壊れて、読めない' : 'バイト目が壊れて、読めない');
+    $('sub').innerHTML = cur.ok ? `全 ${L.sp.total} バイト中。誤り訂正なしなら<em>1バイト</em>で読めない`
+      : `レベル ${L.ecl} で直せるのは 1 ブロック ${L.sp.t} バイトまで`;
+    $('chip').classList.toggle('fail', !cur.ok);
+    $('chipText').textContent = cur.ok ? cur.text.replace(/^https:\/\//, '') : '読み取れません';
+    $('tagTop').textContent = st.color ? '表 ─ 中身を色分け' : '表 ─ スマホのカメラ';
+    document.body.classList.toggle('color', st.color);
+    $('bColor').classList.toggle('on', st.color); $('bTear').classList.toggle('on', st.tear);
+    $('bPlay').textContent = st.playing ? '❚❚' : '▶';
+    document.querySelectorAll('#lv button').forEach(b => b.classList.toggle('on', b.dataset.l === L.ecl));
+  }
+
+  // ---------- 地図(平らな QR)と帯 ----------
+  const mv = $('map'), mc = mv.getContext('2d');
+  function buildStrip() {
+    const L = st.L, el = $('strip'); el.innerHTML = '';
+    st.cells = [];
+    L.sp.dl.forEach((d, b) => {
+      const row = document.createElement('div'); row.className = 'srow';
+      row.innerHTML = `<span>${L.sp.nb > 1 ? 'ブロック' + (b + 1) : '全部'}</span>`;
+      const cells = document.createElement('div'); cells.className = 'cells';
+      for (let i = 0; i < d + L.sp.ec; i++) {
+        if (i === d) { const g = document.createElement('i'); g.className = 'gap'; cells.appendChild(g); }
+        const c = document.createElement('i'), k = L.kOf[b][i];
+        c.style.background = (i < d ? DATA : EC)[b % 4][0]; c.dataset.k = k;
+        cells.appendChild(c); st.cells[k] = c;
+      }
+      row.appendChild(cells); el.appendChild(row);
+    });
+    $('mapLegend').innerHTML = L.sp.dl.map((d, b) => `<span><i style="background:${DATA[b % 4][0]}"></i>文字${L.sp.nb > 1 ? '(ブロック' + (b + 1) + ')' : ''} ${d}</span><span><i style="background:${EC[b % 4][0]}"></i>検算${L.sp.nb > 1 ? '(ブロック' + (b + 1) + ')' : ''} ${L.sp.ec}</span>`).join('') +
+      `<span><i style="background:${FN[0]}"></i>読むための目印</span><span><i style="background:repeating-linear-gradient(135deg,var(--red) 0 3px,transparent 3px 6px)"></i>欠けたバイト</span>`;
+  }
+  function renderMap(cur) {
+    const L = st.L, n = L.n, S = mv.width, M = Math.floor((S - 40) / n), o = (S - M * n) / 2;
+    mc.fillStyle = '#f6f3ec'; mc.fillRect(0, 0, S, S);
+    drawQR(mc, o, o, M, true, cur);
+    // 欠けた所(紙が無い所)を木の色で薄く重ねる
+    mc.save(); mc.fillStyle = 'rgba(90,60,38,.55)';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (STAIN.torn(x + 0.5, y + 0.5, { kind: 'tear', size: st.size, n, marks: st.marks })) mc.fillRect(o + x * M, o + y * M, M + 0.6, M + 0.6);
+    mc.restore();
+    st.cells.forEach((c, k) => { c.classList.toggle('bad', cur.bad[k]); c.classList.toggle('hi', k === st.hover); });
+    if (st.hover >= 0) {
+      const og = L.q.origin[st.hover], idx = og.kind === 'data' ? og.index + 1 : og.index - L.sp.dl[og.block] + 1;
+      $('readout').textContent = `${L.sp.nb > 1 ? 'ブロック' + (og.block + 1) + ' の ' : ''}${og.kind === 'data' ? '文字' : '検算'}の ${idx} バイト目(QR の上では ${L.mods[st.hover].length} マス)${cur.bad[st.hover] ? ' ─ 欠けた' + (cur.ok ? ' → 計算で元に戻した' : '') : ''}`;
+    } else $('readout').textContent = `全 ${L.sp.total} バイトのうち、欠けたのは ${cur.broken == null ? '–' : cur.broken} バイト`;
+  }
+  function mapPick(ev) {
+    const r = mv.getBoundingClientRect(), L = st.L, n = L.n, S = mv.width, M = Math.floor((S - 40) / n), o = (S - M * n) / 2;
+    const x = Math.floor(((ev.clientX - r.left) / r.width * S - o) / M), y = Math.floor(((ev.clientY - r.top) / r.height * S - o) / M);
+    const k = x >= 0 && y >= 0 && x < n && y < n ? L.q.moduleCw[y][x] : -1;
+    if (k !== st.hover) { st.hover = k; dirty = true; }
+  }
+  mv.addEventListener('pointermove', mapPick); mv.addEventListener('pointerdown', mapPick);
+  mv.addEventListener('pointerleave', () => { st.hover = -1; dirty = true; });
+  $('strip').addEventListener('pointerover', e => { const k = e.target.dataset && e.target.dataset.k; if (k != null) { st.hover = +k; dirty = true; } });
+  $('strip').addEventListener('pointerdown', e => { const k = e.target.dataset && e.target.dataset.k; if (k != null) { st.hover = +k; dirty = true; } });
+  $('strip').addEventListener('pointerleave', () => { st.hover = -1; dirty = true; });
+
+  // ---------- 検査とレベルの表 ----------
+  function renderChecks() {
+    const ok = counters.wrong === 0 && whyState.verified && caseStats.stale === 0 && caseStats.wrong === 0;
+    $('kv').innerHTML = [
+      ['復号した回数(画面の状態が変わるたび)', counters.decodes],
+      ['元の URL と一致して読めた', counters.match],
+      ['上限を超えて「読めない」と正しく判定', counters.detected],
+      ['誤って別の内容に直した(0 のはず)', `<span class="${counters.wrong ? 'ng' : 'ok'}">${counters.wrong}</span>`],
+      ['誤り訂正なしで読めた回数', counters.naiveRead],
+      ['欠け方くらべ: 判定したケース', caseStats.judged],
+      ['欠け方くらべ: 自前とカメラの食い違い(角の目印は想定どおり)', caseStats.disagree],
+      ['欠け方くらべ: カメラの照合データが古い', `<span class="${caseStats.stale ? 'ng' : 'ok'}">${caseStats.stale}</span>`],
+      ['整数の例: 直した値 = 元の値', `<span class="${whyState.verified ? 'ok' : 'ng'}">${whyState.verified ? '一致' : '不一致'}</span>`],
+      ['総合', `<span class="${ok ? 'ok' : 'ng'}">${ok ? '異常なし' : '異常あり'}</span>`],
+    ].map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('');
+    window.__qrcheck = Object.assign({ level: st.L.ecl, size: st.size, cases: caseStats }, counters, { cur: { ok: st.cur && st.cur.ok, broken: st.cur && st.cur.broken } });
+  }
+  $('tbl').innerHTML = '<tr><th>レベル</th><th>版</th><th>マス</th><th>全バイト</th><th>ブロック</th><th>検算/ブロック</th><th>直せる/ブロック</th><th>破れで読めた最大</th></tr>' +
+    'LMQH'.split('').map(e => { const L = LV[e]; return `<tr><td>${e}</td><td>${L.q.version}</td><td>${L.n}×${L.n}</td><td>${L.sp.total}</td><td>${L.sp.nb}</td><td>${L.sp.ec}</td><td>${L.sp.t}</td><td>${L.lastOk.broken} バイト</td></tr>`; }).join('');
+
+
+  // ---------- 欠け方くらべ(レベル H、すべて実行時に復号) ----------
+  const caseStats = { judged: 0, disagree: 0, stale: 0, wrong: 0 };
+  (function renderCases() {
+    const L = LV.H, q = L.q, n = L.n, AP = (window.CASES_APPLE || { cases: {} }).cases;
+    const cs = CASES.make(q, QR), J = {};
+    cs.forEach(c => { J[c.id] = CASES.judge(q, c, QR, TEXT); });
+    $('casesLead').textContent = `レベル H(版 ${q.version}、${n}×${n} マス)の同じ QR に、${CASES.AREA} マス(${CASES.AREA / 8} バイトぶん)の欠けを場所だけ変えて入れ、その場で復号しました。欠けたマスは、破れと同じく黒く読めます。`;
+    const ex = {
+      patch: j => `まとまって ${j.area} マス欠けても、壊れたバイト ${j.broken} 個が ${L.sp.nb} ブロックに散る(${j.perBlock.join('・')})。どれも上限 ${j.t} 以内`,
+      dots: j => `同じ ${j.area} マスでも、1 マスずつ別々のバイトにかかり、${j.broken} バイトも壊れる(${j.perBlock.join('・')})`,
+      block: j => `壊れたのは ${j.broken} バイトだけ。でも 1 ブロックに集まると上限 ${j.t} を超える`,
+      fmt1: j => `たった ${j.area} マス。同じ 15 ビットがもう 1 か所に書いてあるので平気`,
+      fmt2: j => `${j.area} マスだけで、レベルとマスクが分からず、中身を読み始められない`,
+      finder: j => `自前の読みは QR の位置を知っている前提なので読める(壊れたバイト ${j.broken})。カメラは角の目印がないと QR を見つけられない`,
+    };
+    const box = $('cases'); box.innerHTML = '';
+    for (const c of cs) {
+      const j = J[c.id], a = AP[c.id]; caseStats.judged++;
+      if (j.wrong) caseStats.wrong++;
+      const camKnown = a && a.fp === j.fp; if (a && !camKnown) caseStats.stale++;
+      const cam = camKnown ? a.apple === 'read' : null;
+      if (cam != null && cam !== j.ok) caseStats.disagree++;
+      const ok = j.ok && cam !== false;
+      const el = document.createElement('div'); el.className = 'case';
+      el.innerHTML = `<canvas width="${n * 8 + 16}" height="${n * 8 + 16}"></canvas><div class="hd"><span class="mk ${ok ? 'o' : 'x'}">${ok ? '○' : '×'}</span><span class="tt">${c.title}<br><span style="font-weight:500;color:var(--mute);font-size:.85em">欠けたマス ${j.area}</span></span></div>
+        <div class="ds">${ex[c.id](j)}</div>
+        <div class="rd"><span>自前の読み <b class="${j.ok ? 'o' : 'x'}">${j.ok ? '○' : '×'}</b></span><span>カメラ <b class="${cam == null ? '' : cam ? 'o' : 'x'}">${cam == null ? '未照合' : cam ? '○' : '×'}</b></span></div>`;
+      box.appendChild(el);
+      const cv2 = el.querySelector('canvas'), g = cv2.getContext('2d'), M = 8, o = 8, dmg = new Set(c.set.map(([x, y]) => y * n + x));
+      g.fillStyle = '#f6f3ec'; g.fillRect(0, 0, cv2.width, cv2.height);
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if (dmg.has(y * n + x)) { g.fillStyle = '#7a5236'; g.fillRect(o + x * M, o + y * M, M, M); }
+        else if (q.modules[y][x]) { g.fillStyle = '#141414'; g.fillRect(o + x * M, o + y * M, M, M); }
+      }
+      g.strokeStyle = 'rgba(229,72,77,.9)'; g.lineWidth = 1.5;
+      for (const [x, y] of c.set) g.strokeRect(o + x * M + .75, o + y * M + .75, M - 1.5, M - 1.5);
+    }
+    const p = J.patch, b = J.block;
+    $('casesWhy').innerHTML = `QR はバイトを <b>${L.sp.nb} つのブロックに交互に配って</b>います(インターリーブ)。だから、まとまった破れは各ブロックに少しずつ散り、<b>${p.broken} バイト壊れても読める</b>のに、1 ブロックに集まると <b>${b.broken} バイトで読めない</b>。弱いのは、点々と広く散る汚れと、小さくても代わりのない目印(角の四角と形式情報の両方)です。`;
+  })();
+
+  // ---------- なぜ: 整数の最小版 ----------
+  const whyState = { data: [3, 1, 4, 1], pos: 2, delta: 3, step: 0, verified: false };
+  const svg = $('whySvg'), NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, parent, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; (parent || svg).appendChild(e); return e; };
+  function renderWhy() {
+    const w = whyState, d = w.data, broken = d.slice(); broken[w.pos] += w.delta;
+    const S = d.reduce((a, b) => a + b, 0), Wt = d.reduce((a, b, i) => a + (i + 1) * b, 0);
+    const S2 = broken.reduce((a, b) => a + b, 0), W2 = broken.reduce((a, b, i) => a + (i + 1) * b, 0);
+    const dS = S2 - S, dW = W2 - Wt, where = dW / dS, fixed = broken.slice(); fixed[where - 1] -= dS;
+    w.verified = fixed.every((v, i) => v === d[i]);
+    svg.innerHTML = '';
+    const narrow = (svg.parentNode.clientWidth || 760) < 560;
+    // 広い画面と狭い画面で配置を変える(数字の大きさを保つ)
+    const Lo = narrow
+      ? { vb: '0 0 400 900', BY: 46, BS: 66, bx: i => 14 + i * 78, cbx: [14, 170], cbw: 130, cbY: 204, capR: 14, s1: [326, 352], s2: 410, bal: [[200, 494], [200, 674]], ex: 118, s3: 794, w3: 372, f: 1.1 }
+      : { vb: '0 0 760 640', BY: 70, BS: 76, bx: i => 40 + i * 96, cbx: [470, 610], cbw: 120, cbY: 70, capR: 470, s1: [232], s2: 290, bal: [[210, 360], [560, 360]], ex: 130, s3: 540, w3: 680, f: 1 };
+    svg.setAttribute('viewBox', Lo.vb);
+    const BY = Lo.BY, BS = Lo.BS, bx = Lo.bx, F = Lo.f;
+    el('text', { x: bx(0), y: BY - 18, fill: '#a9a194', 'font-size': 20 * F }, null, '書いておく数');
+    el('text', { x: Lo.cbx[0], y: Lo.cbY - 18, fill: '#a9a194', 'font-size': 20 * F }, null, '検算(余分に足す)');
+    for (let i = 0; i < 4; i++) {
+      const isBad = w.step >= 1 && i === w.pos, isFix = w.step >= 3 && i === w.pos;
+      const g = el('g', { class: 'dbox', 'data-i': i, style: 'cursor:pointer' });
+      el('rect', { x: bx(i), y: BY, width: BS, height: BS, rx: 10, fill: isFix ? '#2fb36d' : isBad ? '#e5484d' : '#3d7be0' }, g);
+      el('text', { x: bx(i) + BS / 2, y: BY + BS * 0.68, 'text-anchor': 'middle', 'font-size': BS * 0.53, 'font-weight': 800, fill: '#fff' }, g, isFix ? fixed[i] : isBad ? broken[i] : d[i]);
+      if (isBad && !isFix) el('text', { x: bx(i) + BS / 2, y: BY - 6, 'text-anchor': 'middle', 'font-size': 18 * F, fill: '#ff9c9f' }, g, `元は ${d[i]}`);
+      el('text', { x: bx(i) + BS / 2, y: BY + BS + 26, 'text-anchor': 'middle', 'font-size': 17 * F, fill: '#8d8577' }, g, narrow ? `×${i + 1}` : `${i + 1}番目 ×${i + 1}`);
+    }
+    const cb = (x, label, val) => {
+      el('rect', { x, y: Lo.cbY, width: Lo.cbw, height: BS, rx: 10, fill: '#e8a13a' });
+      el('text', { x: x + Lo.cbw / 2, y: Lo.cbY + BS * 0.68, 'text-anchor': 'middle', 'font-size': BS * 0.5, 'font-weight': 800, fill: '#1c1306' }, null, val);
+      el('text', { x: x + Lo.cbw / 2, y: Lo.cbY + BS + 26, 'text-anchor': 'middle', 'font-size': 17 * F, fill: '#8d8577' }, null, label);
+    };
+    cb(Lo.cbx[0], '合計', S); cb(Lo.cbx[1], '×番号の合計', Wt);
+    const dimOp = 0.12;
+    const s1 = el('g', { class: 'step', opacity: w.step >= 1 ? 1 : dimOp });
+    const t1 = [`① 破れて ${w.pos + 1}番目が ${d[w.pos]} → ${broken[w.pos]} に。`, 'どこが壊れたかは、まだ分からない'];
+    if (narrow) t1.forEach((t, i) => el('text', { x: 14, y: Lo.s1[i], 'font-size': 21, 'font-weight': 700, fill: '#f3efe6' }, s1, t));
+    else el('text', { x: 40, y: Lo.s1[0], 'font-size': 24, 'font-weight': 700, fill: '#f3efe6' }, s1, t1.join(''));
+    const s2 = el('g', { class: 'step', opacity: w.step >= 2 ? 1 : dimOp });
+    el('text', { x: narrow ? 14 : 40, y: Lo.s2, 'font-size': narrow ? 21 : 24, 'font-weight': 700, fill: '#f3efe6' }, s2, narrow ? '② 検算をやり直して、比べる' : '② 読んだ数で検算をやり直し、書いてある検算と比べる');
+    const balance = (cx, top, left, right, diff, label) => {
+      const g = el('g', {}, s2), tilt = -Math.max(-12, Math.min(12, diff * 1.3)) * Math.PI / 180;
+      el('path', { d: `M${cx - 22} ${top + 110} L${cx} ${top} L${cx + 22} ${top + 110} Z`, fill: '#4a453f' }, g);
+      const ex = Lo.ex * Math.cos(tilt), ey = Lo.ex * Math.sin(tilt);
+      el('line', { x1: cx - ex, y1: top + ey, x2: cx + ex, y2: top - ey, stroke: '#cfc7b8', 'stroke-width': 6, 'stroke-linecap': 'round' }, g);
+      const pan = (px, py, v, cap, col) => { el('line', { x1: px, y1: py, x2: px, y2: py + 26, stroke: '#8d8577', 'stroke-width': 2 }, g); el('rect', { x: px - 46, y: py + 26, width: 92, height: 44, rx: 8, fill: col }, g); el('text', { x: px, y: py + 57, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 800, fill: '#111' }, g, v); el('text', { x: px, y: py + 94, 'text-anchor': 'middle', 'font-size': 16 * F, fill: '#a9a194' }, g, cap); };
+      pan(cx - ex, top + ey, left, '書いてある', '#e8a13a'); pan(cx + ex, top - ey, right, '数え直し', '#f3efe6');
+      el('text', { x: cx, y: top - 26, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 800, fill: '#ffb547' }, g, `${label} ずれ ${diff > 0 ? '+' : ''}${diff}`);
+    };
+    balance(Lo.bal[0][0], Lo.bal[0][1], S, S2, dS, '合計');
+    balance(Lo.bal[1][0], Lo.bal[1][1], Wt, W2, dW, '×番号');
+    const s3 = el('g', { class: 'step', opacity: w.step >= 3 ? 1 : dimOp });
+    const x3 = narrow ? 14 : 40;
+    el('rect', { x: x3, y: Lo.s3, width: Lo.w3, height: 84, rx: 12, fill: '#1f2a22', stroke: '#2fb36d', 'stroke-width': 2 }, s3);
+    el('text', { x: x3 + 18, y: Lo.s3 + 36, 'font-size': narrow ? 22 : 26, 'font-weight': 800, fill: '#f3efe6' }, s3, `③ ${dW} ÷ ${dS} = ${where} → ${where}番目が壊れた`);
+    el('text', { x: x3 + 18, y: Lo.s3 + 70, 'font-size': narrow ? 21 : 24, 'font-weight': 700, fill: '#7fe0a8' }, s3, `${broken[w.pos]} − ${dS} = ${fixed[where - 1]} に戻せば、元どおり`);
+    svg.querySelectorAll('.dbox').forEach(g => g.addEventListener('click', () => breakAt(+g.dataset.i)));
+    const L = st.L;
+    $('bridge').innerHTML = `本物の QR は、同じことを 0〜255 の数の世界(GF(256))でやる。いまのレベル ${L.ecl} は 1 ブロックに検算 <b>${L.sp.ec}</b> 個で、<b>${L.sp.t}</b> か所まで「どこが・いくつずれたか」を解いて直す。検算が 2 個で 1 か所、が目安。`;
+    $('wPrev').disabled = w.step === 0; $('wNext').textContent = w.step >= 3 ? '最初から ▶' : '次へ ▶';
+  }
+  function breakAt(i) { whyState.pos = i; whyState.delta = 1 + ((whyState.delta + 1) % 5); whyState.step = 3; renderWhy(); renderChecks(); }
+  $('wNext').onclick = () => { whyState.step = whyState.step >= 3 ? 0 : whyState.step + 1; renderWhy(); };
+  $('wPrev').onclick = () => { whyState.step = Math.max(0, whyState.step - 1); renderWhy(); };
+  $('wBreak').onclick = () => breakAt((whyState.pos + 1) % 4);
+  if ('IntersectionObserver' in window) {
+    let timer = null;
+    new IntersectionObserver(es => { for (const e of es) { if (e.isIntersecting && !timer) { timer = setInterval(() => { if (whyState.step < 3) { whyState.step++; renderWhy(); } else { clearInterval(timer); } }, 1300); } } }, { threshold: 0.5 }).observe(svg);
+  }
+  if (params.has('why')) whyState.step = 3;
+
+  // ---------- 操作 ----------
+  let dirty = true;
+  function setLevel(e) { st.L = LV[e]; st.key = ''; st.marks = []; holeMask.fill(0); st.hover = -1; st.size = 0; st.phase = 'grow'; buildStacks(); buildStrip(); dirty = true; }
+  document.querySelectorAll('#lv button').forEach(b => b.onclick = () => setLevel(b.dataset.l));
+  $('bColor').onclick = () => { st.color = !st.color; dirty = true; };
+  $('bTear').onclick = () => { st.tear = !st.tear; cv.classList.toggle('tearing', st.tear); dirty = true; };
+  $('bPlay').onclick = () => { st.playing = !st.playing; if (st.playing && st.phase === 'intro') { st.phase = 'grow'; st.size = 0; } dirty = true; };
+  $('bStep').onclick = () => { st.playing = false; st.size += 0.25; dirty = true; };
+  const SPEEDS = [[0.4, '遅い'], [1, '普通'], [2.5, '速い']]; let si = 1;
+  $('bSpeed').onclick = () => { si = (si + 1) % 3; st.speed = SPEEDS[si][0]; $('bSpeed').textContent = '速さ: ' + SPEEDS[si][1]; };
+  $('bReset').onclick = () => { st.marks = []; holeMask.fill(0); st.size = 0; st.playing = false; st.key = ''; dirty = true; };
+  $('bMax').onclick = () => { st.marks = []; holeMask.fill(0); st.size = st.L.lastOk.s; st.playing = false; st.key = ''; dirty = true; };
+  // 指でなぞって破る
+  let drawing = false, last = null;
+  function addHole(ev) {
+    const r = cv.getBoundingClientRect(), X = (ev.clientX - r.left) / r.width * W, Y = (ev.clientY - r.top) / r.height * H;
+    const [px, py] = fromCam(X, Y), M = QPX / st.L.n, mx = (px - QX) / M, my = (py - QY) / M;
+    const pts = [];
+    if (last) { const dd = Math.hypot(mx - last[0], my - last[1]), steps = Math.ceil(dd / 0.5); for (let i = 1; i <= steps; i++) pts.push([last[0] + (mx - last[0]) * i / steps, last[1] + (my - last[1]) * i / steps]); } else pts.push([mx, my]);
+    last = [mx, my];
+    const R = 1.3;
+    for (const [x, y] of pts) {
+      st.marks.push({ x, y, r: R });
+      const cx = QX + x * M, cy = QY + y * M, rp = R * M;
+      for (let yy = Math.max(0, Math.floor(cy - rp)); yy < Math.min(CH, cy + rp); yy++) for (let xx = Math.max(0, Math.floor(cx - rp)); xx < Math.min(CW, cx + rp); xx++) if ((xx - cx) ** 2 + (yy - cy) ** 2 < rp * rp) holeMask[yy * CW + xx] = 1;
+    }
+    dirty = true;
+  }
+  cv.addEventListener('pointerdown', ev => { if (ev.pointerType !== 'mouse' && !st.tear) return; drawing = true; last = null; st.playing = false; cv.setPointerCapture(ev.pointerId); addHole(ev); });
+  cv.addEventListener('pointermove', ev => { if (drawing) addHole(ev); });
+  const endDraw = () => { drawing = false; last = null; };
+  cv.addEventListener('pointerup', endDraw); cv.addEventListener('pointercancel', endDraw);
+
+  // ---------- 自動再生 ----------
+  let prevT = performance.now(), introUntil = performance.now() + 3200;
+  function tick(t) {
+    const dt = Math.min(0.1, (t - prevT) / 1000); prevT = t;
+    if (st.playing) {
+      const L = st.L, end = L.firstFail.s + 2, rate = L.firstFail.s / 7 * st.speed;
+      if (st.phase === 'intro') { if (t > introUntil) { st.phase = 'grow'; st.size = 0; dirty = true; } }
+      else if (st.phase === 'grow') { st.size += rate * dt; dirty = true; if (st.size >= end) { st.size = end; st.phase = 'hold'; st.hold = 2.6; } }
+      else if (st.phase === 'hold') { st.hold -= dt; if (st.hold <= 0) { st.phase = 'grow'; st.size = 0; st.marks = []; holeMask.fill(0); dirty = true; } }
+    }
+    if (dirty) {
+      dirty = false;
+      const cur = evaluate();
+      renderCam(cur); renderBack(cur); renderHead(cur); renderMap(cur); renderChecks();
+    }
+    requestAnimationFrame(tick);
+  }
+  buildStacks(); buildStrip(); renderWhy();
+  if (params.has('still')) st.playing = false;
+  const cur0 = evaluate(); renderCam(cur0); renderBack(cur0); renderHead(cur0); renderMap(cur0); renderChecks(); dirty = false;
+  window.__ready = true;
+  window.__app = { st, LV, setLevel, counters };
+  let lastNarrow = null; addEventListener('resize', () => { dirty = true; const nw = svg.parentNode.clientWidth < 560; if (nw !== lastNarrow) { lastNarrow = nw; renderWhy(); } });
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
