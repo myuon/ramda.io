@@ -10,6 +10,7 @@ export const staticWorks: Item[] = [
       "カフェの卓上の QR が破れても読めるのはなぜ。中身のバイトを色分けし、破れ・汚れの場所で読める/読めないが分かれる様子を、本物のリード・ソロモン復号で見る",
     publishedAt: "2026-11-28",
     image: "/works/qr-repair/thumbnail.jpg",
+    hasVideo: true,
   },
   {
     id: "works/gc-bullets",
